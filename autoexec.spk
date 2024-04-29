@@ -1,0 +1,3 @@
+# This file gets loaded by the Interactive Shell
+PluginLoad('SputnikOldGUI.dll');
+# Just define the DLLs we will want nothing more

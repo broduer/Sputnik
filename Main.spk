@@ -1,0 +1,16 @@
+#<?
+say "Sputnik will now run tests to make sure it works";
+say "NOTE - If something fails it could just mean your";
+say "version of .NET handles that thing differently just hit";
+say "enter to continue it doesnt matter if a few fail what matters";
+say "is that a majority dont fail";
+pause("Press any key to continue");
+
+include("Tests.spk");
+
+say "All done! You can edit Main.spk to try out Sputnik now";
+say "Or double click the Sputnik.exe and run the interactive shell";
+
+pause();
+
+exit();
