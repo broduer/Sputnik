@@ -1,0 +1,151 @@
+##TEMPLATE-NAME 'C (ISO/IEC 9899:1990) - All In One'
+##LANGUAGE 'C (ISO/IEC 9899:1990)'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook, and Mathew Hounsell' 
+##FILE-EXTENSION 'c'
+##NOTES
+This template creates a single code file parser for the gramma.
+(Well it will when it's complete.)
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+/*
+ * REMEMBER, THIS IS A GENERATED FILE.
+ *
+##PARAMETERS
+
+ * %Name%
+ * Version %Version%
+ * Author %Author%
+ *
+ * %About%
+ *
+ * FYI
+ *     Case Sensitive: %CaseSensitive%
+ *     Start Symbol: %StartSymbol%
+##END-PARAMETERS
+ */
+
+#include <stddef.h>
+
+
+/*==============================================================================
+ * Engine Declares
+ */
+typedef void * GlobalHandle;
+typedef void * ContextHandle;
+typedef void * TerminalHandle;
+typedef void * RuleHandle
+
+/*----------------------------------------------------------------------------*/
+#define CONTEXT_HANDLE_NULL NULL
+
+
+/*============================================================================
+ * Gramma Declares
+ */
+
+/*
+ * Symbols Constants and Prototypes
+ */
+##SYMBOLS
+    /*
+     * %Description%
+     */
+    static int const %ID%__Value = %Value.Padded%;
+    static ContextHandle %ID%__Action(GlobalHandle global_h, ContextHandle context_h);
+
+##END-SYMBOLS
+
+/*----------------------------------------------------------------------------*/
+/*
+ * Rule Constants and Prototypes
+ */
+##RULES
+    /*
+     * %Description%
+     */
+    static int const %ID%__Value = %Value.Padded%;
+    static ContextHandle %ID%__Action(GlobalHandle global_h, ContextHandle context_h);
+
+##END-RULES
+
+/*==============================================================================
+ * Gramma Defines
+ */
+
+/*
+ * Symbols Implementations
+ */
+##SYMBOLS
+    /*
+     * %Description%
+     */
+    static ContextHandle %ID%__Action(GlobalHandle global_h, ContextHandle context_h);
+    {
+        return (context_h); /* Usually Use Same Context*/
+    }
+
+##END-SYMBOLS
+
+/*----------------------------------------------------------------------------*/
+/*
+ * Rule Implementations
+ */
+##RULES
+    /*
+     * %Description%
+     */
+    static ContextHandle %ID%__Action(GlobalHandle global_h, ContextHandle context_h)
+    {
+        return (context_h); /* Usually Use Same Context */
+    }
+
+##END-RULES
+
+/*==============================================================================
+ * Engine Defines
+ */
+static ContextHandle 
+Choose_Symbol_Action
+(
+    GlobalHandle                        global_h
+    GlobalHandle                        context_h
+    int                                 id
+)
+{
+    switch (id)
+    {
+##SYMBOLS
+    case %ID% :
+        return (%ID%__Action(global_h, context_h)); // %Description%
+##END-SYMBOLS
+    }
+    return (CONTEXT_HANDLE_NULL);
+}
+
+static ContextHandle 
+Choose_Rule_Action
+(
+    GlobalHandle                        global_h
+    GlobalHandle                        context_h
+    int                                 id
+)
+{
+    switch (id)
+    {
+##RULES
+    case %ID% :
+        return (%ID%__Action(global_h, context_h)); // %Description%
+##END-RULES
+    }
+    return (CONTEXT_HANDLE_NULL);
+}
+
+/*------------------------------------------------------------------------------
+ * Gritty Engine Details
+ */
+
+

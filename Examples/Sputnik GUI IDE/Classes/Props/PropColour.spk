@@ -1,0 +1,56 @@
+#<?
+Class PropColour extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return '[COLOR]';
+	}
+	override Function SetProp($Object, $vv)
+	{
+		if(RealGetKeyState(@KeyControlKey))
+		{
+			GUISetProp($Object->GetObject(), $Name, 'default');
+			$Object->SetChanged($Name, false);
+		}
+		else
+		{
+			my $Value = ColourDialog();
+			if($Value !== null)
+			{
+				my List ( $Red, $Green, $Blue, $Alpha ) = $Value;
+				my $Colour = RGB($Red, $Green, $Blue);
+				GUISetProp($Object->GetObject(), $Name, $Colour);
+				$Object->SetChanged($Name);
+			}
+		}
+		return null;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		GUISetProp($Object->GetObject(), $Name, (Int64)$Value);
+	}
+	override Function SaveProp($Object)
+	{
+		if(!$Object->IsChanged($Name))
+			return null;
+		return (string)GUIGetProp($Object->GetObject(), $Name);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		if($Object->IsChanged($Name))
+		{
+			my $Value = (string)GUIGetProp($Object->GetObject(), $Name);
+			$Code .= "GUISetProp(\$$ObjName, '$Name', $Value);\r\n";
+		}
+		return $Code;
+	}
+};

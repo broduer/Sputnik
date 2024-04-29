@@ -1,0 +1,263 @@
+﻿Class ChestEditor
+{
+	my $Name;
+	my $GUI;
+	my $listItems;
+	my $bFindItems;
+	my $tAmount;
+	my $cAmmoType;
+	my $cItemType;
+	my $bDeleteItem;
+	my $ItemCount;
+	my $bClear;
+	my $bSave;
+	my $bLoad;
+	my $Timer;
+	my $Disposed;
+	my $Offset;
+	my $SaveName;
+	my $lSaves;
+	Function __Construct($Name, $ItemCount, $Offset)
+	{
+		$Disposed = false;
+		$this->$Name = $Name;
+		$this->$ItemCount = $ItemCount;
+		$this->$Offset = $Offset;
+		$this->$SaveName = "$Name\|Saves";
+		$GUI = GUICreate("Window", "$Name Editor", 584, 527);
+		my $g1 = GUICreate("GroupBox", $GUI, "Items in Chest :", 8, 8, 552, 408);
+		$listItems = GUICreate("ListBox", $g1, 8, 16, 416, 381);
+		$bFindItems = GUICreate("Button", $g1, "Find Items", 432, 16, 110, 25);
+		$bDeleteItem = GUICreate("Button", $g1, "Delete Item", 432, 48, 110, 25);
+		$bClear = GUICreate("Button", $g1, "Delete All Items", 432, 80, 110, 25);
+		$bSave = GUICreate("Button", $g1, "Save Items", 432, 112, 110, 25);
+		$bLoad = GUICreate("Button", $g1, "Load Items", 432, 144, 110, 25);
+		GUICreate("Label", $g1, "Saved Items :", 432, 176, 104, 16);
+		$lSaves = GUICreate("ListBox", $g1, 432, 192, 110, 173);
+		$bClose = GUICreate("Button", $g1, "Close Editor", 432, 368, 110, 25);
+		my $g2 = GUICreate("GroupBox", $GUI, "Selected Item :", 8, 416, 552, 64);
+		$lbl1 = GUICreate("Label", $g2, "Item Type :", 8, 16, 104, 16);
+		$cItemType = GUICreate("ComboBox", $g2, 8, 32, 304, 21);
+		GUICreate("Label", $g2, "Amount 0-255 :", 320, 16, 90, 16);
+		GUICreate("Label", $g2, "Amount Type :", 432, 16, 80, 16);
+		$tAmount = GUICreate("TextBox", $g2, "", 320, 32, 104, 20);
+		$cAmmoType = GUICreate("ComboBox", $g2, 432, 32, 110, 21);
+		foreach($ItemType as $i)
+			GUIComboBox($cItemType, "AddItem", $i[1]);
+		foreach($AmmoType as $i)
+			GUIComboBox($cAmmoType, "AddItem", $i[1]);
+		GUILoad($GUI);
+		GUILink($bClose, 'Click', '$param->Dispose();', $this);
+		GUILink($bSave, 'Click', '$param->Save();', $this);
+		GUILink($bLoad, 'Click', '$param->Load();', $this);
+		GUILink($bClear, 'Click', '$param->DeleteAllItems();', $this);
+		GUILink($bDeleteItem, 'Click', '$param->DeleteItem();', $this);
+		GUILink($bFindItems, 'Click', '$param->FindItems();', $this);
+		GUILink($tAmount, 'TextChanged', '$param->onChangeAmount();', $this);
+		GUILink($cItemType, "SelectedIndexChanged", '$param->onChangeItemType($arg);', $this);
+		GUILink($cAmmoType, "SelectedIndexChanged", '$param->onChangeAmmoType($arg);', $this);
+		$Timer = GUICreate('Timer', $GUI, 100);
+		GUILink($Timer, 'Tick', '$param->TimerTicky($me);', $this);
+		GUITimer($Timer, 'Start');
+		# Create the chest save folder if it doesnt exist already
+		unless( -d "./$SaveName" )
+			MKDir("./$SaveName");
+		LoadSaves();
+	}
+	Function __Destruct()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		GUITimer($Timer, 'Stop');
+		unset($GUI);
+	}
+	
+	Function Dispose()
+	{
+		__Destruct();
+	}
+	
+	Function GetSelected()
+	{
+		my $Selected = GUIListBox( $listItems, "SelectedItem" );
+		if(!IsEmptyOrNull($Selected))
+		{
+			$Selected =~ m/Slot \[(\d+)\]\s*(.*)/i;
+			my $ItemSlot = $1;
+			my $ItemName = $2;
+			$ItemSlot =~ s/^0*//;
+			$ItemSlot--;
+			return array($ItemSlot, $ItemName);
+		}
+		return array(null, null);
+	}
+
+	Function CalcAddress( $Slot )
+	{
+		my $Address = ($Pointer + $Offset) - 1;
+		$Address += 4 * $Slot;
+		return $Address;
+	}
+	
+	Function TimerTicky( $my )
+	{
+		if($Disposed)
+			return;
+		my List ($ItemSlot, $ItemName) = GetSelected();
+		if($ItemSlot == null || $ItemName == null)
+			return;
+		my $Address = CalcAddress($ItemSlot);
+		my $ItemType = ReadMem($GamePID, "", $Address, "C", 1);
+		my $ItemAmount = ReadMem($GamePID, "", $Address + 1, "C", 1);
+		my $ItemAmmoType = ReadMem($GamePID, "", $Address + 2, "C", 1);
+		# Amount
+		GUISetProp($tAmount, "Text", $ItemAmount);
+		# Item Type
+		my $ItemName = GetItemName($ItemType);
+		if(GUIGetProp( $cItemType, "Text") != $ItemName)
+			GUIComboBox( $cItemType, "SelectedItem", $ItemName);
+		# Ammo Type
+		my $AmmoName = GetAmmoType($ItemAmmoType);
+		if(GUIGetProp( $cAmmoType, "Text") != $AmmoName)
+			GUIComboBox( $cAmmoType, "SelectedItem", $AmmoName);
+	}
+
+	Function FindItems()
+	{
+		my $OldIndex = GUIListBox( $listItems, "SelectedIndex" );
+		GUIListBox($listItems, "Clear");
+		for(my $i = 0; $i < $ItemCount; $i++)
+		{
+			my $Slot = $i;
+			$Slot++;
+			if(StrLen($Slot) == 1)
+				$Slot ..= "0";
+			my $Address = CalcAddress($i);
+			my $ItemType = ReadMem($GamePID, "", $Address, "C", 1);
+			my $ItemAmount = ReadMem($GamePID, "", $Address + 1, "C", 1);
+			my $ItemAmmoType = ReadMem($GamePID, "", $Address + 2, "C", 1);
+			my $ItemName = GetItemName($ItemType);		
+			my $ItemName = "Slot [$Slot] - $ItemName";
+			GUIListBox($listItems, "AddItem", $ItemName);
+		}
+		GUIListBox( $listItems, "SelectedIndex", $OldIndex );
+	}
+	
+	Function DeleteItem()
+	{
+		my List ($ItemSlot, $ItemName) = GetSelected();
+		if($ItemSlot == null || $ItemName == null)
+			return;
+		my $Address = CalcAddress($ItemSlot);
+		WriteMem($GamePID, "", $Address, (byte)0);
+		WriteMem($GamePID, "", $Address + 1, (byte)0);
+		WriteMem($GamePID, "", $Address + 2, (byte)0);
+		WriteMem($GamePID, "", $Address + 3, (byte)0);
+		FindItems();
+	}
+	
+	Function DeleteAllItems()
+	{
+		my $Address = CalcAddress(0);
+		my $BytesLength = $ItemCount * 4;
+		my $Bin = BinaryCreate($BytesLength, 0);
+		WriteMem($GamePID, "", $Address, $Bin);
+		FindItems();
+	}
+	
+	Function LoadSaves()
+	{
+		GUIListBox($lSaves, "Clear");
+		foreach(Glob("./$SaveName/*") as my $file)
+		{
+			my $file = GetFileName($file);
+			GUIListBox( $lSaves, "AddItem", $file );
+		}
+	}
+	
+	Function Save()
+	{
+		my $Selected = GUIListBox( $lSaves, "SelectedText" );
+		my $Name = InputBox($Name, "Enter a name for the save", $Selected);
+		if(IsEmptyOrNull($Name)) return;
+		if(!IsAlphaNumeric(Replace($Name, " ", "")))
+		{
+			MsgBox("Invalid name must contain only alpha-numeric", $Name);
+			return;
+		}
+		my $Address = CalcAddress(0);
+		my $BytesLength = $ItemCount * 4;
+		my $Bin = ReadMem($GamePID, "", $Address, $BytesLength);
+		BinarySave($Bin, "./$SaveName/$Name");
+		LoadSaves();
+		MsgBox("Saved", $Name);
+	}
+	
+	Function Load()
+	{
+		my $FileName = GUIListBox( $lSaves, "SelectedText" );
+		if(IsEmptyOrNull($FileName))
+		{
+			MsgBox("You must select a file to load", $Name);
+			return;
+		}
+		unless( -e "./$SaveName/$FileName" )
+		{
+			MsgBox("Could not find file '$FileName'", $Name);
+			return;
+		}
+		my $Address = CalcAddress(0);
+		my $Bin = BinaryLoad("./$SaveName/$FileName");
+		WriteMem($GamePID, "", $Address, $Bin);
+		FindItems();
+	}
+	
+	Function onChangeItemType( $arg )
+	{
+		my $Index = $arg[0];
+		my $Text = $arg[1];
+		my List ($ItemSlot, $ItemName) = GetSelected();
+		if($ItemSlot == null || $ItemName == null)
+			return;
+		my $Address = CalcAddress($ItemSlot);
+		my $ItemID = GetItemID($Text);
+		my $CurrentID = ReadMem($GamePID, "", $Address, "C", 1);
+		if($CurrentID != $ItemID)
+		{
+			WriteMem($GamePID, "", $Address, (byte) $ItemID);
+			FindItems();
+		}
+	}
+	
+	Function onChangeAmmoType( $arg )
+	{
+		my $Index = $arg[0];
+		my $Text = $arg[1];
+		my List ($ItemSlot, $ItemName) = GetSelected();
+		if($ItemSlot == null || $ItemName == null)
+			return;
+		my $Address = CalcAddress($ItemSlot);
+		my $AmmoID = GetAmmoID($Text);
+		my $CurrentID = ReadMem($GamePID, "", $Address + 2, "C", 1);
+		if($CurrentID != $AmmoID)
+		{
+			WriteMem($GamePID, "", $Address + 2, (byte) $AmmoID);
+			FindItems();
+		}
+	}
+	
+	Function onChangeAmount()
+	{
+		my List ($ItemSlot, $ItemName) = GetSelected();
+		if($ItemSlot == null || $ItemName == null)
+			return;
+		my $Amount = GUIGetProp($tAmount, "Text");
+		my $Address = CalcAddress($ItemSlot);
+		if($Amount > 255)
+			$Amount = 255;
+		if($Amount < 0)
+			$Amount = 0;
+		WriteMem($GamePID, "", $Address + 1, (byte)$Amount);
+	}
+};

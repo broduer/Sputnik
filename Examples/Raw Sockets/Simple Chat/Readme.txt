@@ -1,0 +1,1 @@
+This example is a BASIC example of using raw tcp sockets to create a client/server

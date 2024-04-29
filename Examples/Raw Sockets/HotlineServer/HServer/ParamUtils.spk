@@ -1,0 +1,108 @@
+﻿Class ParamUtils
+{
+	Static Function NewParams()
+	{
+		my $params = new StdClass();
+		$params->$Fields = array();
+		return $params;
+	}
+	Static Function ToBinary($params)
+	{
+		my $buf = ByteBufferNew();
+		ByteBufferPut($buf, 'V', PackSingle('n', count($params->$Fields)));
+		foreach($params->$Fields as my $field)
+		{
+			ByteBufferPut($buf, 'V', PackSingle('n', $field->$Id));
+			ByteBufferPut($buf, 'V', PackSingle('n', $field->$Size));
+			ByteBufferPut($buf, 'V', $field->$Data);
+		}
+		my $bin = ByteBufferToBinary($buf);
+		unset($buf);
+		return $bin;
+	}
+	Static Function DeleteAllFields($params)
+	{
+		foreach($params->$Fields as my $field)
+			unset($field);
+		$params->$Fields = array();
+	}
+	Static Function AddField($params, $newField)
+	{
+		$params->$Fields[] = $newField;
+	}
+	Static Function AddString($params, $id, $value)
+	{
+		my $bin = PackSingle('z0', $value);
+		my $newField = FieldUtils::NewField($id, count($bin), $bin);
+		$params->$Fields[] = $newField;
+	}
+	Static Function AddInteger($params, $id, $value)
+	{
+		my $bin;
+        if (((uint)$value & (uint)0xFFFF0000) > 0)  // if needs 4 bytes
+        	$bin = PackSingle('N', $value);
+        else
+        	$bin = PackSingle('n', $value);
+		my $newField = FieldUtils::NewField($id, count($bin), $bin);
+		$params->$Fields[] = $newField;
+	}
+	Static Function AddBinary($params, $id, $value)
+	{
+		my $bin = BinaryClone((binary)$value);
+		my $newField = FieldUtils::NewField($id, count($bin), $bin);
+		$params->$Fields[] = $newField;
+	}
+	Static Function GetFieldSize($params, $id)
+	{
+		foreach($params->$Fields as my $field)
+		{
+			if ($field->$Id == $id)
+				return $field->$Size;
+		}
+		return 0;
+	}
+	Static Function GetString($params, $id)
+	{
+		foreach($params->$Fields as my $field)
+		{
+			if ($field->$Id == $id)
+				return UnpackSingle('z0', $field->$Data);
+		}
+		return '';
+	}
+	Static Function GetStringEnc($params, $id)
+	{
+		foreach($params->$Fields as my $field)
+		{
+			if ($field->$Id == $id)
+			{
+				my $tempData = BinaryClone($field->$Data);
+				for(my $i = 0; $i < count($tempData); $i++)
+					$tempData[$i] = 255 - $tempData[$i];
+				my $ret = UnpackSingle('z0', $tempData);
+				unset($tempData);
+				return $ret;
+			}
+		}
+		return '';
+	}
+	Static Function GetInteger($params, $id)
+	{
+		foreach($params->$Fields as my $field)
+		{
+			if ($field->$Id == $id)
+			{
+				switch ($field->$Size)
+				{
+					case 2:
+						return UnpackSingle('n', $field->$Data);
+						break;
+					case 4:
+						return UnpackSingle('N', $field->$Data);
+						break;
+				}
+			}
+		}
+		return 0;
+	}
+}

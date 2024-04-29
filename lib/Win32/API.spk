@@ -1,0 +1,44 @@
+#include-once
+#require-once
+/*
+// Examples:
+include("Win32/API.spk", true);
+my $Read = new API('Trainer.dll', 'TrainerEngineRead', 'Int32', 'ppii', 'Ansi');
+my $Write = new API('Trainer.dll', 'TrainerEngine', 'Int32', 'ppi*ii', 'Ansi');
+$Write->Call('C00016', 'Pacman 2.4', 0x411C88, 100, 1);
+my $lives = $Read->Call('C00016', 'Pacman 2.4', 0x411C88, 4);
+println("Pacman has '$lives' lives");
+*/
+include('Win32/Const.spk', true); // Constants may be used in the DLL Calls
+// This class is just a wrapper for DLLOpen, DLLClose and DLLCall
+// It aims to be quick an easy to use with minimal code
+// Since the functions stay open (DLLOpen) they dont need to be reloaded at each call so more speed is given
+Class API
+{
+	my List($DLL, $DLLPar, $FuncName, $ReturnType, $ParamType, $CharType);
+	Function __Construct( $DLLName, $FuncName, $ReturnType, $ParamType, $CharType)
+	{
+		$this->$DLL = DLLOpen($DLLName, $FuncName, $ReturnType, $ParamType, $CharType);
+		if(!$this->$DLL)
+			throw new Exception("Failed to load DLL '$DLLName'");
+		$this->$DLLPar = array($DLL);
+		$this->$FuncName = $FuncName;
+		$this->$ReturnType = $ReturnType;
+		$this->$ParamType = $ParamType;
+		$this->$CharType = $CharType;
+	}
+	Function __Destruct()
+	{
+		DLLClose($DLL);
+		Unset($DLL);
+		Unset($FuncName);
+		Unset($ReturnType);
+		Unset($ParamType);
+		Unset($CharType);
+	}
+	[Args("true")]
+	Function Call()
+	{
+		return CallArray('DLLCall', $DLLPar . @args);
+	}
+}

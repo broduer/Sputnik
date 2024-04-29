@@ -1,0 +1,112 @@
+﻿#<?
+Class NewProject
+{
+	my $Window;
+	my $CreateProj;
+	my $Cancel;
+	my $Name;
+	my $DisposeSetStatus;
+	Function __construct()
+	{
+		// Create the New Project Window
+		$this->$Window = GUICreate("Window", "New Project", 298, 188, 0, 0, 5);
+		GUIMDIParent($this->$Window, $GUI);
+		// Set Status
+		ChangeStatus(Status->$NewProject);
+		// Create the controls
+		my $Banner = GUICreate("PictureBox", $this->$Window, 8, 8, 275, 53);
+		GUICreate("Label", $this->$Window, "Name of project:", 8, 69, 110, 20);
+		$this->$Name = GUICreate("TextBox", $this->$Window, "", 8, 69 + (22 * 1), 275, 20);
+		$this->$CreateProj = GUICreate("Button", $this->$Window, "Create Project", 8, 69 + (22 * 2), 275, 20);
+		$this->$Cancel = GUICreate("Button", $this->$Window, "Cancel", 8, 69 + (22 * 3), 275, 20);
+		if(@Compiled)
+			GUIPictureBox($Banner, "Load", $BannerTM);
+		else
+			GUIPictureBox($Banner, "Load", "./Images/banner.jpg");
+		GUILink($this->$CreateProj, "Click", @"$param->CreateProject();", $this);
+		GUILink($this->$Cancel, "Click", @"$param->Cancel();", $this);
+		GUILink($this->$Name, "KeyPress", '$param->KeyPress($arg);', $this);
+		
+		$DisposeSetStatus = true;
+		GUILink($Window, 'FormClosed', '$param->Dispose();', $this);
+		GUILink($Window, 'FormClosing', '$param->Dispose();', $this);
+		
+		// Load Settings
+		if(FileExists("./Settings/NewProject.dat"))
+		{
+			my $LoadData = BinaryLoad("./Settings/NewProject.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($this->$Window, "Left", $BData[0]);
+			GUISetProp($this->$Window, "Top", $BData[1]);
+		}
+		// Finally Show the Window
+		GUILoad( $this->$Window );
+	}
+	Function __destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($DisposeSetStatus)
+			ChangeStatus(Status->$NONE);
+		// Save Settings
+		my $X = GUIGetProp($this->$Window, "Left");
+		my $Y = GUIGetProp($this->$Window, "Top");
+		my $SaveData = Pack('ii', $X, $Y);
+		BinarySave($SaveData, "./Settings/NewProject.dat");
+		// Clean Up
+		GUIUnload($this->$Window);
+		unset($this->$Window);
+	}
+	Function CreateProject()
+	{
+		my $Text = GUIGetProp($this->$Name, "Text");
+		if(StrLen($Text) <= 0)
+		{
+			msgbox("You must enter a project name", $Title, 48);
+		}
+		else if(DirExists("./Projects/$Text"))
+		{
+			msgbox("A project named '$Text' already exists.", $Title, 48);
+		}
+		else
+		{
+			MKDir("./Projects/$Text");
+			ChangeProjectName($Text);
+			ChangeStatus(Status->$Design);
+			$CurrentWindow = "Main";
+			$MainWindow = "Main";
+			$Windows[$CurrentWindow] = new Window("Main");
+			$Windows[$CurrentWindow]->Show();
+			AttachControl($Windows[$CurrentWindow]);
+			GUIListBox($ProjectView->$WindowList, 'Clear');
+			GUIListBox($ProjectView->$WindowList, 'AddItem', $CurrentWindow);
+			$ProjectView->SetCurrentWindow();
+			// Save Timer
+			$Timer = GUICreate("Timer", $this->$Window, 1000);
+			GUILink($Timer, "Tick", '$param->TimerTicky($me);', $this);
+			GUITimer($Timer, "Start");
+		}
+	}
+	Function TimerTicky( $me )
+	{
+		Save();
+		GUITimer($me, "Stop");
+		if($DisposeSetStatus)
+			$DisposeSetStatus = false;
+		Dispose();
+	}
+	Function Cancel()
+	{
+		ChangeStatus(Status->$NONE);
+		Dispose();
+	}
+	Function KeyPress($arg)
+	{
+		if($arg == @LF || $arg == @CR)
+		{
+			CreateProject();
+		}
+	}
+};

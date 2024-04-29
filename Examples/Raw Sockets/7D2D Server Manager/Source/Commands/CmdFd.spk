@@ -1,0 +1,39 @@
+﻿$LoadCommands['fd'] = array('CmdFd', 1, 1);
+Class extends ServerManager
+{
+	Function CmdFd($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Delete a friend from your friends list on the server';
+		if ($args === 'help')
+			return array('Delete a friend from your friends list on the server');
+		if ($commandUser == null)
+			return;
+		my $friendWho = $args[0];
+		if (IsEmptyOrNull($friendWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($friendWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$friendWho'");
+			return;
+		}
+		my $name = $found->$Name;
+		if (!IsUserFriendOf($commandUser, $found))
+		{
+			SayToUser($commandUser, "'$name' is not on your friend list");
+			return;
+		}
+		DelUserFriend($commandUser, $found);
+		SayToUser($commandUser, "'$name' has been removed from your friend list");
+		my $dellerName = $commandUser->$Name;
+		SayToUser($found, "'$dellerName' has removed you from their friend list");
+	}
+}

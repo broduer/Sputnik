@@ -1,0 +1,157 @@
+#include-once
+#require-once
+class TextParser
+{
+	my $Text;
+	my $Position;
+	my $NullChar = "\x00";
+	Function __Construct($text = '')
+	{
+		$this->Reset(strlen($text) > 0 ? $text : '');
+	}
+	/// <summary>
+	/// Sets the current document and resets the current position to the start of it
+	/// </summary>
+    /// With no $Text given:
+    /// Resets the current position to the start of the current document
+	Function Reset($Text = '')
+	{
+		if(!isEmpty($Text))
+		{
+			$this->$Text = $Text;
+			$this->$Position = 0;
+		}
+		else
+			$this->$Position = 0;
+	}
+	Function Remaining($text = '')
+	{
+		return strlen($Text) - $Position;
+	}
+	/// <summary>
+	/// Indicates if the current position is at the end of the current document
+	/// </summary>
+	Function EndOfText()
+	{
+		return ($this->$Position >= strlen($this->$Text));
+	}
+	/// <summary>
+	/// Returns the character at the specified number of characters beyond the current
+	/// position, or a null character if the specified position is at the end of the
+	/// document
+	/// </summary>
+	/// <param name="ahead">The number of characters beyond the current position</param>
+	/// <returns>The character at the specified position</returns>
+    /// With no $ahead given:
+	/// Returns the character at the current position, or a null character if we're
+	/// at the end of the document
+	Function Peek($ahead = "")
+	{
+		if(!isEmpty($ahead))
+		{
+			my $pos = ($this->$Position + $ahead);
+			if ($pos < strlen($this->$Text))
+				return $this->$Text[$pos];
+			return $this->$NullChar;
+		}
+		else
+			return $this->Peek(0);
+	}
+	/// <summary>
+	/// Extracts a substring from the specified range of the current text
+	/// </summary>
+	/// <param name="start"></param>
+	/// <param name="end"></param>
+	/// <returns></returns>
+    /// With no $End given:
+	/// Extracts a substring from the specified position to the end of the text
+	Function Extract($start, $end = '')
+	{
+		if(!isEmpty($end))
+			return Substr($this->$Text, $start, $end - $start);
+		else
+			return Extract($start, strlen($this->$Text));
+	}
+	/// <summary>
+	/// Moves the current position ahead the specified number of characters
+	/// </summary>
+	/// <param name="ahead">The number of characters to move ahead</param>
+    /// With no $ahead given:
+	/// Moves the current position ahead one character
+	Function MoveAhead($ahead = '')
+	{
+		if(!isEmpty($ahead))
+			$this->$Position = Min($this->$Position + $ahead, strlen($this->$Text));
+		else
+			$this->MoveAhead(1);
+	}
+	/// <summary>
+	/// Moves to the next occurrence of the specified string
+	/// </summary>
+	/// <param name="s">String to find</param>
+	/// <param name="ignoreCase">Indicates if case-insensitive comparisons
+	/// are used</param>
+	Function MoveTo($s, $ignoreCase = false)
+	{
+		$this->$Position = IndexOf($this->$Text, $s, $this->$Position, $ignoreCase);
+		if ($this->$Position < 0)
+			$this->$Position = strlen($this->$Text);
+	}
+	/// <summary>
+	/// Moves to the next occurrence of any one of the specified
+	/// characters
+	/// </summary>
+	/// <param name="chars">Array of characters to find</param>
+	Function MoveToChars($chars)
+	{
+		$this->$Position = IndexOfAny($this->$Text, $chars, $this->$Position);
+		if ($this->$Position < 0)
+			$this->$Position = strlen($this->$Text);
+	}
+	/// <summary>
+	/// Moves to the next occurrence of any character that is not one
+	/// of the specified characters
+	/// </summary>
+	/// <param name="chars">Array of characters to move past</param>
+	Function MovePast($chars)
+	{
+		while ($this->IsInArray($this->Peek(), $chars))
+			$this->MoveAhead();
+	}
+	/// <summary>
+	/// Determines if the specified character exists in the specified
+	/// character array.
+	/// </summary>
+	/// <param name="c">Character to find</param>
+	/// <param name="chars">Character array to search</param>
+	/// <returns></returns>
+	Function IsInArray($c, $chars)
+	{
+		foreach ($chars as $ch)
+		{
+			if ($c == $ch)
+				return true;
+		}
+		return false;
+	}
+	/// <summary>
+	/// Moves the current position to the first character that is part of a newline
+	/// </summary>
+	Function MoveToEndOfLine()
+	{
+		my $c = $this->Peek();
+		while ($c != "\r" && $c != "\n" && !$this->EndOfText())
+		{
+			$this->MoveAhead();
+			$c = $this->Peek();
+		}
+	}
+	/// <summary>
+	/// Moves the current position to the next character that is not whitespace
+	/// </summary>
+	Function MovePastWhitespace()
+	{
+		while (IsSpace($this->Peek()))
+			$this->MoveAhead();
+	}
+}

@@ -1,0 +1,377 @@
+Enum EntityType
+{
+	// Player
+	$Player,
+	// Mobs
+	$Mob,
+	$Ghost,
+	$Creeper,
+	$Slime,
+	$Inky,
+	$Pinky,
+	$Blaze,
+	// Block Related
+	$BreakingIce,
+	$MovingBlock, // Must go after Mobs so it can hit them!
+	// Rewards
+	$Reward,
+	$Fruit,
+	$OneUp,
+	$Rainbow,
+	$YinYang,
+	$Candy,
+	$Pizza,
+	$Diamond,
+	$HourGlass,
+	$Boost,
+	$RedRing,
+	$GreenRing,
+	// Score
+	$Points,
+	// Magic
+	$Magic
+};
+Class Entities
+{
+	my $Game;
+	my $Entities;
+	my $EntityValues;
+	my $EntityTickCount;
+	my $EntityTickInterval;
+	my $RewardsTickCount;
+	my $RewardsTickInterval;
+	my $GhostTickCount;
+	my $GhostTickInterval;
+	my $RespawnTickCount;
+	my $RespawnTickInterval;
+	my $Disposed;
+	my $RespawnEntities;
+	Function __Construct( EngineMain $Engine )
+	{
+		$Game = $Engine;
+		$RespawnEntities = array();
+		$EntityTickInterval = 6;
+		$EntityTickCount = TickCount();
+		$RewardsTickInterval = 3000;
+		$RewardsTickCount = TickCount();
+		$GhostTickInterval = 1000;
+		$GhostTickCount = TickCount();
+		$RespawnTickInterval = 1000;
+		$RespawnTickCount = TickCount();
+		$Entities = array();
+		$Disposed = false;
+		$EntityValues = array();
+		foreach( Enumerate('EntityType') as my $EN => my $EV )
+			$EntityValues[] = $EV;
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function EntityCount( $Type = null )
+	{
+		if($Disposed)
+			return 0;
+		my $Count = 0;
+		
+		if($Type == null)
+		@{
+			foreach( $EntityValues as my $EV )
+				foreach($Entities[$EV] as my $K => my $V)
+					if(!$V->$IsPlayer)
+						$Count++;
+		}
+		else
+		@{
+			foreach($Entities[$Type] as my $K => my $V)
+				if(!$V->$IsPlayer)
+					$Count++;
+		}
+		return $Count;
+	}
+	Function NonPlayerEntityCount( )
+	{
+		if($Disposed)
+			return 0;
+		my $Count = 0;
+		
+		foreach( $EntityValues as my $EV )
+			foreach($Entities[$EV] as my $K => my $V)
+				if(!$V->$IsPlayer)
+					$Count++;
+		return $Count;
+	}
+	Function ClearEntities( )
+	{
+		if($Disposed)
+			return;
+		foreach( $EntityValues as my $EV )
+		@{
+			if($EV == EntityType->$Player)
+				continue;
+			$Entities[$EV] = array(); // Todo Maybe dispose?
+		}
+		// Even clear respawn stuff
+		ClearRespawnEntities();
+	}
+	Function ClearRespawnEntities( )
+	{
+		if($Disposed)
+			return;
+		$RespawnEntities = array();
+	}
+	my $CCount = 0;
+	Function PrintEntities( )
+	{
+		if($CCount == 0)
+		@{
+			Cls();
+			foreach( Enumerate('EntityType') as my $EN => my $EV )
+				say "$EN -- " . Count($Entities[$EV]);
+			$CCount = 60;
+		}
+		$CCount--;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if($Game->$CurrentState != GameState->$Playing)
+			return;
+		//PrintEntities();
+		// Handle Respawns
+		my $NewRespawnTickCount = TickCount($RespawnTickCount);
+		if($NewRespawnTickCount > $RespawnTickInterval)
+		@{
+			$RespawnTickCount = TickCount() + $RespawnTickInterval;
+			my $TempRespawnEntities = $RespawnEntities;
+			$RespawnEntities = array();
+			foreach($TempRespawnEntities as my $REnt)
+			@{
+				$REnt[1]--;
+				if($REnt[1] == 0)
+				@{
+					switch($REnt[0])
+					{
+						case EntityType->$Creeper:
+							$Game->$Map->SpawnCreeper();
+							break;
+						case EntityType->$Ghost:
+							$Game->$Map->SpawnGhost();
+							break;
+						case EntityType->$Slime:
+							$Game->$Map->SpawnSlime();
+							break;
+						case EntityType->$Inky:
+							$Game->$Map->SpawnInky();
+							break;
+						case EntityType->$Pinky:
+							$Game->$Map->SpawnPinky();
+							break;
+						case EntityType->$Blaze:
+							$Game->$Map->SpawnBlaze();
+							break;
+					}
+				}
+				else
+					$RespawnEntities[] = $REnt;
+			}
+		}
+		// Handle Ghosts
+		my $GhostsOnMap = EntityCount(EntityType->$Ghost);
+		if($GhostsOnMap == 0)
+		@{
+			my $NewGhostTickCount = TickCount($GhostTickCount);
+			if($NewGhostTickCount > $GhostTickInterval)
+			@{
+				$GhostTickCount = TickCount() + $GhostTickInterval;
+				$Game->$Map->$GhostCounter--;
+				if($Game->$Map->$GhostCounter == 0)
+					$Game->$Map->SpawnGhost();
+			}
+		}
+		// Handle rewards
+		my $NewRewardTickCount = TickCount($RewardsTickCount);
+		if($NewRewardTickCount > $RewardsTickInterval)
+		@{
+			$RewardsTickCount = TickCount() + $RewardsTickInterval;
+			HandleRewards();
+		}
+		// Handle Entity updates (movement etc)
+		my $NewEntityTickCount = TickCount($EntityTickCount);
+		if($NewEntityTickCount > $EntityTickInterval)
+		@{
+			$EntityTickCount = TickCount() + $EntityTickInterval;
+			foreach( $EntityValues as my $EV )
+			{
+				my $RemoveEntityList = array();
+				foreach($Entities[$EV] as my $K => my $V)
+				@{
+					if($V->$Disposed)
+					@{
+						$RemoveEntityList[] = $K;
+						continue;
+					}
+					// Get entity position since we will need it later
+					my List ($X, $Y) = $V->GetPosition();
+					// Allow checking for moves?
+					// Is moving?
+					if(!$V->Stopped())
+					@{
+						my $EX = $V->$DrawPosition[0];
+						my $EY = $V->$DrawPosition[1];
+						switch($V->$MoveDirection)
+						{
+							case Direction->$Up:
+								$V->$DrawPosition[1] -= $V->$Velocity;
+								$V->$VelocityMoves--;
+								break;
+							case Direction->$Down:
+								$V->$DrawPosition[1] += $V->$Velocity;
+								$V->$VelocityMoves--;
+								break;
+							case Direction->$Left:
+								$V->$DrawPosition[0] -= $V->$Velocity;
+								$V->$VelocityMoves--;
+								break;
+							case Direction->$Right:
+								$V->$DrawPosition[0] += $V->$Velocity;
+								$V->$VelocityMoves--;
+								break;
+						}
+						// We are moving into a solid?
+						// NoClip monsters are OK
+						my List ($NX, $NY) = $V->GetPosition();
+						if(!$V->$NoClip && $Game->$Map->IsTileSolid($Game->$Map->$Level[$NX][$NY], $V))
+						@{
+							// The entity is trying to move into a solid object
+							// lets make sure this object is not a moving block
+							if(!$V->$IsPlayer && $V->$CanDieFromBlocks) // Must not be a player
+							@{
+								// Find all moving blocks
+								my $IsMovingBlock = false;
+								foreach($Entities[EntityType->$MovingBlock] as my $K1 => my $V1)
+								@{
+									if($V1->$Disposed)
+										continue;
+									my List ($MBX, $MBY) = $V1->GetPosition();
+									// We just ran into a moving block
+									if($MBX == $NX && $MBY == $NY)
+									@{
+										$V1->HitOn($V);
+										$IsMovingBlock = true;
+									}
+									if($IsMovingBlock)
+										break;
+								}
+								if(!$IsMovingBlock)
+									$V->AllStop(true);
+							}
+							// Player must be stuck lets snap into position
+							if($V->$IsPlayer)
+							{
+								my List ($PX, $PY) = $V->GetPosition();
+								$V->$DrawPosition = $Game->$Map->$LevelPositions[$PX][$PY];
+								$V->AllStop();
+							}
+						}
+						else
+						@{
+							// All stop
+							if($V->$VelocityMoves == 0)
+								$V->AllStop();
+						}
+						// Check if moved to a new location
+						my $DFCX = $V->$DrawPosition[0];
+						my $DFCY = $V->$DrawPosition[1];
+						my List ($DFX, $DFY) = $Game->$Map->$LevelPositions[$X][$Y];
+						my $LastX = $V->$LastPosition[0];
+						my $LastY = $V->$LastPosition[1];
+						if($LastX != $X || $LastY != $Y)
+							$V->$LastPosition = array($X, $Y);
+					}
+					// Continue moving?
+					if($V->$AllowMoveCheck && !$KeepsMoving && $V->$IsPlayer && $V->$VelocityMoves == 0)
+					@{
+						if(XNAHasFocus())
+						@{
+							if($V->$VelocityMoves == 0 && RealGetKeyState($V->$KeyControls[ControlType->$MoveLeft]))
+								$V->TryMove(Direction->$Left);
+							if($V->$VelocityMoves == 0 && RealGetKeyState($V->$KeyControls[ControlType->$MoveRight]))
+								$V->TryMove(Direction->$Right);
+							if($V->$VelocityMoves == 0 && RealGetKeyState($V->$KeyControls[ControlType->$MoveUp]))
+								$V->TryMove(Direction->$Up);
+							if($V->$VelocityMoves == 0 && RealGetKeyState($V->$KeyControls[ControlType->$MoveDown]))
+								$V->TryMove(Direction->$Down);
+						}
+					}
+					if($V->$AllowMoveCheck && $V->$KeepsMoving && $V->$VelocityMoves == 0)
+						$V->TryMove($V->$MoveDirection);
+					$V->DoUpdate();
+				}
+				// Delete disposed Entities
+				foreach($RemoveEntityList as my $Name)
+				@{
+					// todo maybe dispose of them?
+					$Entities[$EV][$Name] = null;
+					unset($Entities[$EV][$Name]);
+				}
+			}
+		}
+	}
+	Function HandleRewards( )
+	{
+		// Chance to spawn fruit
+		if(Utils::ChanceOf(0, 100, 30, 45)) // 15% chance
+		@{
+			$Game->$Map->SpawnFruit();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 30, 50)) // 20% chance
+		@{
+			$Game->$Map->SpawnCandy();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 30, 40)) // 10% chance
+		@{
+			$Game->$Map->SpawnPizza();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 30, 35)) // 5% chance
+		@{
+			$Game->$Map->SpawnDiamond();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 50, 54)) // 4% chance
+		@{
+			$Game->$Map->SpawnOneUp();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 60, 63)) // 3% chance
+		@{
+			$Game->$Map->SpawnYinYang();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 58, 59)) // 2% chance
+		@{
+			$Game->$Map->SpawnGreenRing();
+			return;
+		}
+		if(Utils::ChanceOf(0, 100, 57, 58)) // 2% chance
+		@{
+			$Game->$Map->SpawnRedRing();
+			return;
+		}
+		if(!$Game->$Map->$RainbowTriggered && Utils::ChanceOf(0, 100, 56, 59)) // 3% chance
+		@{
+			$Game->$Map->SpawnRainbow();
+			return;
+		}
+	}
+};

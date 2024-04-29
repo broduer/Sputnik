@@ -1,0 +1,282 @@
+﻿#include text $SkillTableFile SkillTable.txt
+
+// Global Variables
+Global $Char = new Char();
+Global $SkillFile = array();
+Global $SkillTable = "";
+
+if(@Compiled)
+	$SkillTable = Split($SkillTableFile, m/\n/);
+else
+	$SkillTable = FileReadLines("SkillTable.txt");
+	
+foreach( $SkillTable as $Line)
+{
+	$Line = trim($Line);
+	my List($sID, $scoreID, $sbookID, $sName, $sClass) = Split($Line, "|");
+	$SkillFile["Skill$sID"] = array($sID, $scoreID, $sbookID, $sName, $sClass);
+}
+
+ConsoleTitle("PW Skill Editor");
+println("Welcome to the PW 1.4.4 Skill Editor (Alpha) created by UberFoX");
+println("(Contact: uberfox\@hotmail.com)");
+
+while(true)
+{
+	my $Text = Input("Command > ");
+	my $Commands = CSV($Text, " ", '"')[0];
+	switch($Commands[0])
+	{
+		case "help":
+		{
+			println("General Commands:");
+			println("cls // Clear console");
+			println("loadc // Load char from clipboard");
+			println("load FILE // Load char from file");
+			println("save FILE // Save char to file");
+			println("Skill Commands:");
+			println("(Note - You can use partial skill name instead of numeric ID)");
+			println("sa ID LEVEL EXTRA // Add a skill to char");
+			println("sd ID // Delete a skill from char");
+			println("sl // List all skills");
+		}
+		break;
+		case "cls":
+		{
+			cls();
+		}
+		break;
+		case "load":
+		{
+			if(Count($Commands) != 2)
+				println("Command load requires 1 param");
+			else
+			{
+				my $File = $Commands[1];
+				if(FileExists($File))
+				{
+					$Char->Load($File);
+					println("Char file '$File' loaded");
+				}
+				else
+					println("Char file '$File' does not exist");
+			}
+		}
+		break;
+		case "loadc":
+		{
+			my $File = ClipGet('Text');
+			$Char->LoadC($File);
+			println("Char file from clipboard loaded");
+		}
+		break;
+		case "save":
+		{
+			if(Count($Commands) != 2)
+				println("Command save requires 1 param");
+			else
+			{
+				if($Char->$Loaded)
+				{
+					my $File = $Commands[1];
+					$Char->Save($File);
+					println("Char file '$File' saved");
+				}
+				else
+					println("No char is loaded");
+			}
+		}
+		break;
+		case "sa":
+		{
+			if(Count($Commands) != 4)
+				println("Command sa requires 3 params");
+			else
+			{
+				if($Char->$Loaded)
+				{
+					my $ID = $Commands[1];
+					my $Level = $Commands[2];
+					my $Extra = $Commands[3];
+					$Char->$SkillTable->AddSkill($ID, $Level, $Extra);
+					my $sName = $SkillFile["Skill$ID"][3];
+					println("Skill '$sName' with Level '$Level' Extra '$Extra' was added");
+				}
+				else
+					println("No char is loaded");
+			}
+		}
+		break;
+		case "sd":
+		{
+			if(Count($Commands) != 2)
+				println("Command sd requires 1 param");
+			else
+			{
+				if($Char->$Loaded)
+				{
+					my $ID = $Commands[1];
+					$Char->$SkillTable->DelSkill($ID);
+					my $sName = $SkillFile["Skill$ID"][3];
+					println("Skill '$sName' was deleted");
+				}
+				else
+					println("No char is loaded");
+			}
+		}
+		break;
+		case "sl":
+		{ 
+			if($Char->$Loaded)
+				$Char->$SkillTable->ListAll();
+			else
+				println("No char is loaded");
+		}
+		break;
+		default:
+		{
+			println("Invalid command type \"help\" for a list");
+		}
+		break;
+	}
+}
+
+Class Char
+{
+	my $RawText;
+	my $SkillTable;
+	my $Loaded = 0;
+	// Load the char TEXT file
+	Function Load($file)
+	{
+		$this->$RawText = FileLoad($file);
+		$this->LoadSkills();
+		$this->$Loaded = 1;
+	}
+	Function LoadC($file)
+	{
+		$this->$RawText = $file;
+		$this->LoadSkills();
+		$this->$Loaded = 1;
+	}
+	// Load the Skills from the char text file
+	Function LoadSkills()
+	{
+		unset($this->$SkillTable);
+		$this->$SkillTable = new SkillTable($this->$RawText);
+		$this->$SkillTable->ListAll();
+	}
+	// Save the char TEXT file
+	Function Save($file)
+	{
+		$this->$SkillTable->BuildSkills();
+		FileSave($file, $this->$RawText);
+	}
+}
+
+Class SkillTable
+{
+	my $RawSkills;
+	my $Skills;
+	Function __construct($RawText)
+	{
+		if($RawText =~ m/<variable name="skills" type="Octets">(.*?)<\/variable>/ism)
+		{
+			$this->$RawSkills = $1;
+			my $SkillCount = 0;
+			# Begin
+			my $SearchLen = strlen($this->$RawSkills);
+			$SearchLen -= 8;
+			$SearchLen /= 24;
+			$SkillCount = $SearchLen;
+			my $POS = 0;
+			# Get Skill Count
+			my $Counter = substr($this->$RawSkills, $POS, 8);
+			# Get all skills
+			$POS = 8;
+			for(my $count = 0; $count <= $SearchLen; $count++) 
+			{
+				my $CurSkill = substr($this->$RawSkills, $POS, 24);
+				if(strlen($CurSkill) >= 24)
+				{					
+					my $ID = Dec(RevHexa(substr($CurSkill, 0, 8)));
+					my $Level = Dec(RevHexa(substr($CurSkill, 8*2, 8)));
+					my $Extra = Dec(RevHexa(substr($CurSkill, 8, 8)));
+					my List($sID, $scoreID, $sbookID, $sName, $sClass) = $SkillFile["Skill$ID"];
+					AddSkill($ID, $Level, $Extra);
+					$POS += 24;
+				}
+			}
+		}
+	}
+	Function CheckSkillExists($fID)
+	{
+		return IsKeySet($Skills, $fID);
+	}
+	// Add or Replace an existing skill
+	Function AddSkill($ID, $Level, $Extra = 0)
+	{
+		if(CheckSkillExists($ID))
+			unset($Skills["Skill$ID"]); // Delete old
+		$Skills["Skill$ID"] = array($Level, $Extra);
+	}
+	// Delete a skill
+	Function DelSkill($ID)
+	{
+		if(CheckSkillExists($ID))
+			unset($Skills["Skill$ID"]); // Delete old
+	}
+	// Save all Skills and place it into the RAW (which can then be saved to file)
+	Function BuildSkills()
+	{
+		$this->$RawSkills = "";
+		my $iCount = 0;
+		foreach($Skills as $ID => $Skill)
+			$iCount++;
+		$this->$RawSkills .= RevHexa(Hex($iCount, 8));
+		foreach($Skills as $ID => $Skill)
+		{
+			my List($Level, $Extra) = $Skill;
+			$ID =  RevHexa(Hex($ID, 8));
+			$Extra = RevHexa(Hex($Extra, 8));
+			$Level = RevHexa(Hex($Level, 8));
+			$this->$RawSkills .= $ID . $Extra . $Level;
+		}
+		// Finally set the XML skill data....
+		$this->$RawSkills = LC($this->$RawSkills);
+		my $Text = $this->$RawSkills;
+		$char->$RawText =~ s/<variable name="skills" type="Octets">(.*?)<\/variable>/<variable name="skills" type="Octets">$Text<\/variable>/ism;
+	}
+	// print all skills to console
+	Function ListAll()
+	{
+		my $Count = 0;
+		foreach($Skills as $SkillID => $Skill)
+		{
+			my $ID = Replace($SkillID, "Skill", "");
+			my List($Level, $Extra) = $Skill;
+			my $sName = $SkillFile["Skill$ID"][3];
+			print("ID:$ID Name:$sName Level:$Level Extra:$Extra \n");
+			my $SaveHex = RevHexa(Hex($ID, 8)) . RevHexa(Hex($Extra, 8)) . RevHexa(Hex($Level, 8));
+			$Count++;
+		}
+		print("Found '" .$Count . "' skills\n");
+	}
+}
+
+Function RevHexa( $StrToDo, $IgnoreSpace = 1) 
+{
+	my $count = 0;
+	my $RemadeStr = "";
+	while ($count <= strlen($StrToDo)/2+2) 
+	{
+		my $StrToDoTmp = substr($StrToDo, $count, 2);
+		if($IgnoreSpace == 1)
+			$RemadeStr = $StrToDoTmp . $RemadeStr;
+		else
+			$RemadeStr = "$StrToDoTmp $RemadeStr";
+		$count = $count+2;
+	}
+	$RemadeStr = trim($RemadeStr);
+	return($RemadeStr);
+}

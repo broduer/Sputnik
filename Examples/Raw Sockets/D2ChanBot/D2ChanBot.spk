@@ -1,0 +1,534 @@
+﻿// Include what we need for this script to work
+Include('Console.spk', true);
+Include('String.spk', true);
+
+// Create the D2Bot instance
+Global $D2ChanBotInstance = new D2Bot();
+$D2ChanBotInstance->LoadIncludes(); // load all includes we can find
+$D2ChanBotInstance->LoadPlugins(); // load all plugins we can find
+$D2ChanBotInstance->Connect(); // connect to server
+$D2ChanBotInstance->Go(); // begin main loop and start processing
+
+// Helper function for includes to use to obtain the bot
+Function GetBot()
+{
+	return $D2ChanBotInstance;
+}
+
+Class D2BotPlugin
+{
+	Abstract Function OnPluginInit($BotInstance) { }
+	Abstract Function OnTick() { }
+	Abstract Function OnUserEnters($sAccountName) { }
+	Abstract Function OnUserIsHere($sAccountName) { }
+	Abstract Function OnUserLeaves($sAccountName) { }
+	Abstract Function OnUserChat($sAccountName, $sMessage) { }
+	Abstract Function OnBotChat($sAccountName, $sMessage) { }
+}
+
+Class D2Bot
+{
+	my $_commandParser;
+	my $console;
+	my $toProcess;
+	my $Wisp;
+	my $UserList;
+	my $Settings;
+	my $LoggedIn;
+	my $PingTicks;
+	my $BotName;
+	my $Plugins;
+	my $Socket = SocketCreate('Stream', 'TCP');
+	Function __Construct()
+	{
+		// Load the settings from the config file
+		$Settings = LoadConf('Config.ini');
+		// Create the Console handler and set it up
+		$console = new ConsoleWithInput('D2PVP Bot');
+		$console->$ShowCommands = false;
+		$console->$ShowType = false;
+		$console->$TypedFunc = array($this, 'UserTyped');
+		$console->AddCommand('exit', array($this, 'CmdExit'), 0, 0);
+		$console->AddCommand('cls', array($this, 'CmdCls'), 0, 0);
+		$console->AddCommand('list', array($this, 'CmdList'), 0, 0);
+		// Create a new command parser to handle user typed commands
+		$_commandParser = new CommandSystem();
+		// Store the bots name for getting later
+		$BotName = lc($Settings['LoginName']);
+		// Create a variable to hold lines from server to process later
+		// we will store them here on the network thread then
+		// when the main thread runs a processing it will handle them
+		$toProcess = array();
+		// This will keep track of whether or not we are processing a
+		// command from a user but the user used whisper
+		$Wisp = false;
+		// This will store a list of all usernames of the users
+		// currently in the channel with the bot
+		$UserList = array();
+		// This will store if the bot has finished fully logging in
+		$LoggedIn = false;
+		// This will store how long its been since we pinged last
+		// This will be useful since we want to ping once a second
+		$PingTicks = TickCount();
+		// This will store all the bots plugins
+		$Plugins = array();
+		// Create the socket
+		$Socket = SocketCreate('Stream', 'TCP');
+	}
+	// Load all the bot includes
+	Function LoadIncludes()
+	{
+		// Find all include files
+		foreach(GetFiles('./Include') as my $file)
+		{
+			// Make sure the file exists
+			my $FileLoc = trim("./Include/$file");
+			if (!FileExists($FileLoc))
+				continue;
+			// It must end in .spk
+			if (!Match(lc($FileLoc), '%.spk$'))
+				continue;
+			// Include the file
+			my $src = FileLoad($FileLoc);
+			Eval($src);
+		}
+	}
+	// Load all the bot plugins
+	Function LoadPlugins()
+	{
+		// Find all plugin files
+		foreach(GetFiles('./Plugins') as my $file)
+		{
+			// Make sure the file exists
+			my $FileLoc = trim("./Plugins/$file");
+			if (!FileExists($FileLoc))
+				continue;
+			// It must end in .spk
+			if (!Match(lc($FileLoc), '%.spk$'))
+				continue;
+			// Include the file
+			my $src = FileLoad($FileLoc);
+			Eval($src);
+			// Find all classes that inherit D2BotPlugin
+			my $clsList = ClassList(null, 'D2BotPlugin');
+			// Loop through all the found classes
+			foreach($clsList as my $clsName)
+			{
+				if (IsEmptyOrNull($clsName))
+					continue;
+				// If this plugin is already added then forget it
+				if (HasPlugin($clsName))
+					continue;
+				// Add the plugin the bot
+				AddPlugin($clsName);
+			}
+		}
+		// Now initalize all plugins
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnPluginInit($this);
+	}
+	// Add a plugin by its class name to the bot
+	Function AddPlugin($clsName)
+	{
+		if (HasPlugin($clsName))
+			return;
+		// Create a new instance of the class and add it
+		$Plugins[$clsName] = NewClass($clsName);
+	}
+	// Check if a plugin exists by the class name
+	Function HasPlugin($clsName)
+	{
+		return IsKeySet($Plugins, $clsName);
+	}
+	// Find and return a plugin if it exists (by its class name) or null if it does not
+	Function GetPlugin($clsName)
+	{
+		if(!HasPlugin($clsName))
+			return null;
+		return $Plugins[$clsName];
+	}
+	// Connect to the server
+	Function Connect()
+	{
+		// Connect and join the server
+		SocketConnect($Socket, $Settings['ServerIP'], $Settings['ServerPort']);
+		// Now login
+		SocketSend($Socket, "$Settings['LoginName']\n");
+		SocketSend($Socket, "$Settings['LoginPassword']\n");
+		SocketSend($Socket, "/join $Settings['LoginChan']\n");
+		// Create the network processing thread
+		// we need it on a separate thread since
+		// it will prevent console input if we dont
+		ThreadCreate('netProcessing', '$arg->ReadNetwork();', $this);
+	}
+	// The main function of the bot which will handle everything
+	// This will eat the thread given to it
+	Function Go()
+	{
+		// Begin loop to process user input and show console text
+		while (true)
+		{
+			// Process console stuff
+			$console->Process();
+			// Make sure to lock the process thread
+			// since if stuff gets added to the array while
+			// we are processing bad things will happen
+			ThreadLock("ToProcess")
+			{
+				// Begin processing network lines
+				// will process one at a time
+				ProcessNetwork();
+			}
+			// If we are logged in lets keep pinging the server
+			// This will make sure we never time out
+			// We will do a TickCount check to make sure
+			// we do a tick approx 20 times a second this will allow
+			// the plugins to do cool stuff and be snappy about it
+			if ($LoggedIn && TickCount($PingTicks) > TickToSec(1) * 1000)
+			{
+				$PingTicks = TickCount();
+				SocketSend($Socket, "/ping\n");
+				OnTick(); // send the tick out
+			}
+			// dont hog the cpu
+			sleep(1);
+		}
+	}
+	// Read all network packets
+	Function ReadNetwork()
+	{
+		// Loop forever
+		while (true)
+		{
+			// Obtain a line of text from the server
+			my $line = SocketReadLine($Socket);
+			// Replace \\ with \ since the server escapes them
+			$line = Replace($line, "\\\\", "\\");
+			// Replace \" with " since the server also escapes that
+			$line = Replace($line, "\\\"", "\"");
+			// Trim whats left
+			my $lineTrim = trim($line);
+			// Got something to process?
+			if (!IsEmptyOrNull($lineTrim))
+			{
+				// Make sure to lock the array
+				ThreadLock("ToProcess")
+				{
+					// Add the line to processing array to
+					// be processed later by the main thread
+					push($toProcess, $lineTrim);
+				}
+			}
+			sleep(1);
+		}
+	}
+	// Process all network packets
+	Function ProcessNetwork()
+	{
+		// if there is nothing to do just return
+		if (count($toProcess) <= 0)
+			return;
+		// get the first element so we can process it
+		my $line = shift($toProcess);
+		// make sure the array stays in order
+		order($toProcess);
+		// prepare to get the user account and account
+		my $sAccountName = null;
+		my $sCommand = null;
+		// Store information about the user typing chat (will not be used for commands)
+		my $IsChat = false;
+		my $ChatMessage = null;
+		// now process the line
+		if(IsEmptyOrNull($line))
+			return; // nothing to do!
+		// Check if we got a whisper
+		if(Match($line, '^<from (.*)>'))
+		{
+			$line = gsub($line, '^<from (.*)', '<%1>');
+			$Wisp = true;
+		}
+		// Delete | to avoid exploits!
+		$line = Replace($line, '|', ':');
+		// Get a lower case version of line for use with some functions
+		my $lineLc = lc($line);	
+		// Check if somebody has typed something
+		if(my $tempAcc = Match($line, '^<(.-)>'))
+		{
+			$sAccountName = trim(lc($tempAcc));
+			my $tempCmd = Match($line, '^<.->%s*%.(.*)$');
+			$tempCmd = trim($tempCmd);
+			// Make sure somebody typed a COMMAND
+			// We will ignore messages that only contain . or .. etc
+			if (!IsEmptyOrNull($tempCmd) && !Match($tempCmd, '^%.+$'))
+				$sCommand = $tempCmd;
+			// If there was no COMMAND typed then
+			// Did somebody type a chat message?
+			else
+			{
+				if(my $tempMessage = Match($lineLc, '^<.->%s+(.+)$'))
+				{
+					$ChatMessage = $tempMessage;
+					$IsChat = true;
+				}
+			}
+		}
+		// Store a boolean of if it is the bot itself that typed the above command
+		my $IsCmdBot = $sAccountName == GetBotName();
+		// If this becomes true we will print the current line
+		$print = false;
+		// Bot joined a chan
+		if(Match($lineLc, '^joining channel:%s*"(.*)"$')) { } // We dont show this message
+		// Bot PMed somebody
+		else if(Match($lineLc, '^<to (.-)>%s*(.*)$')) { } // We dont show this message
+		// Somebody typed . or ..... etc
+		else if(Match($lineLc, '^<(.-)>%s*%.*$')) { } // We dont show this message
+		// Somebody typed .. then anything else...
+		else if(Match($lineLc, '^<(.-)>%s*%.%.')) { } // We dont show this message
+		// Check for CORE function
+		else if(!$IsCmdBot && CheckForCommand($sAccountName, $sCommand))
+		{
+			$IsChat = false;
+		}
+		// Somebody joins chan
+		else if(my $tempName = Match($lineLc, '^%[(.-)%s*enters%]$'))
+		{
+			$sAccountName = trim(lc($tempName));
+			if ($sAccountName != GetBotName())
+			{
+				UserListAdd($sAccountName);
+				ChanUserEnters($sAccountName);
+				$print = true;
+			}
+		}
+		// Somebody is in chan
+		else if(my $tempName = Match($lineLc, '^%[(.-)%s*is here%]$'))
+		{
+			$sAccountName = trim(lc($tempName));
+			if ($sAccountName != GetBotName())
+			{
+				UserListAdd($sAccountName);
+				ChanUserIsHere($sAccountName);
+				$print = true;
+			}
+		}
+		// Somebody leaves chan
+		else if(my $tempName = Match($lineLc, '^%[(.-)%s*leaves%]$'))
+		{
+			$sAccountName = trim(lc($tempName));
+			if ($sAccountName != GetBotName())
+			{
+				UserListDel($sAccountName);
+				ChanUserLeaves($sAccountName);
+				$print = true;
+			}
+		}
+		// Finished a ping (can be used as a regular heartbeat)
+		else if(Match($lineLc, '^your latency'))
+		{
+			$LoggedIn = true;
+		}
+		// Find beginning!
+		else if(Match($lineLc, '^you have.*mail'))
+		{
+			$print = true;
+			$LoggedIn = true;
+		}
+		else
+			$print = true;
+		// Did a user type a chat message?
+		if($IsChat && !IsEmptyOrNull($ChatMessage))
+			ChanUserChats($sAccountName, $ChatMessage);
+		// Print to display
+		if ($print)
+			AppendLine($line);
+	}
+	// Adds a new line of text to the console window
+	Function AppendLine($text)
+	{
+		$console->AppendLine($text);
+	}
+	// Handle the List command -- Will list all users in the channel
+	Function CmdList($args, $argCount, $cmdRest)
+	{
+		$console->AppendLine('-- Users in this chan below');
+		foreach(GetUserList() as my $user)
+			$console->AppendLine("-- $user");
+		$console->AppendLine('-- Users in this chan above');
+	}
+	// Handle the Cls command -- Will clear the console
+	Function CmdCls($args, $argCount, $cmdRest)
+	{
+		$console->ClearScreen('-- Cleared');
+	}
+	// Handle the Exit command -- Will close the program
+	Function CmdExit($args, $argCount, $cmdRest)
+	{
+		unset($Socket);
+		exit;
+	}
+	// Handle the user typing in the console and send it as chat
+	Function UserTyped($Text)
+	{
+		// Check if a command was typed
+		my $tempCmd = Match($Text, '^%.(.*)$');
+		$tempCmd = trim($tempCmd);
+		// We will ignore messages that only contain . or .. etc
+		if (!IsEmptyOrNull($tempCmd) && !Match($tempCmd, '^%.+$'))
+		{
+			my $sCommand = $tempCmd;
+			CheckForCommand(GetBotName(), $sCommand);
+			return;
+		}
+		// Act as if the bot typed something (so we can see it)
+		my $bName = GetBotName();
+		AppendLine("<$bName> $Text");
+		// Inform the plugins that the bot typed a chat message
+		ChanBotChats(GetBotName(), $Text);
+		// Send what the we typed to the server
+		SocketSend($Socket, "$Text\n");
+	}
+	// Get the bots user name
+	Function GetBotName()
+	{
+		return $BotName;
+	}
+	// Add a user to the userlist
+	Function UserListAdd($userName)
+	{
+		if ($userName == GetBotName())
+			return;
+		if (UserListExists($userName))
+			return;
+		$UserList[] = $userName;
+	}
+	// Remove a user to the userlist
+	Function UserListDel($userName)
+	{
+		if (!UserListExists($userName))
+			return;
+		RemoveValue($UserList, $userName);
+	}
+	// Check if a user is in the userlist
+	Function UserListExists($userName)
+	{
+		return InArray($UserList, $userName);
+	}
+	// Get a copy of the userlist
+	Function GetUserList()
+	{
+		return clone($UserList);
+	}
+	// Triggered when a user joins the channel
+	Function ChanUserEnters($sAccountName)
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnUserEnters($sAccountName);
+	}
+	// Triggered when the bot joins a channel and the user is already in the channel
+	Function ChanUserIsHere($sAccountName)
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnUserIsHere($sAccountName);
+	}
+	// Triggered when a user leaves the channel
+	Function ChanUserLeaves($sAccountName)
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnUserLeaves($sAccountName);
+	}
+	// Triggered when a user types a chat message
+	Function ChanUserChats($sAccountName, $sMessage)
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnUserChat($sAccountName, $sMessage);
+	}
+	// Triggered when the bot types a chat message
+	Function ChanBotChats($sAccountName, $sMessage)
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnBotChat($sAccountName, $sMessage);
+	}
+	// Triggered every tick of the bot (about 1 second)
+	Function OnTick()
+	{
+		foreach($Plugins as my $clsName => my $plugin)
+			$plugin->OnTick();
+	}
+	// Add a new command tot the bot
+	Function AddCommand($name, $command, $minArgs = -1, $maxArgs = -1)
+	{
+		$_commandParser->AddCommand($name, $command, $minArgs, $maxArgs);
+	}
+	// Delete a command from the bot
+	Function DelCommand($name)
+	{
+		$_commandParser->DelCommand($name);
+	}
+	// Triggered when user does a command so find the command and execute it
+	Function CheckForCommand($sAccountName, $sCommand)
+	{
+		// Make sure there is a valid command
+		if (IsEmptyOrNull($sAccountName) || IsEmptyOrNull($sCommand))
+			return false;
+		// Check if the bot is typing this command (ie the user at the console)
+		my $IsBot = $sAccountName == GetBotName();
+		// Prepare extra stuff to add to the command such as bot flag and account name
+		my $commandExtra = array($IsBot, $sAccountName);
+		// Process the command
+		my List($validCommand, $errorMessage) = $_commandParser->ProcessCommand($sCommand, $commandExtra);
+		// Command was a success?
+		if ($validCommand)
+		{
+			// show any errors while trying to use the command
+			if ($errorMessage)
+				SendMsg($sAccountName, $errorMessage);
+			// print it
+			if ($ShowCommands)
+				AppendLine($CmdPrefix . $_consoleInput);
+			return true;
+		}
+		else
+		{
+			// if we are the bot then print to console
+			if ($IsBot)
+			{
+				AppendLine("-- That is NOT a valid command");
+				AppendLine("-- Type \".help\" (without quotes) to see the valid command list");
+			}
+			// otherwise send to the client over socket
+			else
+			{
+				// Remember messages only get sent when it ends with \n
+				// So we can spam the SocketSend() and place a \n when we feel like it
+				SocketSend($Socket, "$sAccountName, That is NOT a valid command");
+				SocketSend($Socket, "Type \".help\" (without quotes) to see the valid command list\n");
+			}
+		}
+		return false;
+	}
+	// Check if a command is a help command ie the user typed the command name followed by --help
+	Function IsHelp($args, $argCount)
+	{
+		return $argCount == 1 && uc($args[0]) == '--HELP';
+	}
+	// Send a message to the bots console or the player on the server
+	// If sending to a player it will send print their name then the message
+	// you can choose to not include the name
+	// However if you ask not to include the name and you are messaging a bot
+	// it wont matter
+	Function SendMsg($sAccountName, $Message, $includeName = true)
+	{
+		// check if we are the bot
+		my $IsBot = $sAccountName == GetBotName();
+		// inform the bot or the user
+		if ($IsBot)
+			AppendLine("-- $Message");
+		else
+		{
+			if ($includeName)
+				SocketSend($Socket, "$sAccountName, $Message\n");
+			else
+				SocketSend($Socket, "$Message\n");
+		}
+	}
+}

@@ -1,0 +1,70 @@
+#<?
+Class PropMDIParent extends Prop
+{
+    my $MDIParent;
+    Function __Construct($PropName, $PropValidation, $PropParentType)
+    {
+        parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, '[NONE]', $PropParentType);
+        $MDIParent = null;
+    }
+    override Function GetDefault($Object)
+    {
+        return $Default;
+    }
+    override Function GetProp($Object)
+    {
+        if(IsEmptyOrNull($MDIParent) || $MDIParent == '[NONE]')
+            return '[NONE]';
+        return $MDIParent;
+    }
+    override Function SetProp($Object, $Value)
+    {
+        if($Object->$MDI)
+        @{
+            MsgBox('You can''t set the MDIParent on an MDI window', $Title, 48);
+            return null;
+        }
+        my $arr = GUIListBox($ProjectView->$WindowList, 'GetItems');
+        $arr[]! = '[NONE]';
+        my $arrSend = array();
+        foreach($arr as my $i)
+        {
+            if($i != $CurrentWindow)
+                $arrSend[$i] = $MDIParent == $i || $i == '[NONE]' && $MDIParent == null;
+        }
+        my $Ret = ChoiceBox('MDIParent', 'Please select a parent to use', $arrSend);
+        if($Ret === null)
+        @{
+            $MDIParent = null;
+            return '[NONE]';
+        }
+        if(!$Ret)
+        @{
+            MsgBox('You must pick an option', $Title, 48);
+            return null;
+        }
+        if($Ret == '[NONE]')
+        @{
+            $MDIParent = null;
+            return $Ret;
+        }
+        $MDIParent = $Ret;
+        return $Ret;
+    }
+    override Function LoadProp($Object, $Value)
+    {
+        $MDIParent = $Value;
+    }
+    override Function SaveProp($Object)
+    {
+        return (string)$MDIParent;
+    }
+    override Function CodeGen($Window, $Object, $ObjName)
+    {
+        my $Code = '';
+        if(IsEmptyOrNull($MDIParent) || $MDIParent == '[NONE]')
+            return;
+        $Code .= "GUIMDIParent(\$$ObjName, \$$MDIParent->\$Form);\r\n";
+        return $Code;
+    }
+};

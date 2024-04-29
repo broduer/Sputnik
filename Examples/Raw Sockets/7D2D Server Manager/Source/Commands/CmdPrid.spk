@@ -1,0 +1,28 @@
+﻿$LoadCommands['prid'] = array('CmdPrid', 0, 0);
+Class extends ServerManager
+{
+	Function CmdPrid($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Get a list of all players and their player id number';
+		if ($args === 'help')
+			return array(
+							'Allows you to get the player id number of any player',
+							"This is for use with any commands that may need it although most commands will accept a player name directly instead"
+			);
+		if ($commandUser == null)
+			return;
+		my $cash = GetUserCash($commandUser);
+		SayToUser($commandUser, "Here is a list of all players and their player ID numbers");
+		foreach($currentPlayers->$players as my $player)
+		{
+			my $id = $player->$Id;
+			my $name = $player->$Name;
+			SayToUser($commandUser, "$id - $name");
+		}
+	}
+}

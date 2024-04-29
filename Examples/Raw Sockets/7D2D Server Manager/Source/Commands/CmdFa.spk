@@ -1,0 +1,44 @@
+﻿$LoadCommands['fa'] = array('CmdFa', 1, 1);
+Class extends ServerManager
+{
+	Function CmdFa($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Add a friend to your friends list on the server';
+		if ($args === 'help')
+			return array('Add a friend to your friends list on the server');
+		if ($commandUser == null)
+			return;
+		my $friendWho = $args[0];
+		if (IsEmptyOrNull($friendWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($friendWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$friendWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot add yourself to your own friend list");
+			return;
+		}
+		my $name = $found->$Name;
+		if (IsUserFriendOf($commandUser, $found))
+		{
+			SayToUser($commandUser, "'$name' is already on your friend list");
+			return;
+		}
+		AddUserFriend($commandUser, $found);
+		SayToUser($commandUser, "'$name' has been added to your friend list");
+		my $adderName = $commandUser->$Name;
+		SayToUser($found, "'$adderName' has added you to their friend list");
+	}
+}

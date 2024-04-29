@@ -1,0 +1,345 @@
+﻿#include binary $BannerBig Images/banner.jpg
+#include binary $BannerTM Images/banner.jpg
+#include binary $TimerImg Images/timer.ico
+#include binary $HotkeyImg Images/hotkey.ico
+#SputnikIDEMainFile
+
+// Load the old GUI system
+PluginLoad('SputnikOldGUI.dll');
+
+// Enums
+enum Status
+{
+	$NONE,
+	$NewProject,
+	$LoadProject,
+	$Design
+};
+
+// Variables
+Global $Status = Status->$NONE;
+Global $Version = '0.43 Alpha';
+Global $Title = 'Sputnik IDE';
+Global $ProjectName = '';
+Global $CurrentWindow = '';
+Global $MainWindow = '';
+Global $Windows = array();
+Global $Classes = array();
+Global $Functions = array();
+GLobal $Enums = array();
+GLobal $Globals = array();
+Global $ClassEditors = array();
+Global $FunctionEditors = array();
+Global $EnumEditors = array();
+Global $GlobalEditors = array();
+
+// Create the MDI GUI
+Global $GUI = GUICreate('MDIWindow', $Title, 800 + 320, 600);
+Global $StatusBar = GUICreate('StatusBar', $GUI);
+// Load Settings
+if(FileExists('./Settings/IDE.dat'))
+{
+	my $LoadData = BinaryLoad('./Settings/IDE.dat');
+	my $BData = Unpack('i/i/i/i', $LoadData);
+	GUISetProp($GUI, 'Left', $BData[0]);
+	GUISetProp($GUI, 'Top', $BData[1]);
+	GUISetProp($GUI, 'Width', $BData[2]);
+	GUISetProp($GUI, 'Height', $BData[3]);
+}
+// Show the MDI GUI
+GUILoad( $GUI );
+
+// Create Menu BELOW
+// First create the menu object
+Global $MainMenu = GUICreate('Menu', $GUI);
+// Create 'File' part of the menu
+Global $mFile = GUICreate('MenuItem', $MainMenu, 'File');
+Global $mFileNew = GUICreate('MenuItem', $mFile, 'New Project');
+Global $mFileSave = GUICreate('MenuItem', $mFile, 'Save Project');
+Global $mFileLoad = GUICreate('MenuItem', $mFile, 'Load Project');
+Global $mFileSPP = GUICreate('MenuItem', $mFile, '-');
+Global $mFileClose = GUICreate('MenuItem', $mFile, 'Close Project');
+Global $mFileSPP2 = GUICreate('MenuItem', $mFile, '-');
+Global $mFileExit = GUICreate('MenuItem', $mFile, 'Exit Program');
+// Create 'Objects' part of the menu
+Global $mObjects = GUICreate('MenuItem', $MainMenu, 'Objects');
+// Create 'Tools' part of the menu
+Global $mTools = GUICreate('MenuItem', $MainMenu, 'Tools');
+// Create 'Project' part of the menu
+Global $mProject = GUICreate('MenuItem', $MainMenu, 'Project');
+#Global $mProjectBuild = GUICreate('MenuItem', $mProject, 'Build EXE');
+#Global $mProjectTest = GUICreate('MenuItem', $mProject, 'Test');
+#Global $mProjectSPP = GUICreate('MenuItem', $mProject, '-');
+// Create 'Settings' part of the menu
+Global $mSettings = GUICreate('MenuItem', $MainMenu, 'Settings');
+#Global $mSettingsIDE = GUICreate('MenuItem', $mSettings, 'Change IDE Settings');
+#Global $mSettingsProject = GUICreate('MenuItem', $mSettings, 'Change Project Settings');
+// Create 'About' part of the menu
+Global $mAbout = GUICreate('MenuItem', $MainMenu, 'About');
+// Set links to the GUI
+GUILink($mFileNew, "Click", 'NewProject();');
+GUILink($mFileLoad, "Click", 'LoadProject();');
+GUILink($mFileClose, "Click", 'CloseProject();');
+GUILink($mFileSave, "Click", 'Save();');
+GUILink($mFileExit, "Click", 'ExitProgram();');
+// Finally assign the menu to the window
+GUISetProp($GUI, "Menu", $MainMenu);
+// Create Menu ABOVE
+
+// Create Tool strip for New, Save, Load etc
+
+// Create object strip for new button etc etc
+
+// Create Directoris if indeed
+if(!DirExists('./Projects')) MKDir('./Projects');
+if(!DirExists('./Settings')) MKDir('./Settings');
+
+// Main Includes
+Include('./Classes/Misc/Utils.spk');
+Include('./Classes/Misc/SaveSystem.spk');
+Include('./Classes/Forms/Container.spk');
+Include('./Classes/Forms/Object.spk');
+Include('./Classes/Forms/Gripper.spk');
+Include('./Classes/Windows/NewProject.spk');
+Include('./Classes/Windows/LoadProject.spk');
+Include('./Classes/Windows/ProjectView.spk');
+Include('./Classes/Windows/About.spk');
+Include('./Classes/Windows/SourceEditor.spk');
+// Props
+Include('./Classes/Props/Prop.spk');
+Include('./Classes/Props/PropChar.spk');
+Include('./Classes/Props/PropBool.spk');
+Include('./Classes/Props/PropInt.spk');
+Include('./Classes/Props/PropFloat.spk');
+Include('./Classes/Props/PropString.spk');
+Include('./Classes/Props/PropText.spk');
+Include('./Classes/Props/PropFakeChar.spk');
+Include('./Classes/Props/PropFakeBool.spk');
+Include('./Classes/Props/PropFakeInt.spk');
+Include('./Classes/Props/PropFakeFloat.spk');
+Include('./Classes/Props/PropFakeString.spk');
+Include('./Classes/Props/PropFakeText.spk');
+Include('./Classes/Props/PropAnchor.spk');
+Include('./Classes/Props/PropColour.spk');
+Include('./Classes/Props/PropFont.spk');
+Include('./Classes/Props/PropCodeBoxLang.spk');
+Include('./Classes/Props/PropBorderStyle.spk');
+Include('./Classes/Props/PropDropDownStyle.spk');
+Include('./Classes/Props/PropHotkey.spk');
+Include('./Classes/Props/PropComboBoxItems.spk');
+Include('./Classes/Props/PropListBoxItems.spk');
+Include('./Classes/Props/PropListBoxSelectionMode.spk');
+Include('./Classes/Props/PropPicture.spk');
+Include('./Classes/Props/PropTabs.spk');
+Include('./Classes/Props/PropMDIParent.spk');
+// Objects
+Include('./Classes/Forms/Window.spk');
+Include('./Classes/Forms/Button.spk');
+Include('./Classes/Forms/Label.spk');
+Include('./Classes/Forms/TextBox.spk');
+Include('./Classes/Forms/TextBoxEx.spk');
+Include('./Classes/Forms/RichTextBox.spk');
+Include('./Classes/Forms/CodeBox.spk');
+Include('./Classes/Forms/CheckBox.spk');
+Include('./Classes/Forms/RadioButton.spk');
+Include('./Classes/Forms/GroupBox.spk');
+Include('./Classes/Forms/ComboBox.spk');
+Include('./Classes/Forms/ListBox.spk');
+Include('./Classes/Forms/HotkeyBox.spk');
+Include('./Classes/Forms/TabPage.spk');
+Include('./Classes/Forms/TabSheet.spk');
+Include('./Classes/Forms/DataGrid.spk');
+Include('./Classes/Forms/PictureBox.spk');
+Include('./Classes/Forms/Timer.spk');
+Include('./Classes/Forms/Hotkey.spk');
+// Project includes
+Include('./Classes/Project/CodeRun.spk');
+Include('./Classes/Project/CodeCompile.spk');
+Include('./Classes/Project/CodeGen.spk');
+// IDE includes
+Include('./Classes/IDE/ValidName.spk');
+Include('./Classes/IDE/SaveLoad.spk');
+Include('./Classes/IDE/SpawnObjects.spk');
+Include('./Classes/IDE/Compiler.spk');
+Include('./Classes/IDE/SyntaxCheck.spk');
+// Tools
+Include('./Classes/Tools/ObjectBrowser.spk');
+Include('./Classes/Tools/HexConverter.spk');
+Include('./Classes/Tools/SpkEditor.spk');
+
+// Set inital status
+Init();
+Wipe();
+ChangeStatus(Status->$NONE);
+
+// Keep the GUI running as long as long as the window is open
+While ( GUIStatus( $GUI ) ) DoEvents( );
+ExitProgram();
+
+[Args("false")]
+Function Init()
+{
+	// Order the properties by Name
+	#foreach(Object::$Props as &$Prop)
+		#Sort(*$Prop, 1 | 2);
+	foreach(Object::$Events as &$Event)
+		Sort(*$Event, 1 | 2);
+}
+
+[Args("false")]
+Function Wipe()
+{
+	foreach($Windows as my $Name => my $Window)
+	{
+		Unset($Window->$Editor);
+		Unset($Window);
+	}
+	$ProjectName = '';
+	$CurrentWindow = '';
+	$MainWindow = '';
+	$Windows = array();
+	$Classes = array();
+	foreach($ClassEditors as my $Editor)
+		Unset($Editor);
+	$ClassEditors = array();
+	foreach($FunctionEditors as my $Editor)
+		Unset($Editor);
+	$Functions = array();
+	$FunctionEditors = array();
+	foreach($EnumEditors as my $Editor)
+		Unset($Editor);
+	$Enums = array();
+	$EnumEditors = array();
+	foreach($GlobalEditors as my $Editor)
+		Unset($Editor);
+	$Globals = array();
+	$GlobalEditors = array();
+	GUIListBox($ProjectView->$FunctionList, 'Clear');
+	GUIListBox($ProjectView->$ClassList, 'Clear');
+	GUIListBox($ProjectView->$WindowList, 'Clear');
+	GUIListBox($ProjectView->$EnumList, 'Clear');
+	GUIListBox($ProjectView->$GlobalList, 'Clear');
+	gc(true);
+}
+
+[Args("false")]
+Function ChangeStatus( $NewStatus )
+{
+	$Status = $NewStatus;
+	Switch($Status)
+	{
+		case Status->$NONE:
+		{
+			if(isVarClass($ProjectView)){$ProjectView->Hide();};
+			GUISetProp($mFileSave, 'Enabled', false);
+			GUISetProp($mSettings, 'Visible', false);
+			GUISetProp($mFileClose, 'Enabled', false);
+		}
+		case Status->$NewProject:
+		case Status->$LoadProject:
+		{
+			if(isVarClass($ProjectView)){$ProjectView->Hide();};
+			GUISetProp($mObjects, 'Visible', false);
+			GUISetProp($mSettings, 'Visible', false);
+			GUISetProp($mProject, 'Visible', false);
+			ChangeProjectName();
+		}
+		break;
+		case Status->$Design:
+		{
+			if(isVarClass($ProjectView)){$ProjectView->Show();};
+			GUISetProp($mObjects, 'Visible', true);
+			GUISetProp($mSettings, 'Visible', true);
+			GUISetProp($mProject, 'Visible', true);
+			GUISetProp($mFileSave, 'Enabled', true);
+			GUISetProp($mFileClose, 'Enabled', true);
+		}
+		break;
+	}
+}
+
+[Args("false")]
+Function ChangeProjectName( $NewName = "", $Extra = "" )
+{
+	$ProjectName = $NewName;
+	if(isEmpty($NewName))
+		GUISetProp($GUI, "Text", "Sputnik IDE $Version" . $Extra);
+	else
+		GUISetProp($GUI, "Text", "Sputnik IDE $Version -- Project '$ProjectName'" . $Extra);
+	DoEvents();
+}
+
+[Args("false")]
+Function NewProject()
+{
+	Switch($Status)
+	{
+		case Status->$LoadProject:
+		{
+			MsgBox('Load Project window is open');
+			return;
+		}
+		case Status->$NewProject:
+		{
+			MsgBox('New Project window is already open');
+			return;
+		}
+		break;
+	}
+	Wipe();
+	my $NewProject = new NewProject();
+}
+
+[Args("false")]
+Function LoadProject()
+{
+	Switch($Status)
+	{
+		case Status->$LoadProject:
+		{
+			MsgBox('Load Project window is already open');
+			return;
+		}
+		case Status->$NewProject:
+		{
+			MsgBox('New Project window is open');
+			return;
+		}
+		break;
+	}
+	my $DoLoad = true;
+	if($Status == Status->$Design)
+	{
+		my $Result = MsgBox('Do you wish to load another project?' . @CRLF . 'This will close your existing project', $Title, 32 | 4);
+		If ( $Result != 6 ) // No
+		{
+			$DoLoad = false;
+		}
+	}
+	if($DoLoad)
+	{
+		Wipe();
+		my $NewProject = new LoadProject();
+	}
+}
+
+[Args("false")]
+Function CloseProject()
+{
+	Wipe();
+	// Set Status
+	ChangeStatus(Status->$NONE);
+}
+
+[Args("false")]
+Function ExitProgram()
+{
+	// Save Settings
+	my $X = GUIGetProp($GUI, 'Left');
+	my $Y = GUIGetProp($GUI, 'Top');
+	my $W = GUIGetProp($GUI, 'Width');
+	my $H = GUIGetProp($GUI, 'Height');
+	my $SaveData = Pack('iiii', $X, $Y, $W, $H);
+	BinarySave($SaveData, './Settings/IDE.dat');
+	Exit();
+}

@@ -1,0 +1,15 @@
+#<?
+Class Utils
+{
+	Static $GridSpaces = 8;
+	Static Function SnapToGrid($CoO)
+	{
+		my list($grid, $var, $newl);
+		$grid = Utils::$GridSpaces;
+		$var = $CoO % $grid;
+		$newl = $CoO - $var;
+		If( $var >= ($grid / 2) )
+			$newl += $grid;
+		return $newl;
+	}
+};

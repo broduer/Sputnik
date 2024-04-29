@@ -1,0 +1,88 @@
+﻿//include("LocoTest.spk");
+
+
+// Global variables
+Global $Clients = array();
+
+// Create a TCP/IP socket.
+my $Socket = SocketCreate("Stream", "TCP");
+
+// Bind the socket to the local endpoint and 
+// listen for incoming connections.
+SocketBind($Socket, "127.0.0.1", 1100);
+SocketListen($Socket, 10);
+
+// Create the client thread that handles them
+ThreadCreate("th1", "ClientThread();");
+
+// Start listening for connections.
+while (true)
+{
+	println("Waiting for a connection...");
+	my $Client = SocketAccept($Socket);
+	
+	// Get the clients name
+	my $ClientName = Unpack("z1", SocketReceive($Client, 1024)[1], 2);	
+	println("Client '$ClientName' connected");
+	
+	// Add client to client list
+	ThreadLock( "ClientList" ) // Make sure only 1 thread uses the list at once
+	{
+		$Clients[$ClientName] = $Client;
+	}
+	
+	// Send a welcome to client
+	my $bytesSent = SocketSend($Client, Pack("z1", "Welcome to my server"));
+}
+
+Function SendMsgAllClients( $Text )
+{
+	ThreadLock( "ClientList" ) // Make sure only 1 thread uses the list at once
+	{
+		foreach($Clients as $CName => $CSocket)
+		{
+			if( SocketConnected($CSocket) )
+			{
+				my $bytesSent = SocketSend($CSocket, Pack("z1", $Text));
+			}
+		}
+	}
+}
+
+Function ClientThread()
+{
+	//my $File = FileOpen("MyFile.exe", "w");
+	While( True )
+	{
+		my $DeadClients = array();
+		foreach($Clients as $CName => $CSocket)
+		{
+			if( SocketConnected($CSocket) )
+			{
+				if( SocketAvailable($CSocket) )
+				{
+					my $Data = SocketReceive($CSocket, 1024);
+					#println("Data received Size '" . $Data[0] . "'");
+					#println("Data received Binary '" . $Data[1] . "'");
+					my $Text = "$CName: " . Unpack("z1", $Data[1], 2);
+					#println($Text);
+					SendMsgAllClients($Text);
+					//FileAppendBinary($File, BinaryMid($Data[1], 0, $Data[0]));
+				}
+			}
+			else
+			{
+				println("Client '$CName' disconnected");
+				push($DeadClients, $CName);
+				//FileClose($File);
+			}
+		}
+		foreach($DeadClients as $DeadClient)
+		{
+			my $CSocket = $Clients[$DeadClient];
+			unset( $Clients[$DeadClient] );
+		}
+	}
+}
+
+

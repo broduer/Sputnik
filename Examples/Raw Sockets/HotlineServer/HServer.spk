@@ -1,0 +1,506 @@
+﻿include('HServer/Constants.spk', true);
+include('HServer/BanManager.spk', true);
+include('HServer/TransactionUtils.spk', true);
+include('HServer/ParamUtils.spk', true);
+include('HServer/FieldUtils.spk', true);
+
+new HServer();
+
+class HServer
+{
+	// constants
+	my $TransHeaderSize = 20;
+	my $Port = 5000;
+	// variables
+	my $socket;
+	my $clients = array();
+	my $ids;
+	my $transId;
+	Function __Construct()
+	{
+		$ids = 0;
+		$transId = 1;
+		$socket = SocketCreate('Stream', 'TCP');
+		SocketBind($socket, '0.0.0.0', $Port);
+		SocketListen($socket, 10);
+		ThreadCreate('socketAccepter', '$arg->AccepterThread();', $this);
+		while (true)
+		{
+			ProcessClients();
+			sleep(1);
+		}
+	}
+	Function __Destruct()
+	{
+	}
+	Function Log
+	{
+		if (count(@args) < 1)
+			return;
+		my $format = @args[0];
+		shift(@args);
+		my $text = CallArray('sprintf', @args);
+		say $text;
+	}
+	Function LogClient($client, $text)
+	{
+		if ($client->$HasLoggedIn)
+			Log('%s, Login successful', $client->$UserName);
+		else
+			Log('[%s], Login successful', $client->$Ip);
+	}
+	Function AccepterThread()
+	{
+		Log("Waiting for a clients on port $Port...");
+		while (true)
+		{
+			$ids++;
+			my $sock = SocketAccept($socket);
+			Log("[%s], Got an incoming connection", SocketIp($sock));
+			my $client = new StdClass();
+			$client->$Id = $ids;
+			$client->$Sock = $sock;
+			$client->$Ip = SocketIp($sock);
+			$client->$State = 'New';
+			$client->$Buffer = bin();
+			$client->$BufferPos = 0;
+			$client->$ConnectTime = @Epoch;
+			$client->$CurrentTrans = null;
+			$client->$HasLoggedIn = false;
+			$client->$Version = 0;
+			$client->$UserName = '';
+			$client->$IconId = 0;
+			ThreadLock( "ClientList" )
+			{
+				$clients[$ids] = $client;
+			}
+			sleep(1);
+		}
+	}
+	Function ProcessClients()
+	{
+		ThreadLock( "ClientList" )
+		{
+			my $clientCount = count($clients);
+			if ($clientCount <= 0)
+				return;
+			foreach($clients as $id => $client)
+			{
+				my $sock = $client->$Sock;
+				switch ($client->$State)
+				{
+					case 'New':
+					{
+						my $buffer = $client->$Buffer;
+						if(SocketAvailable($sock))
+						{
+							my List($Size, $Data) = SocketReceive($sock);
+							if ($Size > 0)
+								BinaryAppend($buffer, $Data);
+						}
+						if (ClientBufferSize($client) > 12)
+						{
+							ClientKill($client);
+							continue;
+						}
+						if (ClientBufferSize($client) == 12)
+						{
+							my $protocolId = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+							my $subProtocolId = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+							my $version = UnpackSingle('n', ClientBufferRead($client, 2), 0);
+							my $subVersion = UnpackSingle('n', ClientBufferRead($client, 2), 0);
+							my $protocol = Bt($protocolId);
+							my $subProtocol = Bt($subProtocolId);
+							Log('[%s], Protocol %s', $client->$Ip, $protocol);
+							Log('[%s], SubProtocol %s', $client->$Ip, $subProtocol);
+							if ($protocol != 'TRTP')
+							{
+								ClientKill($client);
+								continue;
+							}
+							$client->$Protocol = $protocol;
+							$client->$SubProtocol = $subProtocol;
+							$client->$ProtocolVer = $version;
+							$client->$ProtocolSubVer = $subVersion;
+							$client->$State = 'Connected';
+							ClientBufferClear($client);
+							SocketSend($sock, Pack('NN', Tb('TRTP'), 0));
+						}
+					}
+					break;
+					case 'Connected':
+					{
+						my $buffer = $client->$Buffer;
+						if(SocketAvailable($sock))
+						{
+							my List($Size, $Data) = SocketReceive($sock);
+							if ($Size > 0)
+								BinaryAppend($buffer, $Data);
+						}
+						// check if doing a transaction already
+						if (isset($client->$CurrentTrans))
+						{
+							my $currentSize = count($client->$CurrentTrans->$Data);
+							my $sizeNeeded = $client->$CurrentTrans->$DataSize;
+							my $toGet = $sizeNeeded - $currentSize;
+							my $possibleGet = ClientBufferSize($client);
+							if ($toGet > 0)
+							{
+								my $canGet = Min($toGet, $possibleGet);
+								if ($canGet <= 0)
+									continue;
+								my $gotData = ClientBufferRead($client, $canGet);
+								BinaryAppend($client->$CurrentTrans->$Data, $gotData);
+							}
+							if ($toGet == 0)
+							{
+								my $trans = $client->$CurrentTrans;
+								$client->$CurrentTrans = null;
+								ClientProcessTrans($client, $trans);
+							}
+						}
+						else
+						{
+							// check we can read enough for a transaction header
+							if (ClientBufferSize($client) < $TransHeaderSize)
+								continue;
+							// mark position so we can read safely
+							my $oldPos = $client->$BufferPos;
+							// try read a transaction header
+							my $tFlags = UnpackSingle('c', ClientBufferRead($client, 1), 0);
+							my $tIsReply = UnpackSingle('c', ClientBufferRead($client, 1), 0);
+							my $tType = UnpackSingle('n', ClientBufferRead($client, 2), 0);
+							my $tId = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+							my $tErrorCode = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+							my $tTotalSize = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+							my $tDataSize = UnpackSingle('N', ClientBufferRead($client, 4), 0);
+				            my $isValid = 	$tFlags == 0 &&
+											$tDataSize > 0 && $tTotalSize > 0 &&
+											$tTotalSize == $tDataSize &&
+											($tIsReply == 0 || $tIsReply == 1) &&
+											($tType > 0 || ($tType == 0 && $tIsReply == 1));
+							if ($isValid)
+							{
+								// create the transaction
+								my $newTrans = TransactionUtils::NewTrans();
+								$newTrans->$Client = $client;
+								$newTrans->$Flags = $tFlags;
+								$newTrans->$IsReply = $tIsReply;
+								$newTrans->$Type = $tType;
+								$newTrans->$Id = $tId;
+								$newTrans->$ErrorCode = $tErrorCode;
+								$newTrans->$TotalSize = $tTotalSize;
+								$newTrans->$DataSize = $tDataSize;
+								// add it to client
+								$client->$CurrentTrans = $newTrans;
+								// continue to avoid resetting the buffer position
+								continue;
+							}
+							else // failed to read
+							{
+								// since we could not read lets increase the position by one
+								ClientBufferPosInc($client, 1);
+							}
+							// restore position
+							$client->$BufferPos = $oldPos;
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+	Function ClientProcessTrans($client, $trans)
+	{
+		$params = TransactionUtils::ParseData($trans->$Data);
+		if (!$client->$HasLoggedIn)
+		{
+			switch ($trans->$Type)
+			{
+				case $Tran_Login:
+				{
+					ProcessTran::Login($this, $client, $trans, $params);
+					break;
+				}
+				case $Tran_Agreed:
+				{
+					ProcessTran::Agreed($this, $client, $trans, $params);
+					break;
+				}
+				default:
+					ClientKill($client);
+					break;
+			}
+		}
+		else
+		{
+			switch ($trans->$Type)
+			{
+				case $Tran_GetUserNameList:
+				{
+					ProcessTran::GetUserNameList($this, $client, $trans, $params);
+					break;
+				}
+				case $Tran_ChatSend:
+				{
+					ProcessTran::ChatSend($this, $client, $trans, $params);
+					break;
+				}
+				default:
+					Log("[%s], Unknown transaction ID %d", $client->$Ip, $trans->$Type);
+					my $tId = $trans->$Type;
+					TransactionUtils::SendErrorMsg($trans, "Transaction ID '$tId' is not working yet.");
+					break;
+			}
+		}
+	}
+	Function ClientBufferPosInc($client, $incBy)
+	{
+		my $buffer = $client->$Buffer;
+		my $bufSize = count($buffer);
+		my $pos = $client->$BufferPos;
+		$incBy += $pos;
+		if ($pos > $bufSize)
+			$pos = $bufSize;
+		$client->$BufferPos = $pos;
+	}
+	Function ClientBufferClear($client)
+	{
+		$client->$Buffer = bin();
+		$client->$BufferPos = 0;
+	}
+	Function ClientBufferSize($client)
+	{
+		my $buffer = $client->$Buffer;
+		my $bufSize = count($buffer);
+		my $pos = $client->$BufferPos;
+		my $size = $bufSize - $pos;
+		if ($size < 0)
+			$size = 0;
+		return $size;
+	}
+	Function ClientBufferRead($client, $size)
+	{
+		my $buffer = $client->$Buffer;
+		my $bufSize = count($buffer);
+		if ($bufSize < $size)
+			return null;
+		my $pos = $client->$BufferPos;
+		my $read = BinaryMid($buffer, $pos, $size);
+		my $readSize = count($read);
+		if ($readSize != $size)
+			return null;
+		$pos += $size;
+		$client->$BufferPos = $pos;
+		return $read;
+	}
+	Function ClientGetFlags($client)
+	{
+		return 0;
+	}
+	Function ClientSetUserInfo($client, $data)
+	{
+		my $userName;
+		if (IsVarString($data))
+			$userName = $data;
+		else // assume params
+		{
+			my $params = $data;
+			$userName = ParamUtils::GetString($params, $Field_UserName);
+		}
+		my $validChars = @Printable . ' ';
+		for(my $i = 0; $i < strlen($userName); $i++)
+		{
+			my $c = $userName[$i];
+			if (strpos($validChars, $c) == -1)
+				$c = '*';
+			$userName[$i] = $c;
+		}
+		//UText::ReplaceNonPrinting(inClient->realName + 1, inClient->realName[0], 0, '*', 1);
+		$client->$UserName = $userName;
+		ClientBroadcastUserInfo($client);
+	}
+	Function ClientBroadcastUserInfo($client)
+	{
+	}
+	Function ClientSendTransaction($client, $id, $params)
+	{
+		my $trans = TransactionUtils::NewTrans($client);
+		$trans->$Id = $transId++;
+		$trans->$IsReply = 0;
+		$trans->$Flags = 0;
+		$trans->$ErrorCode = 0;
+		$trans->$Type = $id;
+		TransactionUtils::SetData($trans, $params);
+		TransactionUtils::Send($trans);
+	}
+	Function ClientKill($client)
+	{
+		my $sock = $client->$Sock;
+		if (!SocketConnected($sock))
+			return;
+		Log("[%s], Connection closed", SocketIp($sock));
+		SocketClose($sock);
+	}
+}	
+
+Class ProcessTran
+{
+	Static Function Login($s, $client, $trans, $params)
+	{
+		// check perm and temp banned
+		if (BanManager::IsPermBanned($client->$ip))
+		{
+			TransactionUtils::SendErrorMsg($trans, 'You are permanently banned on this server.');
+			$s->ClientKill($client);
+			$s->Log('[%s], Login failed', $client->$Ip);
+			return;
+		}
+		else if (BanManager::IsTempBanned($client->$ip))
+		{
+			TransactionUtils::SendErrorMsg($trans, 'You are temporarily banned on this server.');
+			$s->ClientKill($client);
+			$s->Log('[%s], Login failed', $client->$Ip);
+			return;
+		}
+		my $login = ParamUtils::GetStringEnc($params, $Field_UserLogin);
+		my $password = ParamUtils::GetStringEnc($params, $Field_UserPassword);
+		$client->$Version = ParamUtils::GetInteger($params, $Field_Vers);
+		// Compatibility with old clients BELOW
+		my $iconId = ParamUtils::GetInteger($params, $Field_UserIconID);
+		my $userName = ParamUtils::GetString($params, $Field_UserName);
+		// Compatibility with old clients ABOVE
+		// determine login name
+		if (IsEmptyOrNull($login))
+			$login = 'guest';
+		else
+			$login = lc($login);
+		// try to get info for this user
+		//GetUser(psUserLogin, info);
+		// verify that password matches
+		// login/pass matched, send okay
+		ParamUtils::DeleteAllFields($params);
+		ParamUtils::AddInteger($params, $Field_Vers, 190);
+		ParamUtils::AddInteger($params, $Field_CommunityBannerID, 0);
+		ParamUtils::AddString($params, $Field_ServerName, 'Sputnik Hotline Server Example');
+		TransactionUtils::SendData($trans, $params);
+		// store account name
+		// store account login
+		// Compatibility with old clients BELOW
+		if (strlen($userName) > 0 && $iconId > 0)
+		{
+			// store user info
+			$client->$IconId = $iconId;
+			$s->ClientSetUserInfo($client, $userName);
+			$client->$HasLoggedIn = true;
+			// log message
+			$s->LogClient($client, 'Login successful');
+			// send user access information
+			ParamUtils::DeleteAllFields($params);
+			my $maxPrivs = Op('FF FF FF FF FF FF FF FF');
+			ParamUtils::AddBinary($params, $Field_UserAccess, $maxPrivs);
+			$s->ClientSendTransaction($client, $Tran_UserAccess, $params);
+		}
+		// Compatibility with old clients ABOVE
+		// if we have an agreement, send it
+		ParamUtils::DeleteAllFields($params);
+		ParamUtils::AddInteger($params, $Field_NoServerAgreement, 1);
+		//ParamUtils::AddString($params, $Field_Data, "fuck yourself");
+		$s->ClientSendTransaction($client, $Tran_ShowAgreement, $params);
+	}
+	Static Function Agreed($s, $client, $trans, $params)
+	{
+		// send okay
+		TransactionUtils::SendNoError($trans);	
+		// store user info
+		$s->ClientSetUserInfo($client, $params);
+		$client->$HasLoggedIn = true;
+		// log message
+		$s->LogClient($client, 'Login successful');
+		// send user access information
+		ParamUtils::DeleteAllFields($params);
+		my $maxPrivs = Op('FF FF FF FF FF FF FF FF');
+		ParamUtils::AddBinary($params, $Field_UserAccess, $maxPrivs);
+		$s->ClientSendTransaction($client, $Tran_UserAccess, $params);
+		// Send a welcome message
+		my $data = ParamUtils::NewParams();
+		my $welcomeMessage = sprintf("\r%13.13s:  ", '@Server') . "Welcome to my server!";
+		ParamUtils::AddString($data, $Field_Data, $welcomeMessage);
+		$s->ClientSendTransaction($client, $Tran_ChatMsg, $data);
+	}
+	Static Function GetUserNameList($s, $client, $trans, $params)
+	{
+		ParamUtils::DeleteAllFields($params);
+		foreach($s->$clients as $id => $cli)
+		{
+			if (!$cli->$HasLoggedIn)
+				continue;
+			my $iconId = $cli->$IconId;
+			my $flags = $s->ClientGetFlags($cli);
+			my $userName = $cli->$UserName;
+			my $userNameBin = PackSingle('z0', $userName);
+			my $bin = Pack("nnnn", $id, $iconId, $flags, count($userNameBin));
+			BinaryAppend($bin, $userNameBin);
+			ParamUtils::AddBinary($params, $Field_UserNameWithInfo, $bin);
+		}
+		TransactionUtils::SendData($trans, $params);
+	}
+	Static Function ChatSend($s, $client, $trans, $params)
+	{
+		my $data = ParamUtils::NewParams();
+		// check access
+		/*
+		if (!HasGeneralPriv(inClient, myAcc_SendChat))
+		{
+			data->AddInteger(myField_ChatOptions, 1);
+			data->AddPString(myField_Data, "\pYou are not allowed to participate in chat.");
+			inClient->tpt->SendTransaction(myTran_ServerMsg, data);
+			return;
+		}*/
+		// get options
+		my $opts = ParamUtils::GetInteger($params, $Field_ChatOptions);
+		// create name for the chat
+		my $name;
+		if ($opts == 1)
+			$name = sprintf("\r *** %s ", $client->$UserName);
+		else
+			$name = sprintf("\r%13.13s:  ", $client->$UserName);
+		// get size of the chat message
+		my $size = ParamUtils::GetFieldSize($params, $Field_Data);
+		if ($size > 8192)
+			$size = 8192;	// limit chat to 8K
+		// get chat message
+		my $msg = ParamUtils::GetString($params, $Field_Data);
+		// crop it if needed
+		if (strlen($msg) > $size)
+			$msg = substr($msg, 0, $size);
+		// add the name to it
+		my $sb = sbNew();
+		foreach(Lines($msg) as my $line)
+		{
+			my $lineTrim = trim($line);
+			if (strlen($lineTrim) <= 0)
+				continue;
+			sbAppend($sb, $name . $line);
+		}
+		my $finalmsg = sbToString($sb);
+		unset($sb);
+		// anything to do?
+		if (strlen($finalmsg) <= 0)
+			return;
+		// add the message to be sent
+		ParamUtils::AddString($data, $Field_Data, $finalmsg);
+		// check if we are sending to a private chat
+		my $chatId = ParamUtils::GetInteger($params, $Field_ChatID);
+		if ($chatId != 0)
+			return; // Private Chat isnt handled here yet
+		// Broadcast the chat
+		foreach($s->$clients as $id => $cli)
+		{
+			if (!$cli->$HasLoggedIn)
+				continue;
+			$s->ClientSendTransaction($cli, $Tran_ChatMsg, $data);
+		}
+	}
+}
+

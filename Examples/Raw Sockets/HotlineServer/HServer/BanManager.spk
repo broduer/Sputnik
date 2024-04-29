@@ -1,0 +1,11 @@
+﻿Class BanManager
+{
+	Static Function IsPermBanned($ip)
+	{
+		return false;
+	}
+	Static Function IsTempBanned($ip)
+	{
+		return false;
+	}
+}

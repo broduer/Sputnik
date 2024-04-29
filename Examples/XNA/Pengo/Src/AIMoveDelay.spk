@@ -1,0 +1,33 @@
+Class AIMoveDelay extends AI
+{
+	my $MoveFor;
+	my $StopFor;
+	my $MoveCount;
+	my $Move;
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+		$Move = false;
+		$MoveCount = 0;
+		$MoveFor = 0;
+		$StopFor = 0;
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		if(($Move && $MoveCount == $StopFor) || (!$Move && $MoveCount == $MoveFor))
+		@{
+			$MoveCount = 0;
+			$Move = !$Move;
+		}
+		$MoveCount++;
+		if(!$Move)
+			return false;
+		return true;
+	}
+};

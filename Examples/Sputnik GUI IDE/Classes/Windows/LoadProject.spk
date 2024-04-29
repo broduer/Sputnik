@@ -1,0 +1,113 @@
+﻿#<?
+Class LoadProject
+{
+	my $Window;
+	my $LoadProj;
+	my $DelProj;
+	my $Cancel;
+	my $Name;
+	my $DisposeSetStatus;
+	Function __construct()
+	{
+		// Create the Load Project Window
+		$this->$Window = GUICreate("Window", "Load Project", 298, 210, 0, 0, 5);
+		GUIMDIParent($this->$Window, $GUI);
+		// Set Status
+		ChangeStatus(Status->$LoadProject);
+		// Create the controls
+		my $Banner = GUICreate("PictureBox", $this->$Window, 8, 8, 275, 53);
+		GUICreate("Label", $this->$Window, "Name of project:", 8, 69, 110, 20);
+		$this->$Name = GUICreate("ComboBox", $this->$Window, 8, 69 + (22 * 1), 275, 20);
+		$this->$LoadProj = GUICreate("Button", $this->$Window, "Load Project", 8, 69 + (22 * 2), 275, 20);
+		$this->$DelProj = GUICreate("Button", $this->$Window, "Delete Project", 8, 69 + (22 * 3), 275, 20);
+		$this->$Cancel = GUICreate("Button", $this->$Window, "Cancel", 8, 69 + (22 * 4), 275, 20);
+		if(@Compiled)
+			GUIPictureBox($Banner, "Load", $BannerTM);
+		else
+			GUIPictureBox($Banner, "Load", "./Images/banner.jpg");
+		GUILink($this->$LoadProj, "Click", @"$param->LoadProject();", $this);
+		GUILink($this->$DelProj, "Click", @"$param->DelProject();", $this);
+		GUILink($this->$Cancel, "Click", @"$param->Cancel();", $this);
+		
+		GUIComboBox($this->$Name, "SetItems", GetFolders ( "./Projects" ));
+		GUIComboBox($this->$Name, "DropDownStyle", "dropdownlist");
+		
+		$DisposeSetStatus = true;
+		GUILink($Window, 'FormClosed', '$param->Dispose();', $this);
+		GUILink($Window, 'FormClosing', '$param->Dispose();', $this);
+		
+		// Load Settings
+		if(FileExists("./Settings/LoadProject.dat"))
+		{
+			my $LoadData = BinaryLoad("./Settings/LoadProject.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($this->$Window, "Left", $BData[0]);
+			GUISetProp($this->$Window, "Top", $BData[1]);
+		}
+		// Finally Show the Window
+		GUILoad( $this->$Window );
+	}
+	Function __destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($DisposeSetStatus)
+			ChangeStatus(Status->$NONE);
+		// Save Settings
+		my $X = GUIGetProp($this->$Window, "Left");
+		my $Y = GUIGetProp($this->$Window, "Top");
+		my $SaveData = Pack('ii', $X, $Y);
+		BinarySave($SaveData, "./Settings/LoadProject.dat");
+		// Clean Up
+		GUIUnload($this->$Window);
+		unset($this->$Window);
+	}
+	Function LoadProject()
+	{
+		my $Text = GUIComboBox($this->$Name, "SelectedItem");
+		if(!IsEmptyOrNull($Text) && DirExists( "./Projects/$Text"))
+		{
+			ChangeProjectName($Text);
+			Load();
+			$CurrentWindow = $MainWindow;
+			if(!isEmptyOrNull($CurrentWindow) && isSet($Windows[$CurrentWindow]))
+			{
+				$Windows[$CurrentWindow]->Show();
+				$Windows[$CurrentWindow]->ZOrder();
+				AttachControl($Windows[$CurrentWindow]);
+			}
+			ChangeStatus(Status->$Design);
+			$DisposeSetStatus = false;
+			$ProjectView->SetCurrentWindow();
+			Dispose();
+		}
+		else
+		{
+			msgbox("A project named '$Text' does not exist.", $Title, 48);
+		}
+	}
+	Function DelProject()
+	{
+		my $Text = GUIComboBox($this->$Name, "SelectedItem");
+		if(DirExists("./Projects/$Text"))
+		{
+			my $Result = MsgBox("You sure to delete project '$Text'" . @CRLF . "This can't be undone.", $Title, 64 | 4);
+			If ( $Result == 6 ) // Yes
+			{
+				RMDir("./Projects/$Text", 1);
+				GUIComboBox($this->$Name, "SetItems", GetFolders ( "./Projects" ));
+			}
+		}
+		else
+		{
+			msgbox("A project named '$Text' does not exist.", $Title, 48);
+		}
+	}
+	Function Cancel()
+	{
+		ChangeStatus(Status->$NONE);
+		Dispose();
+	}
+};

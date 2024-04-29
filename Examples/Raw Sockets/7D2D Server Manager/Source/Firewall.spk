@@ -1,0 +1,67 @@
+﻿$onServerInit[] = 'FirewallInit';
+$onServerProcess[] = 'FirewallProcess';
+$onPlayerJoined[] = 'FirewallOnPlayerJoined';
+Class extends ServerManager
+{
+	my $firewallCounter;
+	Function FirewallInit()
+	{
+		$firewallCounter = 0;
+	}
+	Function FirewallProcess()
+	{
+		$firewallCounter++;
+		if ($firewallCounter < 5)
+			return;
+		$firewallCounter = 0;
+		FirewallPingKicks();
+	}
+	Function FirewallPingKicks()
+	{
+		if (!GetConfig('FirewallPingKick'))
+			return;
+		my $maxPing = GetConfig('FirewallPing');
+		my $whiteList = GetConfig('FirewallWhiteList');
+		foreach($currentPlayers->$players as my $player)
+		{
+			if (IsUserAdmin($player))
+				continue;
+			if (IsUserModerator($player))
+				continue;
+			my $SteamId = $player->$SteamId;
+			if (InArray($whiteList, $SteamId))
+				continue;
+			my $Ping = $player->$Ping;
+			if ($Ping > $maxPing)
+				KickUser($player, 'Ping is too high');
+		}
+	}
+	Function FirewallOnPlayerJoined($player)
+	{
+		if (!GetConfig('FirewallCountryKick'))
+			return;
+		my $whiteList = GetConfig('FirewallWhiteList');
+		if (IsUserAdmin($player))
+			return;
+		if (IsUserModerator($player))
+			return;
+		my $SteamId = $player->$SteamId;
+		if (InArray($whiteList, $SteamId))
+			return;
+		FirewallCountryCheck($player);
+	}
+	Function FirewallCountryCheck($player)
+	{
+		my $countryBlockList = GetConfig('FirewallCountryBlock');
+		my $ip = $player->$Ip;
+		my $responce = HttpGetString("http://ip-api.com/csv/$ip");
+		my $csvResponce = CSV($responce)[0];
+		if (count($csvResponce) < 2)
+			return;
+		my List($success, $country, $countryCode, $regionCode, $regionName, $city, $zipCode, $lat, $lon, $timeZone, $ispName, $orgName, $orgAs, $ipFrom) = $csvResponce;
+		if ($success neqi 'success')
+			return;
+		if (InArray($countryBlockList, $countryCode, false, 1))
+			KickUser($player, "Banned country $countryCode");
+	}
+}

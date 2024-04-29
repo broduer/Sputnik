@@ -1,0 +1,196 @@
+enum HLSocketStatus
+{
+	$Disconnected,
+	$Connecting,
+	$Handsake,
+	$Connected,
+	$LoggingIn,
+	$LoggedIn
+}
+Class HLSocket
+{
+	Static $UniqueID = 0;
+	my $Connected;
+	my $LoggedIn;
+	my $Disposed;
+	my $Socket;
+	my $IP;
+	my $Port;
+	my $ErrorMsg;
+	my $RecvCount;
+	my $UserName;
+	my $Login;
+	my $Password;
+	my $ClientVersion;
+	my $TransactionParser;
+	my $Status;
+	my $Debug;
+	my $ShowSendPackets;
+	my $ShowReceivePackets;
+	my $ShowParsePackets;
+	my $Client;
+	my $ServerName;
+	my $ServerVersion;
+	my $ServerBannerType;
+	my $ServerBannerTypeStr;
+	my $ServerBannerUrl;
+	my $UserList;
+	Function __Construct( $ServIP = null, $ServPort = 5500 )
+	{
+		$Debug = false;
+		$ShowSendPackets = false;
+		$ShowReceivePackets = false;
+		$ShowParsePackets = false;
+		$RecvCount = 0;
+		$IP = $ServIP;
+		$Port = $ServPort;
+		$LoggedIn = false;
+		$Disposed = false;
+		$ClientVersion = 190;
+		SetStatus(HLSocketStatus->$Disconnected);
+		$TransactionParser = new TransactionParser( $this );
+		$Client = null;
+		$UserList = new UserList( $this );
+	}
+	Function SetStatus( $Stat )
+	{
+		$Status = $Stat;
+		if($Client)
+			$Client->OnStatusChanged($Stat);
+	}
+	Function GetStatus(  )
+	{
+		return $Status;
+	}
+	Function GetUniqueID( )
+	{
+		self::$UniqueID++;
+		return self::$UniqueID;
+	}
+	Function DebugPrint( $Msg )
+	{
+		if(!$Debug)
+			return;
+		if($Client)
+			$Client->OnDebugMessage($Msg);
+	}
+	Function Error()
+	{
+	}
+	Function Connect()
+	{
+		if($Disposed)
+		@{
+			DebugPrint('Can''t connect while disposed');
+			return false;
+		}
+		if(GetStatus() != HLSocketStatus->$Disconnected)
+		@{
+			DebugPrint('Already connected going to disconnect old socket');
+			Disconnect();
+		}
+		
+		SetStatus(HLSocketStatus->$Connecting);
+		
+		$Socket = SocketCreate('Stream', 'TCP');
+		SocketConnect($Socket, $IP, $Port);
+		DebugPrint('Connecting...');
+		
+		SetStatus(HLSocketStatus->$Handsake);
+		
+		my $bytesSent = SocketSend($Socket, Pack('z0nn', 'TRTPHOTL', 1, 2));
+		my $Data = SocketReceive($Socket, 1024);
+		my List ( $Shake, $ErrorCode ) =  Unpack('z0/N', $Data[1]);
+		if( $Shake != 'TRTP' )
+		@{
+			Disconnect();
+			DebugPrint('No Hotline server found');
+			return false;
+		}
+		if( $ErrorCode != 0 )
+		@{
+			Disconnect();
+			DebugPrint('Server rejected us');
+			return false;
+		}
+		DebugPrint('Handshake success');
+		SetStatus(HLSocketStatus->$Connected);
+		return true;
+	}
+	Function Disconnect()
+	{
+		SocketShutdown($Socket);
+		SocketClose($Socket);
+		unset($Socket);
+		SetStatus(HLSocketStatus->$Disconnected);
+	}
+	Function Login( $sUserName, $sLogin = 'guest', $sPass = '' )
+	{
+		$UserName = $sUserName;
+		$Login = $sLogin;
+		$Password = $sPass;
+		if($Disposed)
+		@{
+			DebugPrint('Can''t login while disposed');
+			return false;
+		}
+		if(GetStatus() != HLSocketStatus->$Connected)
+		@{
+			DebugPrint('Can''t login while not connected');
+			return false;
+		}
+		if($$LoggedIn)
+		@{
+			DebugPrint('Can''t login while already logged in');
+			return false;
+		}
+		SetStatus(HLSocketStatus->$LoggingIn);
+		DebugPrint("Trying to login '$Login' pass '$Password'");
+		DispatchTransaction(new TransactionLogin($this, $Login, $Password));
+		Process();
+		return true;
+	}
+	Function RequestUserList()
+	{
+		DispatchTransaction(new TransactionGetUserNameList($this));
+	}
+	Function SendChatMsg($Message, $ChatID = null, $Options = null)
+	{
+		DispatchTransaction(new TransactionChat($this, $Message, $ChatID, $Options));
+	}
+	Function AcceptAgreement()
+	{
+		DebugPrint("Sending Agreed Transaction");
+		DispatchTransaction(new TransactionAgree($this, $UserName, 2, 0));
+        SetStatus(HLSocketStatus->$LoggedIn);
+	}
+	Function DispatchTransaction( $Transaction )
+	{
+		my $Data = $Transaction->GetData();
+		DebugPrint('Dispatching size (' . Count($Data) . ') :');
+		if($ShowSendPackets)
+			DebugPrint(BinaryExpand($Data));
+		my $bytesSent = SocketSend($Socket, $Data);
+		unset($Transaction);
+	}
+	Function Process()
+	{
+        if(GetStatus() == HLSocketStatus->$Disconnected)
+            return;
+		if(SocketAvailable($Socket))
+		{
+			$RecvCount++;
+			my $Data = HLSocketReceive(1024);
+			DebugPrint('Receive size (' . $Data[0] . '):');
+			if($ShowReceivePackets)
+				DebugPrint(BinaryExpand($Data[1]));
+			$TransactionParser->TParse($Data);
+		}
+		if(!SocketConnected($Socket))
+			Disconnect();
+	}
+	Function HLSocketReceive( $Val )
+	{
+		return SocketReceive($Socket, $Val);
+	}
+}

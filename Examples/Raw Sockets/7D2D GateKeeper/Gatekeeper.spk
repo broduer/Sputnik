@@ -1,0 +1,646 @@
+Class Commands
+{
+	my $commandList;
+	Function __Construct()
+	{
+		$commandList = array();
+		my $commandId = 0;
+		$commandList["se"] = $commandId++;
+		$commandList["mod"] = $commandId++;
+		$commandList["admin"] = $commandId++;
+		$commandList["cp"] = $commandId++;
+		$commandList["whitelist"] = $commandId++;
+		$commandList["spawnwanderinghorde"] = $commandId++;
+		$commandList["saveworld"] = $commandId++;
+		$commandList["setgamepref"] = $commandId++;
+		$commandList["str"] = $commandId++;
+		$commandList["st"] = $commandId++;
+		//$commandList["mem"] = $commandId++;
+		$commandList["chunkcache"] = $commandId++;
+		$commandList["listents"] = $commandId++;
+		$commandList["lp"] = $commandId++;
+		$commandList["ban"] = $commandId++;
+		$commandList["kick"] = $commandId++;
+		$commandList["say"] = $commandId++;
+		$commandList["listplayers"] = $commandId++;
+		$commandList["shutdown"] = $commandId++;
+		$commandList["dm"] = $commandId++;
+		$commandList["lpe"] = $commandId++;
+		$commandList["gg"] = $commandId++;
+		$commandList["si"] = $commandId++;
+		$commandList["gt"] = $commandId++;
+		$commandList["pm"] = $commandId++;
+	}
+	Function CommandExists( $Name )
+	{
+		return isset($commandList[$Name]);
+	}
+}
+
+Class Accounts
+{
+	my $GServer;
+	my $AccountList;
+	my $PassOnlyAccountList;
+	my $AccountCommandLimit;
+	Function __Construct($Serv)
+	{
+		$GServer = $Serv;
+		$AccountList = array();
+		$PassOnlyAccountList = array();
+		$AccountCommandLimit = array();
+		my $CurrentLogin = null;
+		foreach(FileReadLines("Accounts.txt") as my $Line)
+		{
+			my $text = Trim($Line);
+			$text =~ s/#.*//;
+			$text = Trim($text);
+			if(IsEmptyOrNull($text))
+				continue;
+			if($text =~ m/username:(.*)/)
+			{
+				my $Login = trim($1);
+				$AccountList[$Login] = array();
+				$CurrentLogin = $Login;
+			}
+			else if($text =~ m/password:(.*)/)
+			{
+				my $Password = trim($1);
+				if($CurrentLogin != null)
+					$AccountList[$CurrentLogin][0] = $Password;
+			}
+			else if($text =~ m/passonly:(.*)/)
+			{
+				my $Password = trim($1);
+				if($CurrentLogin != null)
+					$PassOnlyAccountList[$AccountList[$CurrentLogin][0]] = $CurrentLogin;
+			}
+			else if($text =~ m/commandlimit:(.*)/)
+			{
+				my List ($CommandName, $TimeLimit) = split(trim($1), ' ');
+				$CommandName = trim($CommandName);
+				$TimeLimit = trim($TimeLimit);
+				if($CurrentLogin != null)
+				{
+					my $Key = GenKey($CurrentLogin, $CommandName);
+					$AccountCommandLimit[$Key] = $TimeLimit;
+				}
+			}
+			else if($text =~ m/access:(.*)/)
+			{
+				my $Access = trim($1);
+				if($CurrentLogin != null)
+				{
+					if($Access == "ALL_COMMANDS")
+						$AccountList[$CurrentLogin][1] = "ALL_COMMANDS";
+					else
+					{
+						// Individual commands
+						$AccountList[$CurrentLogin][1] = array();
+						foreach(Split($Access, ' ') as my $comm)
+						{
+							if(!$GServer->$CmdUtil->CommandExists($comm))
+								say "Command '$comm' for user '$CurrentLogin' is invalid";
+							else
+								$AccountList[$CurrentLogin][1][] = $comm;
+						}
+					}
+				}
+			}
+		}
+	}
+	Function GenKey($Login, $CommandName)
+	{
+		$Login = trim($Login);
+		$Login = trim($Login);
+		return $Login . '_' . $CommandName;
+	}
+	Function GetCommandLimit($Login, $CommandName)
+	{
+		my $Key = GenKey($Login, $CommandName);
+		if(!isset($AccountCommandLimit[$Key]))
+			return -1;
+		return $AccountCommandLimit[$Key];
+	}
+	Function IsValid($Login, $Password)
+	{
+		return isset($AccountList[$Login]) && $AccountList[$Login][0] == $Password;
+	}
+	Function IsValidPassOnly($Password)
+	{
+		if(!isset($PassOnlyAccountList[$Password]))
+			return false;
+		my $Login = $PassOnlyAccountList[$Password];
+		return IsValid($Login, $Password);
+	}
+	Function GetPassOnlyLogin($Password)
+	{
+		if(!isset($PassOnlyAccountList[$Password]))
+			return false;
+		return $PassOnlyAccountList[$Password];
+	}
+	Function IsCommandValid($Login, $Command)
+	{
+		if(IsEmptyOrNull($Command))
+			return false;
+		if(!isset($AccountList[$Login]))
+			return false;
+		if($AccountList[$Login][1] == "ALL_COMMANDS")
+			return true;
+		foreach($AccountList[$Login][1] as my $c)
+		{
+			if(IsEmptyOrNull($c))
+				continue;
+			if($c == $Command)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+Class Config
+{
+	my $Conf;
+	Function __Construct()
+	{
+		$Conf = array();
+		foreach(FileReadLines("Config.txt") as my $Line)
+		{
+			my $text = Trim($Line);
+			$text =~ s/#.*//;
+			$text = Trim($text);
+			if($text =~ m/(\w+):(.*)/)
+			{
+				my $Key = trim($1);
+				my $Value = trim($2);
+				if(IsEmptyOrNull($Key))
+					continue;
+				$Conf[$Key] = $Value;
+			}
+		}
+	}
+	Function GetV($Key)
+	{
+		return $Conf[$Key];
+	}
+}
+
+Class GServer
+{
+	my $Clients;
+	my $Socket;
+	my $TelnetHandler;
+	my $UniqueId;
+	my $CmdUtil;
+	my $Accounts;
+	my $Config;
+	my $UserListSeconds;
+	Function __Construct()
+	{
+		$Clients = array();
+		$Config = new Config();
+		$TelnetHandler = new TelnetHandler($this);
+		$UniqueId = 1;
+		$CmdUtil = new Commands();
+		$Accounts = new Accounts($this);
+		$UserListSeconds = Time() + 1;
+	}
+	Function GenUniqueID()
+	{
+		$UniqueId++;
+		return $UniqueId; 
+	}
+	Function GrabTelnet()
+	{
+		ThreadCreate('TelnetThread', '$arg->Start();', $TelnetHandler);
+	}
+	Function Start()
+	{
+		println("Server listening for connections at port 5600");
+		$Socket = SocketCreate("Stream", "TCP");
+		SocketBind($Socket, "0.0.0.0", 5600);
+		SocketListen($Socket, 10);
+		ThreadCreate('ClientThread', '$arg->Process();', $this);
+		while (true)
+		{
+			my $Client = SocketAccept($Socket);
+			my $ClientId = GenUniqueID();
+			my $Cli = new Client($this, $Client, $ClientId);
+			$Clients[$ClientId] = $Cli;
+			
+			// Log new client
+			println("Client ID '$ClientId' joined the server");
+					
+			// Send a welcome to client
+			$Cli->SendText("Welcome to my server");
+			$Cli->SendText("You may enter the pass or login here");
+			$Cli->SendText("The message below about pass is just");
+			$Cli->SendText("to keep compatible with old scripts");
+			$Cli->SendText("");
+			$Cli->SendText("Please enter password:");
+		}
+	}
+	Function Process()
+	{
+		While( True )
+		{
+			my $CurTime = Time();
+			/*
+			if($UserListSeconds - $CurTime <= 0)
+			{
+				$UserListSeconds = Time() + $Config->GetV("autouserlisttimer");
+				my $Cli = new Client($this, 0, 0, true);	
+				$Cli->$LoggedIn = true;
+				$Cli->$Login = "Gatekeeper";
+				$Cli->$Password = "";
+				$Cli->$Ghost = true;
+				$Cli->$Action = "GetUserList";
+				HandleCommand($Cli, "listplayers");
+			}*/
+			my $DeadClients = array();
+			foreach($Clients as my $CID => my $Client)
+			{
+				my $CSocket = $Client->$Socket;
+				if( SocketConnected($CSocket) )
+				{
+					if( SocketAvailable($CSocket) )
+					{
+						my $Data = SocketReceive($CSocket, SocketAvailable($CSocket));
+						my $Str = Unpack("z1", $Data[1], 3);
+						$Client->AddString($Str);
+					}
+				}
+				else
+				{
+					if($Client->$LoggedIn)
+					{
+						my $cName = $Client->$Login;
+						println("Client '$CID' '$cName' disconnected");
+					}
+					else
+						println("Client '$CID' disconnected");
+					push($DeadClients, $CID);
+				}
+			}
+			foreach($DeadClients as $DeadClient)
+			{
+				my $CSocket = $Clients[$DeadClient];
+				unset( $Clients[$DeadClient] );
+			}
+		}
+	}
+	Function HandleCommand($Client, $Text)
+	{
+		my $CommandName = Contains($Text, ' ') ? Split($Text, ' ')[0] : $Text;
+		my $CommandLimitSeconds = $Accounts->GetCommandLimit($Client->$Login, $CommandName);
+		if($CommandLimitSeconds != -1) // Must have a limit
+		{
+			// Get last time user used this command
+			my $LastCommandTime = $Client->$LastCommandTime[$CommandName];
+			if($LastCommandTime !== null) // It was used recently
+			{
+				my $CurTime = Time();
+				my $SecondsLeft = $LastCommandTime - $CurTime;
+				if($SecondsLeft > 0) // Not allowed to use yet
+				{
+					my $Login = $Client->$Login;
+					my $CID = $Client->$ID;
+					say "Client ID '$CID' '$Login' is trying to spam '$CommandName'.";
+					//$Client->SendText("Please wait '$SecondsLeft' second(s) to try that command again");
+					return;
+				}
+				else
+				{
+					// Allow command but log when it happened again
+					$Client->$LastCommandTime[$CommandName] = Time() + $CommandLimitSeconds;
+				}
+			}
+			else // User has not used this command yet
+			{
+				$Client->$LastCommandTime[$CommandName] = Time() + $CommandLimitSeconds;
+			}
+		}
+		if($Client->$Ghost)
+		{
+			$Client->$Input = "";// make sure we can reuse the buffer
+			$TelnetHandler->HandleCommand($Client, $CommandName, $Text);
+			return;
+		}
+		if(!SocketConnected($TelnetHandler->$Socket))
+		{
+			$Client->SendText("Game server Telnet is down");
+			return;
+		}
+		if(!$Client->$LoggedIn) // NOT logged in
+		{
+			if($Client->$Login == null)
+			{
+				// Check login for Password only
+				// Check if this is a PASS only login
+				if($Accounts->IsValidPassOnly($Text))
+				{
+					my $Login = $Accounts->GetPassOnlyLogin($Text);
+					$Client->$LoggedIn = true;
+					$Client->$Login = $Login;
+					$Client->$Password = $Password;
+					$Client->SendText("Thank you '$Login' for logging in");
+					my $CID = $Client->$ID;
+					say "Client ID '$CID' '$Login' as logged in.";
+					return;
+				}
+				$Client->$Login = $Text;
+				$Client->SendText("Enter your password now:");
+				return;
+			}
+			else // Getting password
+			{
+				my $Login = $Client->$Login;
+				my $Password = $Text;
+				if($Accounts->IsValid($Login, $Password))
+				{
+					$Client->SendText("Thank you '$Login' for logging in");
+					my $CID = $Client->$ID;
+					say "Client ID '$CID' '$Login' as logged in.";
+					$Client->$LoggedIn = true;
+					$Client->$Password = $Password;
+					if(!SocketConnected($TelnetHandler->$Socket))
+					{
+						$Client->SendText("Warning the game server Telnet is down");
+						return;
+					}
+				}
+				else
+				{
+					$Client->SendText("Invalid login or password");
+				}
+				return;
+			}
+		}
+		// Command exists?
+		if(!$CmdUtil->CommandExists($CommandName))
+		{
+			$Client->SendText("Invalid server command '$CommandName'");
+			return;
+		}
+		// Can user use the command?
+		if(!$Accounts->IsCommandValid($Client->$Login, $CommandName))
+		{
+			$Client->SendText("You dont have the access for command '$CommandName'");
+			return;
+		}
+		// Process command into something Telnet can use
+		my $TelnetCommand = $Text;
+		if(IsEmptyOrNull($TelnetCommand))
+		{
+			$Client->SendText("Server command '$CommandName' failed to process");
+			return;
+		}
+		$TelnetHandler->HandleCommand($Client, $CommandName, $TelnetCommand);
+	}
+	Function SendAllClients($Text)
+	{
+		foreach($Clients as my $CID => my $Client)
+		{
+			my $CSocket = $Client->$Socket;
+			if( SocketConnected($CSocket) )
+			{
+				$Client->SendText($Text);
+			}
+		}
+	}
+}
+
+class Client
+{
+	my $GServer;
+	my $Socket;
+	my $IP;
+	my $ID;
+	my $Input;
+	my $LoggedIn;
+	my $Login;
+	my $Password;
+	my $Ghost;
+	my $Action;
+	my $LastCommandTime;
+	Function __Construct($Serv, $cSocket, $cId, $cGhost = false)
+	{
+		$Ghost =  $cGhost;
+		$Input = "";
+		$Socket = $cSocket;
+		$ID = $cId;
+		$GServer = $Serv;
+		$LoggedIn = false;
+		$Login = null;
+		$Password = null;
+		$Action = null;
+		$LastCommandTime = array();
+		if(!$Ghost)
+			$IP = SocketIp($cSocket);
+	}
+	Function SendText($s)
+	{
+		if($Ghost)
+		{
+			$Input .= $s . "\r\n";
+			return;
+		}
+		SocketSend($Socket, Pack("z0", $s . "\r\n"));
+	}
+	Function SendBytes($s)
+	{
+		if($Ghost)
+			return;
+		SocketSend($Socket, (binary)$s);
+	}
+	Function AddString($s)
+	{
+		foreach($s as my $c)
+			AddChar($c);
+	}
+	Function AddChar($Char)
+	{
+		if($Char == "\n" || $Char == "\r") // Enter pressed....
+		{
+			if($Ghost)
+			{
+				$Input .= $Char;
+				return; // Ghosts keep all data...
+			}
+			my $Text = $Input;
+			$Input = "";
+			$Text = Trim($Text);
+			if(IsEmptyOrNull($Text))
+				return;
+			if($LoggedIn)
+				println("Client '$ID' '$Login' Typed: $Text");
+			else
+				println("Client '$ID' Typed: $Text");
+			if(StartsWith($Text, "/say"))
+				$GServer->SendAllClients($Login . " : " . substr($Text, 4));
+			else if($Text == "/list")
+			{
+				my $i = 0;
+				foreach($GServer->$Clients as my $CID => my $Client)
+				{
+					if(!$Client->$LoggedIn)
+						continue;
+					my $cliLog = $Client->$Login;
+					SendText("ID '$CID' Name '$cliLog'");
+					$i++;
+				}
+				SendText("There are $i users connected to this Telnet");
+			}
+			else
+				$GServer->HandleCommand($this, $Text);
+		}
+		else
+			$Input .= $Char;
+	}
+	Function CommandDone()
+	{
+		if($Ghost && $Action == "GetUserList")
+		{
+			my $SaveTo = $GServer->$Config->GetV("autouserlist");
+			my $Users = "";
+			while( $Input =~ m/(\d+). id=(\d+), (.*?), pos=/ig )
+			{
+				my $UserName = $_rg[$_][3];
+				$Users .= $UserName . "\n";
+			}
+			FileSave($SaveTo, $Users);
+		}
+		$Input = "";
+	}
+}
+
+my $server = new GServer();
+$server->GrabTelnet();
+$server->Start();
+
+Exit();
+
+Class TelnetHandler
+{
+	my $GServer;
+	my $Socket;
+	my $RecvBuffer;
+	my $Input;
+	my $SendTo;
+	Function __Construct($Serv)
+	{
+		$GServer = $Serv;
+		$Input = "";
+		$socket = SocketCreate("Stream", "TCP");
+		SocketConnect($Socket, $GServer->$Config->GetV("ip"), $GServer->$Config->GetV("port"));
+		SendText($GServer->$Config->GetV("password"));
+		if(SocketConnected($Socket))
+			say "Connection established to Telnet";
+		else
+		{
+			say "Failed to connect to Telnet";
+			say "You should restart the server";
+		}
+		$SendTo = array();
+	}
+	Function Start()
+	{
+		my $Counter = 0;
+		While(SocketConnected($Socket))
+		{
+			if(SocketAvailable($Socket))
+			{
+				my $Data = SocketReceive($Socket, SocketAvailable($Socket));
+				AddString(Unpack("z1", $Data[1], 2));
+			}
+			if($Counter > 1000) // One second passed
+			{
+				$Counter = 0;
+				CheckTimeouts();
+			}
+			sleep(1); // Sleep 1 milisecond
+			$Counter++;
+		}
+		say "Lost connection to Telnet";
+	}
+	Function CheckTimeouts()
+	{
+		if(count($SendTo))
+		{
+			my $Seconds = $SendTo[0][3];
+			$SendTo[0][3]--;
+			if($Seconds <= 0)
+			{
+				my $CommandName = $SendTo[0][1];
+				//$SendTo[0][0]->SendText("Sorry command '$CommandName' request timed out");
+				$SendTo[0][0]->CommandDone();
+				Shift($SendTo);
+				my $CurrentCount = count($SendTo);
+				if($CurrentCount > 0)
+					NextCommand($SendTo[0][2], true);
+			}
+			Count($SendTo);
+		}
+	}
+	Function HandleCommand($Client, $CommandName, $TelnetCommand)
+	{
+		NextCommand($TelnetCommand);
+		$SendTo[] = array($Client, $CommandName, $TelnetCommand, 2);
+	}
+	Function NextCommand($TelnetCommand, $force = false)
+	{
+		my $CurrentCount = count($SendTo);
+		if($force || $CurrentCount == 0) // Safe to enter a command
+			SendText($TelnetCommand);
+	}
+	Function SendText($s)
+	{
+		SocketSend($Socket, Pack("z0", $s . "\r\n"));
+	}
+	Function AddString($s)
+	{
+		foreach($s as my $c)
+			AddChar($c);
+	}
+	Function AddChar($Char)
+	{
+		if($Char == "\n" || $Char == "\r") // Enter pressed....
+		{
+			my $Text = $Input;
+			$Input = "";
+			$Text = Trim($Text);
+			if(IsEmptyOrNull($Text))
+				return;
+			RecvComplete($Text);
+		}
+		else
+			$Input .= $Char;
+	}
+	Function RecvComplete($Text)
+	{
+		if($Text =~ m/Time:\s*\d+/) // Time chunk
+			return; // ignore it
+		if($Text =~ m/STATS:\s*\d+/) // Stats chunk
+			return; // ignore it
+		if($Text =~ m/BiomeSpawnManager spawned:\s*\d+/) // Biospawn
+			return; // ignore it
+		if($Text =~ m/BiomeSpawnManager spawned \w+/) // Biospawn
+			return; // ignore it
+		if($Text =~ m/Saving playerData/) // Player Save
+			return; // ignore it
+		if($Text =~ m/Telnet executed "(.*)"/) // Telnet Exec
+			return; // ignore it
+		if($Text =~ m/Spawned GameObject/) // Spawn crap
+			return; // ignore it
+		if($Text =~ m/AIDirector:/) // AI crap
+			return; // ignore it
+		if( isset($SendTo[0]) )
+		{
+			my $CommandName = $SendTo[0][1];
+			$SendTo[0][0]->SendText($Text);
+			my $Seconds = $SendTo[0][3];
+		}
+	}
+}

@@ -1,0 +1,60 @@
+Class EntityRewardHourGlass extends EntityReward
+{
+	Static $UniqueID = 0;
+	my $ChangedAI;
+	my $RewardGiven;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$HourGlass;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/HourGlass/HourGlass.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 0;
+		$NoClip = true;
+		$ChangedAI = false;
+		$RewardGiven = false;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		if($ChangedAI)
+			AI::$AIEnabled = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if($RewardGiven)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			// Mark a done
+			$RewardGiven = true;
+			// Play Sound
+			PlayCollectionSound();
+			// Stop drawing the entity
+			$AllowDraw = false;
+			// Change AI to diabled
+			if(AI::$AIEnabled)
+			{
+				$ChangedAI = true;
+				AI::$AIEnabled = false;
+			}
+			else // Remove this entity
+				Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

@@ -1,0 +1,153 @@
+Class EntityReward extends Entity
+{
+	Static $UniqueID = 0;
+	my $Tex;
+	my $TexArray;
+	my $TexArrayFrame;
+	my $UseTexArray;
+	my $TexArrayTickCount;
+	my $TexArrayTickInterval;
+	my $Size;
+	my $EntityTickCount;
+	my $EntityTickInterval;
+	my $DeathCounter;
+	my $RewardValue;
+	my $PickupSound;
+	my $Falling;
+	my $FallDirection;
+	my $AllowDraw;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$ID = EntityType->$Reward;
+		$PickupSound = array(BinaryLoad('./Sounds/PickUp.wav'), 'PickUp.wav');
+		$CanDieFromBlocks = false;
+		my List ($DX, $DY) = $Engine->$Map->$LevelPositions[$X][$Y];
+		$DrawPosition = array($DX, $DY);
+		$EntityTickCount = 0;
+		$EntityTickInterval = 100;
+		$TexArrayTickCount = 0;
+		$TexArrayTickInterval = 100;
+		$NoClip = true;
+		$Falling = false;
+		$FallDirection = Direction->$Zero;
+		$AllowDraw = true;
+		$UseTexArray = false;
+		$TexArrayFrame = 0;
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function PlayCollectionSound( )
+	{
+		PlaySound($PickupSound, false);
+	}
+	Function SpwanPoints( )
+	{
+		if($Disposed)
+			return;
+		my $PointsName = 'EntityPoints' . EntityPoints::$UniqueID++;
+		my $newEntity = new EntityPoints($Game, $PointsName, 1, 1, $RewardValue);
+		$newEntity->$Position = $Position;
+		$newEntity->$DrawPosition = $DrawPosition;
+		$Game->$Map->$EntityManager->$Entities[$ID][$PointsName] = $newEntity;
+	}
+	Function SetFalling( )
+	{
+		$Falling = true;
+		$FallDirection = (int)Random(0, 2) ? Direction->$Down : Direction->$Up;
+		my $NewX = (int)Random(1, $Game->$Map->$MapWidth - 1);
+		switch($FallDirection)
+		{
+			case Direction->$Down:
+				my $NewY = 0;
+				my List ($DX, $DY) = $Game->$Map->$LevelPositions[$NewX][$NewY];
+				$DrawPosition = array($DX, $DY);
+				break;
+			case Direction->$Up:
+				my $NewY = $Game->$Map->$MapHeight - 1;
+				my List ($DX, $DY) = $Game->$Map->$LevelPositions[$NewX][$NewY];
+				$DrawPosition = array($DX, $DY);
+				break;
+		}
+	}
+	Function HandleFalling( )
+	{
+		if($Disposed)
+			return;
+		if(!$Falling)
+			return;
+		if($Falling && Stopped())
+		@{
+			my List( $X, $Y ) = GetPosition();
+			switch($FallDirection)
+			{
+				case Direction->$Down:
+					if($Y >= $Game->$Map->$MapHeight)
+					@{
+						Dispose(); // Went off Map
+						return;
+					}
+					break;
+				case Direction->$Up:
+					if($Y < 0)
+					@{
+						Dispose(); // Went off Map
+						return;
+					}
+					break;
+			}
+			TryMove($FallDirection);
+		}
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+	}
+	Function Draw()
+	{
+		if($Disposed)
+			return;
+			
+		my $DX = $DrawPosition[0];
+		my $DY = $DrawPosition[1];
+		
+		my $NewEntityTickCount = TickCount($EntityTickCount);
+		if($NewEntityTickCount > $EntityTickInterval)
+		@{
+			$EntityTickCount = TickCount() + $EntityTickInterval;
+			if($Game->$CurrentState == GameState->$Playing)
+				$DeathCounter--;
+			if($DeathCounter == 0)
+			@{
+				Dispose();
+				return;
+			}
+		}
+		if($AllowDraw)
+		@{
+			if($UseTexArray)
+			@{
+				XNADraw($TexArray[$TexArrayFrame], $DX, $DY, $ColWhite, $Size, $Size);
+				my $NewTexArrayTickCount = TickCount($TexArrayTickCount);
+				if($NewTexArrayTickCount > $TexArrayTickInterval)
+				@{
+					$TexArrayTickCount = TickCount() + $TexArrayTickInterval;
+					$TexArrayFrame++;
+					if($TexArrayFrame == count($TexArray))
+						$TexArrayFrame = 0;
+				}
+			}
+			else
+				XNADraw($Tex, $DX, $DY, $ColWhite, $Size, $Size);
+		}
+	}
+};

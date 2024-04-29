@@ -1,0 +1,25 @@
+﻿$onServerInit[] = 'AIDirectorInit';
+$onServerProcess[] = 'AIDirectorProcess';
+$onProcessTelnetLine[] = 'AIDirectorOnProcessTelnetLine';
+Class extends ServerManager
+{
+	Function AIDirectorInit()
+	{
+	}
+	Function AIDirectorOnProcessTelnetLine($lineTrim, $line)
+	{
+		//INF AIDirector: Spawning wandering horde moving towards player '[type=EntityPlayer, name=(.*?), id=171]'
+		if ($loggedIn && $lineTrim =~ m/INF AIDirector: Spawning wandering horde moving towards player '\[type=EntityPlayer, name=(.*?), id=(\d+)\]'$/)
+		{
+			my $playerName = $1;
+			my $playerId = $2;
+			my $found = $currentPlayers->FindById($playerId);
+			if ($found == null)
+				return;
+			SayToUser($found, '§120A wandering horde is near by');
+		}
+	}
+	Function AIDirectorProcess()
+	{
+	}
+}

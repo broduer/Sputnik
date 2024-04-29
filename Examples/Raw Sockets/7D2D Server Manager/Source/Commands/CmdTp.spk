@@ -1,0 +1,137 @@
+﻿$LoadCommands['tp'] = array('CmdTp', 1, 3);
+Class extends ServerManager
+{
+	Function CmdTp($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Teleport to another player';
+		if ($args === 'help')
+			return array(
+							'Teleport to another player like so ''/tp playerName''',
+							'Teleport a player to a player like so ''/tp playerName otherPlayerName''',
+							'Teleport an x y z like so ''/tp x y z'''
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowTeleport') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $name = $commandUser->$Name;
+		switch ($argCount)
+		{
+			case 1:
+			{
+				my $teleToWho = $args[0];
+				if (IsEmptyOrNull($teleToWho))
+				{
+					SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+					return;
+				}
+				my $found = $currentPlayers->FindByIdOrPartialName($teleToWho);
+				if ($found == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of '$teleToWho'");
+					return;
+				}
+				if ($found->$Id == $commandUser->$Id)
+				{
+					SayToUser($commandUser, "You cannot teleport to yourself");
+					return;
+				}
+				my $fromName = $found->$Name;
+				my List($X, $Y, $Z) = $found->$Pos;
+				if (GetConfig('TeleportFriendsOnly') && !AreBothFriends($commandUser, $found))
+				{
+					if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+					{
+						SayToUser($commandUser, "You may only teleport to your friends to add a friend see '/help fa'");
+						return;
+					}
+				}
+				my $tpCost = GetConfig('TeleportCost');
+				if ($tpCost > 0)
+				{
+					SayToUser($commandUser, "Teleporting you to '$fromName' costs '$tpCost' cash");
+					my $userCash = GetUserCash($commandUser);
+					if ($userCash < $tpCost)
+					{
+						SayToUser($commandUser, "You cannot afford to teleport you have '$userCash' cash and need '$tpCost'");
+						return;
+					}
+					DelUserCash($commandUser, $tpCost);
+					$userCash = GetUserCash($commandUser);
+					SayToUser($commandUser, "Teleporting you to '$fromName' now for '$tpCost' cash you now have '$userCash' cash left");
+				}
+				else
+					SayToUser($commandUser, "Teleporting you to '$fromName' now");
+				SayToUser($found, "'$name' is teleporting to you now");
+				TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+			}
+			break;
+			case 2:
+			{
+				if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+				{
+					SayToUser($commandUser, "Only Admins and Moderators may teleport players to each other");
+					return;
+				}
+				my $teleWho = $args[0];
+				if (IsEmptyOrNull($teleWho))
+				{
+					SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+					return;
+				}
+				my $foundWho = $currentPlayers->FindByIdOrPartialName($teleWho);
+				if ($foundWho == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of '$teleWho'");
+					return;
+				}				
+				my $teleToWho = $args[1];
+				if (IsEmptyOrNull($teleToWho))
+				{
+					SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+					return;
+				}
+				my $foundToWho = $currentPlayers->FindByIdOrPartialName($teleToWho);
+				if ($foundToWho == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of '$teleToWho'");
+					return;
+				}
+				if ($foundWho->$Id == $foundToWho->$Id)
+				{
+					SayToUser($commandUser, "You cannot teleport a player to themself");
+					return;
+				}
+				my $foundWhoName = $foundWho->$Name;
+				my $foundToWhoName = $foundToWho->$Name;
+				my List($x, $y, $z) = $foundToWho->$Pos;
+				SayToUser($foundWho, "'$name' is teleporting to you '$foundToWhoName'");
+				SayToUser($foundToWho, "'$name' is teleporting '$foundWhoName' to you");
+				TeleportUserToXYZ($foundWho, $x, $y, $z);
+			}
+			break;
+			case 3:
+			{
+				if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+				{
+					SayToUser($commandUser, "Only Admins and Moderators may to exact coordinates");
+					return;
+				}
+				my $x = (int)$args[0];
+				my $y = (int)$args[1];
+				my $z = (int)$args[2];
+				SayToUser($foundToWho, "You arrive at X:$x, Y:$y, Z:$z");
+				TeleportUserToXYZ($commandUser, $x, $y, $z);
+			}
+			break;
+		}
+	}
+}

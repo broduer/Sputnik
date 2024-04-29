@@ -1,0 +1,141 @@
+﻿$onPlayerTeleported[] = 'ReturnOnPlayerTeleported';
+$LoadCommands['return'] = array('CmdReturn', 0, 0);
+Class extends ServerManager
+{
+	Function CmdReturn($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Teleport to your last location';
+		if ($args === 'help')
+			return array(
+							'Teleport to your last location',
+							'By last it means the location you was before you got teleported'
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowReturn') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $returnFileData = $utils->getReturnFile();
+		my $OurSteamId = $commandUser->$SteamId;
+		if (!ReturnLocationExists($OurSteamId))
+		{
+			SayToUser($commandUser, "You do not have a location to return to");
+			return;
+		}
+		foreach($returnFileData as my $returnData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $returnData;
+			if ($SteamId eqi $OurSteamId)
+			{
+				my $tpCost = GetConfig('ReturnCost');
+				if ($tpCost > 0)
+				{
+					SayToUser($commandUser, "Teleporting you to your last location costs '$tpCost' cash");
+					my $userCash = GetUserCash($commandUser);
+					if ($userCash < $tpCost)
+					{
+						SayToUser($commandUser, "You cannot afford to teleport you have '$userCash' cash and need '$tpCost'");
+						return;
+					}
+					DelUserCash($commandUser, $tpCost);
+					$userCash = GetUserCash($commandUser);
+					SayToUser($commandUser, "You arrive back at your last location at a cost of '$tpCost' cash you now have '$userCash' cash left");
+				}
+				else
+					SayToUser($commandUser, "You arrive back at your last location");
+				TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+				return;
+			}
+		}
+		SayToUser($commandUser, "Could not find your last location!");
+	}
+	Function ReturnOnPlayerTeleported($user, $x, $y, $z)
+	{
+		my List($px, $py, $pz) = $user->$Pos;
+		my $steamId = $user->$SteamId;
+		ReturnSetLocation($steamId, $px, $py, $pz);
+	}
+	Function ReturnSetLocation($SteamId, $X, $Y, $Z)
+	{
+		ReturnDeleteLocation($SteamId);
+		my $returnFileData = $utils->getReturnFile();
+		$returnFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		$utils->setReturnFile($returnFileData);
+	}
+	Function ReturnDeleteLocation($toFind)
+	{
+		my $returnFileData = $utils->getReturnFile();
+		my $newReturnFileData = array();
+		for (my $i = 0; $i < count($returnFileData); $i++)
+		{
+			my List($SteamId, $X, $Y, $Z) = $returnFileData[$i];
+			if ($SteamId eqi $toFind)
+				continue;
+			$newreturnFileData[] = $returnFileData[$i];
+		}
+		$utils->setReturnFile($newReturnFileData);
+	}
+	Function ReturnLocationExists($toFind)
+	{
+		my $returnFileData = $utils->getReturnFile();
+		foreach($returnFileData as my $returnData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $returnData;
+			if ($SteamId eqi $toFind)
+				return true;
+		}
+		return false;
+	}
+}
+Class extends Utils
+{
+	Function getReturnFile()
+	{
+		my $returnFileData = array();
+		if (!FileExists('./Variables/Returns.txt'))
+			return $returnFileData;
+		my $returnFile = FileReadLines('./Variables/Returns.txt');
+		foreach($returnFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 4)
+				continue;
+			my List($SteamId, $X, $Y, $Z) = $split;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			if (IsEmptyOrNull($X))
+				$X = 0;
+			if (IsEmptyOrNull($Y))
+				$Y = 0;
+			if (IsEmptyOrNull($Z))
+				$Z = 0;
+			$returnFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		}
+		return $returnFileData;
+	}
+	Function setReturnFile($returnFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId|X|Y|Z");
+		foreach($returnFileData as my $returnData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $returnData;
+			sbAppendLine($sb, "$SteamId|$X|$Y|$Z");
+		}
+		FileSave('./Variables/Returns.txt', sbToString($sb));
+		unset($sb);
+	}
+}

@@ -1,0 +1,127 @@
+﻿$LoadCommands['slots'] = array('CmdSlots', 0, 1);
+Class extends ServerManager
+{
+	Function CmdSlots($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Gambling;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Play a slot machine for a chance to win big bucks';
+		if ($args === 'help')
+			return array(
+							'Play a slot machine for a chance to win big bucks',
+							'This is a hard slot machine but the higher the jackpot the more your chances of winning increase!',
+							'You can define a number of spins to do usnig a number like so',
+							'Type ''/slots 10'' to spin it 10 times in a row'
+							);
+		if ($commandUser == null)
+			return;
+			
+		my $Reel1 = array(1, 1, 5, 2, 3, 1, 4, 1, 6, 3, 2, 2, 2, 4, 1, 1);
+		my $Reel2 = array(2, 2, 2, 4, 3, 5, 1, 1, 6, 1, 4, 1, 3, 3, 1, 1);
+		my $Reel3 = array(6, 5, 3, 2, 4, 2, 3, 1, 1, 5, 1, 4, 2, 1, 3, 1);
+		my $verbose = array(null, 'Wood', 'Iron', 'Shotgun', 'Medkit', 'TNT', 'Airdrop');
+			
+		my $spinTimes = $argCount <= 0 ? 1 : (int)$args[0];
+		if ($spinTimes <= 0)
+			$spinTimes = 1;
+		while(true)
+		{
+			my $Jackpot = (int)VarGet("SlotMachineJackpotAmount");
+			my $initJackpot = (int)GetConfig('SlotsInitial');
+			if ($Jackpot < $initJackpot)
+				$Jackpot = $initJackpot;
+				
+			my $CostToPlay = ((int)GetConfig("SlotsCostToPlay") < 1 ? 1 : (int)GetConfig("SlotsCostToPlay"));
+			my $cash = GetUserCash($commandUser);
+			if ($cash < $CostToPlay)
+			{
+				SayToUser($commandUser, "You do not have enough cash to play slots you have '$cash' cash and you need '$CostToPlay' cash");
+				SayToUser($commandUser, "The current jackpot is $Jackpot");
+				return;
+			}
+			
+			my $val1 = $Reel1[Random(0, count($Reel1), 0)];
+			my $val2 = $Reel2[Random(0, count($Reel2), 0)];
+			my $val3 = $Reel3[Random(0, count($Reel3), 0)];
+			
+			my $pcr = $CostToPlay * 0.50;
+			$Jackpot += $pcr >= 1 ? $pcr : 1;
+			DelUserCash($commandUser, $CostToPlay);
+			VarSet("SlotMachineJackpotAmount", $Jackpot);
+			
+			my $limiter = ($Jackpot / 100) - $CostToPlay;
+			if ($limiter > 0)
+			{
+				my $limiterVal = (100 - $limiter);
+				if ($limiterVal < 0)
+					$limiterVal = 0;
+				if (Random(0, 100, 0) >= $limiterVal)
+				{
+					if (Random(0, 100, 0) >= 96)
+					{
+						$val1 = 6;
+						$val2 = 6;
+						$val3 = 6;
+					}
+				}
+			}
+						
+			my $cash = GetUserCash($commandUser);		
+			SayToUser($commandUser, "Thanks for playing for '$CostToPlay' cash you have '$cash' cash left");
+			SayToUser($commandUser, "The current jackpot is $Jackpot");
+			SayToUser($commandUser, "The reels spin... $verbose[$val1]  - $verbose[$val2] - $verbose[$val3]");
+			
+			if ($val1 == $val2 && $val2 == $val3)
+			{
+				switch ($val1)
+				{
+					case 1:
+						my $payout = Ceiling((3.0 / 16.0) * $CostToPlay) * 1  + $CostToPlay;
+						my $msg = "You win $payout gold";
+						SayToUser($commandUser, $msg);
+						AddUserCash($commandUser, $payout);
+						break;
+					case 2:
+						my $payout = Ceiling((4.8 / 16.0) * $CostToPlay) * 2  + $CostToPlay;
+						my $msg = "You win $payout gold";
+						SayToUser($commandUser, $msg);
+						AddUserCash($commandUser, $payout);
+						break;
+					case 3:
+						my $payout = Ceiling((6.0 / 16.0) * $CostToPlay) * 3  + $CostToPlay;
+						my $msg = "You win $payout gold";
+						SayToUser($commandUser, $msg);
+						AddUserCash($commandUser, $payout);
+						break;
+					case 4:
+						my $payout = Ceiling((8.0 / 16.0) * $CostToPlay) * 4  + $CostToPlay;
+						my $msg = "You win $payout gold";
+						SayToUser($commandUser, $msg);
+						AddUserCash($commandUser, $payout);
+						break;
+					case 5:
+						my $payout = Ceiling((12.0 / 16.0) * $CostToPlay) * 5  + $CostToPlay;
+						my $msg = "You win $payout gold";
+						SayToUser($commandUser, $msg);
+						AddUserCash($commandUser, $payout);
+						break;
+					case 6:
+						my $msg = "You win THE JACKPOT!!!";
+						VarSet("SlotMachineJackpotAmount", 0);
+						AddUserCash($commandUser, $Jackpot);
+						SayToUser($commandUser, $msg);
+						SayToAll($commandUser->$Name . " has just won the slots jackpot!!! A winning of '$Jackpot' cash");
+						return;
+				}
+			} 
+			else
+				SayToUser($commandUser, "Bad luck, no win this time.");
+			$spinTimes--;
+			if ($spinTimes <= 0)
+				break;
+		}
+	}
+}

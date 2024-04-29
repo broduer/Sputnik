@@ -1,0 +1,74 @@
+#<?
+Class PropAnchor extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return '[ANCHOR]';
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Anch = GUIGetProp($Object->GetObject(), $Name);
+		my $Ret = ChoiceBox('Anchor', 
+							'Please select the anchor type below you may select multiple types', 
+							array(	'None' => (($Anch & @AnchorNone) > 0), 
+									'Top' => (($Anch & @AnchorTop) > 0), 
+									'Bottom' => (($Anch & @AnchorBottom) > 0), 
+									'Left' => (($Anch & @AnchorLeft) > 0), 
+									'Right' => (($Anch & @AnchorRight) > 0)
+							), true);
+		if($Ret === null)
+			return null;
+		if(!$Ret)
+		@{
+			MsgBox('You must pick an option', $Title, 48);
+			return null;
+		}
+		my $Anchor = 0;
+		foreach($Ret as my $a)
+		{
+			switch($a)
+			{
+				case 'None':
+					$Anchor |= @AnchorNone;
+					break;
+				case 'Top':
+					$Anchor |= @AnchorTop;
+					break;
+				case 'Bottom':
+					$Anchor |= @AnchorBottom;
+					break;
+				case 'Left':
+					$Anchor |= @AnchorLeft;
+					break;
+				case 'Right':
+					$Anchor |= @AnchorRight;
+					break;
+			}
+		}
+		GUISetProp($Object->GetObject(), $Name, $Anchor);
+		return null;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		GUISetProp($Object->GetObject(), $Name, (Int64)$Value);
+	}
+	override Function SaveProp($Object)
+	{
+		(string)GUIGetProp($Object->GetObject(), $Name);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Value = (string)GUIGetProp($Object->GetObject(), $Name);
+		$Code .= "GUISetProp(\$$ObjName, '$Name', $Value);\r\n";
+		return $Code;
+	}
+};

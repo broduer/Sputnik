@@ -1,0 +1,434 @@
+﻿Global $db = null;
+Global $dbName = '';
+Global $curPath = new HotPath();
+Global $pathCache = array();
+
+
+$dbName = './dbFiles/Da Hangover.db';
+$db = new HotFileInfoList();
+$db->Unserialize(BinaryLoad($dbName));
+PopulateCache();
+PrintHeader();
+
+while (true)
+{
+	if ($db == null)
+		die('No .db file is loaded (Check the script and make it use a .db file)');
+	my $pathStr = $curPath->ToString();
+	my $input = input("$pathStr> ");
+	my $parsed = CSV($input, ' ', '''')[0];
+	my $cmdName = lc($parsed[0]);
+	my $rest = trimLeft(substr($input, strlen($cmdName)));
+	if ($cmdName == 'dir')
+	{
+		foreach(GetCurrentListing() as my $file)
+		{
+			if ($file->IsDirectory())
+				say '<DIR> ' . $file->$FileName;
+		}
+		foreach(GetCurrentListing() as my $file)
+		{
+			if (!$file->IsDirectory())
+				say '<FILE> | ' . $file->FormatFileSize() . ' | ' . $file->$FileName;
+		}
+	}
+	else if ($cmdName == 'cls')
+	{
+		cls();
+		PrintHeader();
+	}
+	else if ($cmdName == 'cd')
+	{
+		if ($rest == '..')
+			$curPath->Pop();
+		else
+		{
+			my $found = false;
+			foreach(GetCurrentListing() as my $file)
+			{
+				if (!$file->IsDirectory())
+					continue;
+				if (StartsWith(lc($file->$FileName), lc($rest)))
+				{
+					$found = true;
+					$curPath->Push($file->$FileName);
+					break;
+				}
+			}
+			if (!$found)
+				say "There is no folder with the name '$rest' in the current root";
+		}
+	}
+	else
+	{
+		say "Invalid command.";
+	}
+}
+
+Function GetCurrentListing()
+{
+	my $list = array();
+	my $listing = $pathCache[$curPath->ToString()];
+	foreach($listing->$_myList as my $file)
+		$list[] = $file;
+	return $list;
+}
+
+Function PrintHeader()
+{
+	say 'Pitbull .db Explorer';
+	say 'Copyright (c) 2015 UberSoft Corporation.  All rights reserved.';
+	say;
+	if ($db)
+	{
+		say "Currently exploring: $dbName";
+		say;
+	}
+}
+
+Function PopulateCache()
+{
+	$pathCache = array();
+	$pathCache[new HotPath()->ToString()] = $db;
+	my $stack = array($db);
+	while (count($stack) > 0)
+	{
+		my $current = $stack[count($stack) - 1];
+		Remove($stack, count($stack) - 1);
+		Order($stack);
+		foreach ($current->$_myList as my $c)
+		{
+			if (!$c->IsDirectory())
+				continue;
+			$pathCache[$c->AbsLocation()->ToString()] = $c->$Children ?? new HotFileInfoList();
+			$stack[] = $c->$Children;
+		}
+	}
+}
+
+Class HotFileInfo
+{
+	my $FileName;
+	my $FileType;
+	my $FileTypeString;
+	my $FileCreatorString;
+	my $FileCreator;
+	my $FileSize;
+	my $FileNameScript;
+	my $Path;
+	my $Extension;
+	my $IsUploadFolder;
+	my $IsDropboxFolder;
+	my $Children;
+	my $BeginsWithDot;
+	my $Parent;
+	Function __Construct($name, $type, $creator, $size, $nameScript)
+	{
+		$Children = new HotFileInfoList();
+		$FileName = $name;
+		$FileType = $type;
+		$FileCreator = $creator;
+		$FileSize = $size;
+		$FileNameScript = $nameScript;
+		$Path = new HotPath();
+		my $FileNameLC = LC($FileName);
+		$Extension = GetExtension(EndsWith($FileNameLC, '.lnk') ? substr($FileName, 0, strlen($FileName) - 4) : $FileName);
+		if (strlen($Extension) > 0 && $extension[0] == '.')
+			$extension = substr($extension, 1);
+		$FileTypeString = BT($FileType);
+		$FileCreatorString = BT($FileCreator);
+		$BeginsWithDot = strlen($FileName) > 0 && $FileName[0] == '.';
+		if (IsDirectory() && Contains($FileNameLC, 'upload'))
+			$IsUploadFolder = true;
+		if (IsDirectory() && Contains($FileNameLC, 'drop box'))
+			$IsDropboxFolder = true;
+		$Parent = null;
+	}
+	Function IsDirectory()
+	{
+		return $FileTypeString == 'fldr';
+	}
+	Function FormatFileSize()
+	{
+		my $k = 1024.0;
+		my $limits = array($k * $k * $k * $k * $k, $k * $k * $k * $k, $k * $k * $k, $k * $k, $k);
+		my $units = array('PB', 'TB', 'GB', 'MB', 'KB');
+		my $count = count($limits);
+		my $size = (double)$FileSize;
+		for (my $i = 0; $i < $count; $i++)
+		{
+			if ($size >= $limits[$i])
+				return Fmt('{0:#,##0.##} ' . $units[$i], ($size / $limits[$i]));
+		}
+
+		return Fmt('{0} bytes', $size);
+	}
+	Function AbsLocation()
+	{
+		if ($Path->$Empty)
+		{
+			my $ret = new HotPath();
+			$ret->Push($FileName);
+			return $ret;
+		}
+		else
+		{
+			my $ret = $Path->Clone();
+			$ret->Push($FileName);
+			return $ret;
+		}
+	}
+	Function ToFileNameWithInfo($use4GbFix = false)
+	{
+		my $buffer = ByteBufferNew();
+		ByteBufferPut($buffer, 'V', PackSingle('N', $FileType));
+		ByteBufferPut($buffer, 'V', PackSingle('N', $FileCreator));
+		if ($use4GbFix)
+			ByteBufferPut($buffer, 'V', PackSingle('Q', $FileSize));
+		else
+		{
+			ByteBufferPut($buffer, 'V', PackSingle('N', $FileSize));
+			ByteBufferPut($buffer, 'V', PackSingle('N', 0));
+		}
+		ByteBufferPut($buffer, 'V', PackSingle('n', $FileNameScript));
+		my $nameBin = PackSingle('z7', $FileName);
+		ByteBufferPut($buffer, 'V', PackSingle('n', count($nameBin)));
+		ByteBufferPut($buffer, 'V', $nameBin);
+		my $data = ByteBufferToBinary($buffer);
+		unset($buffer);
+		return $data;
+	}
+	Static Function ParseFileNameWithInfo($data, $use4GbFix, &$pos)
+	{
+		if ($data == null)
+			return null;
+		my $count  = count($data);
+		if ($count < 20)
+			return null;
+		my $type = UnpackSingle('N', $data, $pos);
+		$pos += 4;
+		my $creator = UnpackSingle('N', $data, $pos);
+		$pos += 4;
+		my $fileSize = UnpackSingle($use4GbFix ? 'Q' : 'N', $data, $pos);
+		$pos += 8;
+		my $nameScript = UnpackSingle('n', $data, $pos);
+		$pos += 2;
+		my $nameSize = UnpackSingle('n', $data, $pos);
+		$pos += 2;
+		if ($count < 20 + $nameSize)
+			return null;
+		my $strData = BinaryCreate($nameSize);
+		for (my $i = 0; $i < $nameSize; $i++)
+		{
+			$strData[$i] = $data[$pos];
+			$pos++;
+		}
+		my $name = UnpackSingle('z7', $strData);
+		my $fileInfo = new HotFileInfo($name, $type, $creator, $fileSize, $nameScript);
+		return $fileInfo;
+	}
+}
+Class HotFileInfoList
+{
+	my $_myList;
+	Function __Construct($listing = null)
+	{
+		if ($listing == null)
+			$_myList = array();
+		else
+			$_myList = $listing;
+	}
+	Function Add($child)
+	{
+		$_myList[] = $child;
+	}
+	Function Clear()
+	{
+		$_myList = array();
+	}
+	Function HowMany()
+	{
+		return count($_myList);
+	}
+	Function UnserializeIndividual(&$totalCount, $path, $data, &$pos)
+	{
+		my $dataLen = count($data);
+		my $info = HotFileInfo::ParseFileNameWithInfo($data, true, $pos);
+		if ($info == null)
+			return null;
+		$totalCount++;
+		$info->$Path = $path->Clone();
+		if ($info->IsDirectory())
+			$path->Push($info->$FileName);
+		if ($pos + 4 > $dataLen)
+			return null;
+		my $count = UnpackSingle('N', $data, $pos);
+		$pos += 4;
+		for (my $i = 0; $i < $count; $i++)
+		{
+			my $found = UnserializeIndividual($totalCount, $path, $data, $pos);
+			if ($found == null) 
+				continue;
+			$found->$Parent = $info;
+			$info->$Children->Add($found);
+		}
+		if ($info->IsDirectory())
+		{
+			$path->Pop();
+			$info->$FileSize = $info->$Children->HowMany();
+		}
+		return $info;
+	}
+	Function Unserialize($data)
+	{
+		Clear();
+		if ($data == null)
+			return 0;
+		my $totalCount = 0;
+		my $path = new HotPath();
+		my $pos = 0;
+		if (count($data) < 4)
+			return 0;
+		my $count = UnpackSingle('N', $data, $pos);
+		$pos += 4;
+		for (my $i = 0; $i < $count; $i++)
+		{
+			my $done = UnserializeIndividual($totalCount, $path, $data, $pos);
+			if ($done != null)
+				Add($done);
+		}
+		return $totalCount;
+	}
+}
+
+Class HotPath
+{
+	my $_path;
+	my $ElemCount { get { return count($_path); } }
+    my $Empty { get { return count($_path) <= 0; } }
+	Function __Construct()
+	{
+	}
+	Function Clear()
+	{
+		$_path = array();
+	}
+	Function Unshift($path)
+	{
+		if (IsEmptyOrNull($path))
+			return;
+		$_path[]! = $path;
+	}
+	Function Push($path)
+	{
+		if (IsEmptyOrNull($path))
+			return;
+		$_path[] = $path;
+	}
+	Function Pop()
+	{
+		my $count = count($_path);
+		if ($count <= 0) 
+			return null;
+		my $elem = $_path[$count - 1];
+		Remove($_path, $count - 1);
+		Order($_path);
+		return $elem;
+	}
+	Function Shift()
+	{
+		my $count = count($_path);
+		if ($count <= 0)
+			return null;
+		my $elem = $_path[0];
+		Remove($_path, 0);
+		Order($_path);
+		return $elem;
+	}
+	Function ToString()
+	{
+		my $count = count($_path);
+		if ($count <= 0)
+			return '/';
+		my $sb = sbNew();
+		sbAppend($sb, '/');
+		for (my $index = 0; $index < $count; $index++)
+		{
+			my $c = $_path[$index];
+			$c = Replace($c, '/', '\/');
+			sbAppend($sb, $c);
+			if ($index + 1 < $count)
+				sbAppend($sb, '/');
+		}
+		my $str = sbToString($sb);
+		my $strLen = strlen($str);
+		if ($strLen > 0 && $str[$strLen - 1] != '/')
+			$str .= '/';
+		unset($sb);
+		return $str;
+	}
+	Function Clone()
+	{
+		my $c = new HotPath();
+		foreach($_path as my $p)
+			$c->Push($p);
+		return $c;
+	}
+	Static Function Unserialize($pathBin)
+	{
+		my $count = count($pathBin);
+		my $path = new HotPath();
+		if ($count == 2 && $pathBin[0] == 0xFF && $pathBin[1] == 0xFF)
+			return new HotPath();
+		if ($count < 6)
+			return new HotPath();
+		my $pos = 0;
+		my $segCount = UnpackSingle('n', $pathBin, $pos);
+		$pos += 2;
+		$pos += 2;
+		for (my $i = 0; $i < $segCount; $i++)
+		{
+			if ($count < $pos + 1)
+				return new HotPath();
+			my $segNameSize = UnpackSingle('C', $pathBin, $pos);
+			$pos++;
+			if ($count < $pos + $segNameSize)
+				return new HotPath();
+			my $nameBytes = BinaryCreate($segNameSize);
+			for (my $k = 0; $k < $segNameSize; $k++)
+			{
+				$nameBytes[$k] = $pathBin[$pos];
+				$pos++;
+			}
+			my $name = UnpackSingle('z7', $nameBytes);
+			$path->Push($name);
+			$pos += 2;
+		}
+		return $path;
+	}
+	Function Serialize()
+	{
+		my $count = count($_path);
+		my $segCountBin = PackSingle('n', $count);
+		my $buffer = ByteBufferNew();
+		ByteBufferPut($buffer, 'V', $segCountBin);
+		ByteBufferPut($buffer, 'B', 0x00);
+		ByteBufferPut($buffer, 'B', 0x00);
+		for (my $i = 0; $i < $count; $i++)
+		{
+			my $seg = $_path[$i];
+			my $segBin = PackSingle('z7', $seg);
+			my $segSizeBin = PackSingle('C', count($segBin));
+			ByteBufferPut($buffer, 'V', $segSizeBin);
+			ByteBufferPut($buffer, 'V', $segBin);
+			if ($i + 1 < $count)
+			{
+				ByteBufferPut($buffer, 'B', 0x00);
+				ByteBufferPut($buffer, 'B', 0x00);
+			}
+		}
+		my $ret = ByteBufferToBinary($buffer);
+		unset($buffer);
+		return $ret;
+	}
+}

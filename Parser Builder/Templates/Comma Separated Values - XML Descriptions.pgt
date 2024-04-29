@@ -1,0 +1,17 @@
+##TEMPLATE-NAME 'Comma Separated Values - XML Descriptions'
+##LANGUAGE 'None'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'csv'
+##NOTES
+This template creates a simple list the enumerated constants. The description is encoded using XML-friendly text.
+##END-NOTES
+##ID-CASE Uppercase
+##ID-SEPARATOR '_'
+##SYMBOLS
+"Symbol", "%ID%", "%Value%", "%Description.XML%"
+##END-SYMBOLS 
+##RULES
+"Rule", "%ID%", "%Value%", "%Description.XML%"
+##END-RULES
+

@@ -1,0 +1,146 @@
+Class Parameters
+{
+	my $NumOfParameters;
+	my $Fields;
+	Function __Construct()
+	{
+		$Fields = array();
+	}
+	Function SetNumOfParameters( $Value )
+	{
+		$NumOfParameters = Pack('n', Count($Fields));
+	}
+	Function GetNumOfParameters()
+	{
+		return Unpack('n', $Field->$NumOfParameters)[0];
+	}
+	Function Exists ( $ID )
+	{
+		foreach($Fields as my $Field)
+		@{
+			if($ID == $Field->$FieldID)
+				return true;
+		}
+		return false;
+	}
+	Function GetString ( $ID )
+	{
+		foreach($Fields as my $Field)
+		@{
+			if($ID == $Field->$FieldID)
+				return Unpack('z0', $Field->$FieldData)[0];
+		}
+		return null;
+	}
+	Function GetInteger ( $ID )
+	{
+		foreach($Fields as my $Field)
+		@{
+			if($ID == $Field->$FieldID)
+				return Unpack('n', $Field->$FieldData)[0];
+		}
+		return null;
+	}
+	Function GetIntegerLong ( $ID )
+	{
+		foreach($Fields as my $Field)
+		@{
+			if($ID == $Field->$FieldID)
+				return Unpack('N', $Field->$FieldData)[0];
+		}
+		return null;
+	}
+	Function GetBinary ( $ID )
+	{
+		foreach($Fields as my $Field)
+		@{
+			if($ID == $Field->$FieldID)
+				return $Field->$FieldData;
+		}
+		return null;
+	}
+	Function Clear(  )
+	{
+		$Fields = array();
+	}
+	Function Add( $Field )
+	{
+		$Fields[] = $Field;
+	}
+	Function AddBinary( $ID, $Value )
+	{
+		$Fields[] = new FieldBinary($ID, $Value);
+	}
+	Function AddInteger( $ID, $Value )
+	{
+		$Fields[] = new FieldInteger($ID, $Value);
+	}
+	Function AddIntegerLong( $ID, $Value )
+	{
+		$Fields[] = new FieldIntegerLong($ID, $Value);
+	}
+	Function AddString( $ID, $Value )
+	{
+		$Fields[] = new FieldString($ID, $Value);
+	}
+	Function AddStringEnc( $ID, $Value )
+	{
+		$Fields[] = new FieldStringEnc($ID, $Value);
+	}
+	Function GetData( )
+	{
+		SetNumOfParameters();
+		my $TotalSize = 2;
+		foreach($Fields as my $Field)
+			$TotalSize += 4 + $Field->GetFieldSize();
+		my $Data = BinaryCreate($TotalSize);
+		my $Pos = 0;
+		$Data[$Pos] = $NumOfParameters[0];
+		$Pos++;
+		$Data[$Pos] = $NumOfParameters[1];
+		$Pos++;
+		foreach($Fields as my $Field)
+		@{
+			$Data[$Pos] = $Field->$FieldID[0];
+			$Pos++;
+			$Data[$Pos] = $Field->$FieldID[1];
+			$Pos++;
+			$Data[$Pos] = $Field->$FieldSize[0];
+			$Pos++;
+			$Data[$Pos] = $Field->$FieldSize[1];
+			$Pos++;
+			foreach($Field->$FieldData as my $FData)
+			@{
+				$Data[$Pos] = $FData;
+				$Pos++;
+			}
+		}
+		return $Data;
+	}
+	Function ParseData( $TData )
+	{
+		$this->Clear();
+		$NumOfParameters = Unpack('n', $TData, 2);
+		my $DataNum = 2;
+		for(my $i = 0; $i < $NumOfParameters; $i++)
+		{
+			my $Field = new Field();
+			my $FieldID = Unpack('x' . $DataNum . '/n', $TData, 2);
+			$Field->$FieldID = $FieldID;
+			$DataNum += 2;
+			my $FieldSize = Unpack('x' . $DataNum . '/n', $TData, 2);
+			$Field->$FieldSize = $FieldSize;
+			$DataNum += 2;
+			my $FieldData = BinaryCreate($FieldSize);
+			$Field->$FieldData = $FieldData;
+			my $DataAdded = 0;
+			for(my $i = 0; $i < $FieldSize; $i++)
+			{
+				$FieldData[$i] = $TData[$DataNum];
+				$DataNum++;
+				$DataAdded++;
+			}
+			$this->Add($Field);
+		}
+	}
+}

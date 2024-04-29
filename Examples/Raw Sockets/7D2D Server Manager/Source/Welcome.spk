@@ -1,0 +1,86 @@
+﻿$onServerInit[] = 'WelcomeInit';
+$onPlayerListChange[] = 'WelcomeOnPlayerListChangeFinished';
+Class extends ServerManager
+{
+	my $sendWelcomeTo;
+	Function WelcomeInit()
+	{
+		$sendWelcomeTo = array();
+	}
+	Function WelcomeOnPlayerListChangeFinished()
+	{
+		for (my $i = 0; $i < count($sendWelcomeTo); $i++)
+		{
+			my $SteamId = $sendWelcomeTo[$i];
+			my $found = $currentPlayers->FindBySteamId($SteamId);
+			if ($found == null)
+				return;
+			unset($sendWelcomeTo[$i]);
+			order($sendWelcomeTo);
+			my $name = $found->$Name;
+			if (!HasWelcomed($SteamId))
+			{
+				SayToAll("Welcome new player $name to the server we hope you enjoy playing!");
+				AddToWelcome($SteamId);
+			}
+			else
+				SayToAll("Welcome back $name");
+			foreach($onPlayerJoined as my $func)
+				Call(array($this, $func), $found);
+			if (GetConfig('SoundOnJoin'))
+				PlaySound('./Sounds/PlayerJoined.wav', false);
+			DebugMsg("$name has joined the server");
+		}
+	}
+	Function HasWelcomed($SteamIdToCheck)
+	{
+		my $welcomeFileData = $utils->getWelcomeFile();
+		foreach($welcomeFileData as my $SteamId)
+		{
+			if ($SteamId == $SteamIdToCheck)
+				return true;
+		}
+		return false;
+	}
+	Function AddToWelcome($SteamId)
+	{
+		if (HasWelcomed($SteamId))
+			return;
+		my $welcomeFileData = $utils->getWelcomeFile();
+		$welcomeFileData[] = $SteamId;
+		$utils->setWelcomeFile($welcomeFileData);
+	}
+}
+Class extends Utils
+{
+	Function getWelcomeFile()
+	{
+		my $welcomeFileData = array();
+		if (!FileExists('./Variables/Welcome.txt'))
+			return $welcomeFileData;
+		my $itemFile = FileReadLines('./Variables/Welcome.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $SteamId = $lineTrim;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			$welcomeFileData[] = $SteamId;
+		}
+		return $welcomeFileData;
+	}
+	Function setWelcomeFile($welcomeFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId");
+		foreach($welcomeFileData as my $SteamId)
+			sbAppendLine($sb, $SteamId);
+		FileSave('./Variables/Welcome.txt', sbToString($sb));
+		unset($sb);
+	}
+}

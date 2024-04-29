@@ -1,0 +1,10 @@
+#include-once
+#require-once
+say "Checking Bit strings";
+
+# ASCII-based examples from Perl (applies to Sputnik)
+assert(("j p \n" ^ " a h") == "JAPH\n");
+assert(("JA" | "  ph\n") == "japh\n");
+assert(("japh\n" & '_____') == "JAPH\n");
+assert(('p N$' ^ " E<H\n") == "Perl\n");
+say "Done checking Bit strings";

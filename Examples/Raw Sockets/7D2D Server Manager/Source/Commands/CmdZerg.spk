@@ -1,0 +1,50 @@
+﻿$LoadCommands['zerg'] = array('CmdZerg', 1, 1);
+Class extends ServerManager
+{
+	Function CmdZerg($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Spawn a ton of Zombies on a bad griefing player';
+		if ($args === 'help')
+			return array("Spawn a ton of Zombies on a bad griefing player");
+		if ($commandUser == null)
+			return;
+		my $findWho = $args[0];
+		if (IsEmptyOrNull($findWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my $found = $currentPlayers->FindByIdOrPartialName($findWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$findWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot Zerg yourself");
+			return;
+		}
+		if (IsUserAdmin($found))
+		{
+			SayToUser($commandUser, "You cannot Zerg an Administrator");
+			return;
+		}
+		if (!IsUserAdmin($commandUser) && IsUserModerator($found))
+		{
+			SayToUser($commandUser, "You cannot Zerg a Moderator");
+			return;
+		}
+		my $name = $commandUser->$Name;
+		my $foundName = $found->$Name;
+		for (0..20)
+			SpawnEntityAtUser($found, 'spiderzombie');
+		SayToUser($found, "§120$name has spawned 20 Spider Zombies in your face");
+		SayToUser($commandUser, "§120$foundName now has 20 Spider Zombies to deal with");
+	}
+}

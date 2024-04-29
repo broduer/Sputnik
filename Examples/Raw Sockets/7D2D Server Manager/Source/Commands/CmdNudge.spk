@@ -1,0 +1,19 @@
+﻿$LoadCommands['nudge'] = array('CmdNudge', 0, 0);
+Class extends ServerManager
+{
+	Function CmdNudge($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Administration;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Nudge an Administrator for help';
+		if ($args === 'help')
+			return array('Nudge an Administrator for help');
+		if ($commandUser == null)
+			return;
+		SayToUser($commandUser, "The head administrator has been notified by your nudge");
+		PlaySound('./Sounds/Nudge.mp3', false);
+	}
+}

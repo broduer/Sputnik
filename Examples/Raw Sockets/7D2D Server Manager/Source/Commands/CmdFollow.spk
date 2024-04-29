@@ -1,0 +1,28 @@
+﻿$onServerInit[] = 'FollowInit';
+$onServerProcess[] = 'FollowProcess';
+$LoadCommands['follow'] = array('CmdFollow', 1, 1);
+Class extends ServerManager
+{
+	my $followList;
+	Function CmdFollow($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Follow another player (and teleport to if too far away)';
+		if ($args === 'help')
+			return array('Follow another player (and teleport to if too far away)');
+		if ($commandUser == null)
+			return;
+		SayToUser($commandUser, "This command is under construction");
+	}
+	Function FollowInit()
+	{
+		$followList = array();
+	}
+	Function FollowProcess()
+	{
+	}
+}

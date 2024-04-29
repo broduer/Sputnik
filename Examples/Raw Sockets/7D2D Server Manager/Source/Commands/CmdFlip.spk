@@ -1,0 +1,30 @@
+﻿$LoadCommands['flip'] = array('CmdFlip', 0, 0);
+Class extends ServerManager
+{
+	Function CmdFlip($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Gambling;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Flip a coin';
+		if ($args === 'help')
+			return array('Flip a coin');
+		if ($commandUser == null)
+			return;
+		my $name = $commandUser->$Name;
+		switch ((int)Random(0, 2, 0))
+		{
+			case 0:
+				SayToAll("$name flipped a coin it landed on... heads");
+				break;
+			case 1:
+				SayToAll("$name flipped a coin it landed on... tails");
+				break;
+			default:
+				SayToUser("Error with command could not flip");
+				break;
+		}
+	}
+}

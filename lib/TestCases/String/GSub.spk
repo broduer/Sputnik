@@ -1,0 +1,730 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "String:GSub";
+println("[$CurrentName] Begins");
+StringGSubTest1();
+StringGSubTest2();
+StringGSubTest3();
+StringGSubTest4();
+StringGSubTest5();
+StringGSubTest6();
+StringGSubTest7();
+StringGSubTest8();
+StringGSubTest9();
+StringGSubTest10();
+StringGSubTest11();
+StringGSubTest12();
+StringGSubTest13();
+StringGSubTest14();
+StringGSubTest15();
+StringGSubTest16();
+StringGSubTest17();
+StringGSubTest18();
+StringGSubTest19();
+StringGSubTest20();
+StringGSubTest21();
+StringGSubTest22();
+StringGSubTest23();
+StringGSubTest24();
+StringGSubTest25();
+StringGSubTest26();
+StringGSubTest27();
+StringGSubTest28();
+StringGSubTest29();
+StringGSubTest30();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function StringGSubTest1()
+{
+	println("$CurrentName Test 1");
+	my $ret = gsub("hello Lua!", "(%a)", "%1-%1");
+	say $ret;
+	if(
+		$ret == "h-he-el-ll-lo-o L-Lu-ua-a!"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest2()
+{
+	println("$CurrentName Test 2");
+	my $ret = gsub("   		Hello    			", @"^%s*(.-)%s*$", "%1");
+	if(
+		$ret == "Hello"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest3()
+{
+	println("$CurrentName Test 3");
+	Global $name = "Sputnik";
+	Global $status = "great";
+	my $Ret = StringGSubTest3ExpandA('$name is $status, isnt it?');
+	my $Ret2 = StringGSubTest3ExpandB('$name is $status, isnt it?');
+	say $Ret;
+	say $Ret2;
+	if(
+		$Ret == "Sputnik is great, isnt it?" &&
+		$Ret == $Ret2
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest3ExpandA($s)
+{
+	return gsub($s, '$(%w+)', function($s) { return "{\$$s}"; });
+}
+Function StringGSubTest3ExpandB($s)
+{
+	my $test = function($s) { return "{\$$s}"; };
+	return gsub($s, '$(%w+)', $test);
+}
+Function StringGSubTest4()
+{
+	println("$CurrentName Test 4");
+	Global $arrT4 = array();
+	gsub("hello hi, again!", "(%a+)", function($w) { $arrT4[] = $w; });
+	if(
+		$arrT4 == array("hello", "hi", "again") &&
+		$arrT4 == ["hello", "hi", "again"] &&
+		$arrT4 == qw(hello hi again) &&
+		count($arrT4) == 3 &&
+		$arrT4[0] == "hello" &&
+		$arrT4[1] == "hi" &&
+		$arrT4[2] == "again"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest5()
+{
+	println("$CurrentName Test 5");
+	my $a = array("hello" => "kitty", "again" => "meow");
+	my $ret = gsub("hello hi, again!", "(%a+)", $a);
+	if(
+		$ret == "kitty hi, meow!"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest6()
+{
+	println("$CurrentName Test 6");
+	my $source  = 'test testing this test of testicular footest testimation test';
+	my $find    = 'test';
+	my $replace = 'XXX';
+	// XXX XXXing this XXX of XXXicular fooXXX XXXimation XXX    
+	my $first = StringGSubTest6ReplaceText($source, $find, $replace, false);
+	// XXX testing this XXX of testicular footest testimation XXX
+	my $second = StringGSubTest6ReplaceText($source, $find, $replace, true);
+	if(
+		$first == "XXX XXXing this XXX of XXXicular fooXXX XXXimation XXX" &&
+		$second == "XXX testing this XXX of testicular footest testimation XXX"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+function StringGSubTest6ReplaceText($source, $find, $replace, $wholeword)
+{
+	if( $wholeword )
+	{
+		$find = '%f[%a]' . $find . '%f[%A]';
+	}
+	return gsub($source, $find, $replace);
+}
+Function StringGSubTest7()
+{
+	println("$CurrentName Test 7");
+	my $string = 'lol is cat hehe, isnt it?';
+	my $ret = gsub($string, '(%w+)', function($s) { return uc($s); });
+	if(
+		$ret == "LOL IS CAT HEHE, ISNT IT?"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest8()
+{
+	println("$CurrentName Test 8");
+	my $string = 'lol is cat hehe, isnt it?';
+	my $ret = gsub($string, '(%w+)', function($s) { return Contains($s, 't') ? uc($s) : null; });
+	if(
+		$ret == "lol is CAT hehe, ISNT IT?"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest9()
+{
+	println("$CurrentName Test 9");
+	Global $replacements = array( "name" => "T3Charmy", "code" => 1337 );
+	my $ret = gsub("Welcome #name, Your code for today is #code", "#(%a+)", $replacements);
+	if(
+		$ret == "Welcome T3Charmy, Your code for today is 1337"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest10()
+{
+	println("$CurrentName Test 10");
+	Global $replacements = array( "name" => "T3Charmy", "code" => 1337 );
+	my $ret = gsub("Welcome #name, Code is #code and time is #time", "#(%a+)", $replacements);
+	if(
+		$ret == "Welcome T3Charmy, Code is 1337 and time is #time"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest11()
+{
+	println("$CurrentName Test 11");
+	Global $name = "Sputnik";
+	Global $status = "great";
+	 
+	my $string = '#name is #status, isnt it?';
+	my $ret = gsub($string, '#(%w+)', function($s) { return "{\$$s}"; });
+	if(
+		$ret == "Sputnik is great, isnt it?"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest12()
+{
+	println("$CurrentName Test 12");
+	Global $name = "Sputnik";
+	Global $status = "great";
+	 
+	my $string = '$name is $status, isnt it?';
+	my $ret = gsub($string, '$(%w+)', function($s) { return "{\$$s}"; });
+	if(
+		$ret == "Sputnik is great, isnt it?"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest13()
+{
+	println("$CurrentName Test 13");
+	gsub("the quick brown fox", "[aeiou]");
+	if(
+		@GSubCount == 5
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest14()
+{
+	println("$CurrentName Test 14");
+	gsub("/many/nested/directories", "/");
+	if(
+		@GSubCount == 3
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest15()
+{
+	println("$CurrentName Test 15");
+	Global $arrT15 = array();
+	gsub("THE (QUICK) brOWN FOx JUMPS", "%f[%a]%u+%f[%A]", function($w) { $arrT15[] = $w; });
+	if(
+		$arrT15 == array("THE", "QUICK", "JUMPS") &&
+		$arrT15 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT15 == qw(THE QUICK JUMPS) &&
+		count($arrT15) == 3 &&
+		$arrT15[0] == "THE" &&
+		$arrT15[1] == "QUICK" &&
+		$arrT15[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest16()
+{
+	println("$CurrentName Test 16");
+	Global $arrT16 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";
+	$s->>gsub('%a+', ' %1 ')->>gsub(' (%u+) ', function($w) { $arrT16[] = $w; });
+	if(
+		$arrT16 == array("THE", "QUICK", "JUMPS") &&
+		$arrT16 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT16 == qw(THE QUICK JUMPS) &&
+		count($arrT16) == 3 &&
+		$arrT16[0] == "THE" &&
+		$arrT16[1] == "QUICK" &&
+		$arrT16[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest17()
+{
+	println("$CurrentName Test 17");
+	Global $arrT17 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";
+	$s->>gsub('%a+', ' %1 ')     // identify words with ' (%a+) '
+								 // (all following patterns match a subset of this)
+	 ->>gsub(' %u+%l+%a* ', '')  // subtract mixed case words starting with upper
+	 ->>gsub(' %l+%u+%a* ', '')  // subtract mixed case words starting with lower
+	 ->>gsub(' %a%a?%a? ', '')   // subtract words with 1-3 characters
+	 ->>gsub(' (%a+) ', function($w) { $arrT17[] = $w; }); // extract words
+	if(
+		$arrT17 == array("QUICK", "JUMPS", "over") &&
+		$arrT17 == ["QUICK", "JUMPS", "over"] &&
+		$arrT17 == qw(QUICK JUMPS over) &&
+		count($arrT17) == 3 &&
+		$arrT17[0] == "QUICK" &&
+		$arrT17[1] == "JUMPS" &&
+		$arrT17[2] == "over"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest18()
+{
+	println("$CurrentName Test 18");
+	Global $arrT18 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";
+	$s->>gsub('%a+', ' %1 ')->>gsub(' (%u+) ', function($w) { $arrT18[] = $w; });
+	if(
+		$arrT18 == array("THE", "QUICK", "JUMPS") &&
+		$arrT18 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT18 == qw(THE QUICK JUMPS) &&
+		count($arrT18) == 3 &&
+		$arrT18[0] == "THE" &&
+		$arrT18[1] == "QUICK" &&
+		$arrT18[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest19()
+{
+	println("$CurrentName Test 19");
+	my $s = "The quick brown FoX";
+	if(
+		gsub($s, "(%w+)", "-%1-") == "-The- -quick- -brown- -FoX-" &&
+		gsub($s, "(%w+)", "-%1-", 0) ==  'The quick brown FoX' &&
+		gsub($s, "(%w+)", "-%1-", 1) ==  '-The- quick brown FoX' &&
+		gsub($s, "(%w+)", "-%1-", 2) ==  '-The- -quick- brown FoX' &&
+		gsub($s, "(%w+)", "-%1-", 3) ==  '-The- -quick- -brown- FoX' &&
+		gsub($s, "(%w+)", "-%1-", 4) ==  '-The- -quick- -brown- -FoX-' &&
+		gsub($s, "(%w+)", "-%1-", 5) ==  '-The- -quick- -brown- -FoX-' &&
+		gsub($s, "(%w+)", "-%1-", 1000) ==  '-The- -quick- -brown- -FoX-' &&
+		gsub($s, "(%w+)", "-%1-", -1) ==  '-The- -quick- -brown- -FoX-' // replace all like Lua
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest20()
+{
+	println("$CurrentName Test 20");
+	Global $arrT20 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";
+	(" $s ")->>gsub('%A+', '  ')->>gsub(' (%u+) ', function($w) { $arrT20[] = $w; });
+	if(
+		$arrT20 == array("THE", "QUICK", "JUMPS") &&
+		$arrT20 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT20 == qw(THE QUICK JUMPS) &&
+		count($arrT20) == 3 &&
+		$arrT20[0] == "THE" &&
+		$arrT20[1] == "QUICK" &&
+		$arrT20[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest21()
+{
+	println("$CurrentName Test 21");
+	Global $arrT21 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";	
+	$s = ("\0" . $s)->>gsub("(%A)(%u)", "%1\0%2")
+			        ->>gsub("(%u)(%A)", "%1\0%2") . "\0";
+	$s =>>gsub("%z(%u+)%z", function($w) { $arrT21[] = $w; });
+	if(
+		$arrT21 == array("THE", "QUICK", "JUMPS") &&
+		$arrT21 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT21 == qw(THE QUICK JUMPS) &&
+		count($arrT21) == 3 &&
+		$arrT21[0] == "THE" &&
+		$arrT21[1] == "QUICK" &&
+		$arrT21[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest22()
+{
+	println("$CurrentName Test 22");
+	my $arrT22 = array();
+	my $s = "THE QUICK brOWN FOx JUMPS over";	
+	$s = ("\0" . $s)->>gsub("(%A)(%u)", "%1\0%2")
+			        ->>gsub("(%u)(%A)", "%1\0%2") . "\0";
+	$s =>>gsub("%z(%u+)%z", function($w) { $arrT22[] = $w; });
+	if(
+		$arrT22 == array("THE", "QUICK", "JUMPS") &&
+		$arrT22 == ["THE", "QUICK", "JUMPS"] &&
+		$arrT22 == qw(THE QUICK JUMPS) &&
+		count($arrT22) == 3 &&
+		$arrT22[0] == "THE" &&
+		$arrT22[1] == "QUICK" &&
+		$arrT22[2] == "JUMPS"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest23()
+{
+	println("$CurrentName Test 23");
+	my $initialText = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.";
+	my $wrappedText = StringGSubTest23TextWrap( $initialText, 36, null, "    " );
+	my $Lines = Lines($wrappedText);
+	if(
+		strlen($wrappedText) == 299 &&
+		trim($Lines[0]) == "Lorem ipsum dolor sit amet," &&
+		trim($Lines[1]) == "consetetur sadipscing elitr, sed" &&
+		trim($Lines[2]) == "diam nonumy eirmod tempor invidunt" &&
+		trim($Lines[3]) == "ut labore et dolore magna aliquyam" &&
+		trim($Lines[4]) == "erat, sed diam voluptua. At vero eos" &&
+		trim($Lines[5]) == "et accusam et justo duo dolores et" &&
+		trim($Lines[6]) == "ea rebum. Stet clita kasd gubergren," &&
+		trim($Lines[7]) == "no sea takimata sanctus est Lorem" &&
+		trim($Lines[8]) == "ipsum dolor sit amet."
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest23TextWrap( $str, $limit = 72, $indent = "", $indent1 = "" )
+{
+   my $here = 1 - strlen($indent1);
+   return $indent1 . $str->>gsub( "(%s+)()(%S+)()",
+      function ( $sp, $st, $word, $fi )
+	  {
+         if ( $fi - $here > $limit )
+		 {
+            $here = $st - strlen($indent);
+            return "\n" . $indent . $word;
+         }
+      } );
+}
+Function StringGSubTest24()
+{
+	println("$CurrentName Test 24");
+	my $arrT24 = StringGSubTest24SplitStr("the,quickish,bown,fox,k", ',');
+	if(
+		$arrT24 == array("the", "quickish", "bown", "fox", "k") &&
+		$arrT24 == ["the", "quickish", "bown", "fox", "k"] &&
+		$arrT24 == qw(the quickish bown fox k) &&
+		count($arrT24) == 5 &&
+		$arrT24[0] == "the" &&
+		$arrT24[1] == "quickish" &&
+		$arrT24[2] == "bown" &&
+		$arrT24[3] == "fox" &&
+		$arrT24[4] == "k"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+function StringGSubTest24SplitStr( $string, $inSplitPattern )
+{
+   my $outResults = array();
+   my $theStart = 0;
+   my List ( $theSplitStart, $theSplitEnd ) = find( $string, $inSplitPattern, $theStart );
+   while($theSplitStart)
+   {
+      $outResults[] = sub( $string, $theStart, $theSplitStart-1 );
+      $theStart = $theSplitEnd + 1;
+      List ( $theSplitStart, $theSplitEnd ) = find( $string, $inSplitPattern, $theStart );
+   }
+   $outResults[] = sub( $string, $theStart );
+   return $outResults;
+}
+Function StringGSubTest25()
+{
+	println("$CurrentName Test 25");
+	my $arrT24 = StringGSubTest24SplitStr("the111quickish22bown3333333fox444k", '%d+');
+	if(
+		$arrT24 == array("the", "quickish", "bown", "fox", "k") &&
+		$arrT24 == ["the", "quickish", "bown", "fox", "k"] &&
+		$arrT24 == qw(the quickish bown fox k) &&
+		count($arrT24) == 5 &&
+		$arrT24[0] == "the" &&
+		$arrT24[1] == "quickish" &&
+		$arrT24[2] == "bown" &&
+		$arrT24[3] == "fox" &&
+		$arrT24[4] == "k"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest26()
+{
+	println("$CurrentName Test 26");
+	my $Name = "Obi-waN kEnObi";
+	$Name = gsub( $Name, "(%a)([%w_']*)", StringGSubTest26TitleCase() );
+	if(
+		$Name == "Obi-Wan Kenobi"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest26TitleCase( $first, $rest )
+{
+	return uc($first) . lc($rest);
+}
+Function StringGSubTest27()
+{
+	println("$CurrentName Test 27");
+	my $Name = "Obi-waN kEnObi";
+	$Name = gsub( $Name, "(%a)([%w_']*)", Function( $first, $rest ) { return uc($first) . lc($rest); } );
+	if(
+		$Name == "Obi-Wan Kenobi"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest28()
+{
+	println("$CurrentName Test 28");
+	my $ret = gsub("the one and only", "%a+", "cat" );
+	if(
+		$ret == "cat cat cat cat"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest29()
+{
+	println("$CurrentName Test 29");
+	my $ret = gsub("the one and only", "%a+", "cat", 0 );
+	if(
+		$ret == "the one and only"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringGSubTest30()
+{
+	println("$CurrentName Test 30");
+	my $ret = gsub("the one and only", "%a+", "cat", 1 );
+	if(
+		$ret == "cat one and only"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

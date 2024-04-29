@@ -1,0 +1,10 @@
+#include-once
+#require-once
+// This will include all WinAPI scripts in the library
+
+// WARNING THIS INCLUDE AND THE WHOLE w.spk
+// IS VASTLY INCOMPLETE AND IS HERE ONLY FOR THE MOST SIMPLE OF TASKS
+
+// Windows specific 
+include('Win32/Const.spk', true);
+include('Win32/API.spk', true);

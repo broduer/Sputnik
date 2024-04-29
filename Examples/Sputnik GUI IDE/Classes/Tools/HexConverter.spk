@@ -1,0 +1,307 @@
+#<?
+Global $mToolsHexConverter = GUICreate("MenuItem", $mTools, "Hex Converter");
+GUILink($mToolsHexConverter, "Click", 'new HexConveter(true, false, $GUI);');
+Class HexConveter
+{
+	my $ConvGUI;
+	my $tRevHexa;
+	my $cDataType;
+	my $tHex;
+	my $tDecimal;
+	my $tBinary;
+	my $SetHex = true;
+	Function __Construct($loadGUI = true, $doEvents = true, $Parent = null)
+	{
+		$ConvGUI = GUICreate('Window', 'Hex Converter', 427, 169, -1, -1, 1);
+		if($Parent !== null)
+		{
+			GUIMDIParent($ConvGUI, $Parent);
+			GUISetProp($ConvGUI, 'Top', 0);
+			GUISetProp($ConvGUI, 'Left', 0);
+		}
+		if( -e "./Settings/HexConverter.dat" )
+		{
+			my $LoadData = BinaryLoad("./Settings/HexConverter.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($ConvGUI, "Left", $BData[0]);
+			GUISetProp($ConvGUI, "Top", $BData[1]);
+		}
+		GUICreate('Label', $ConvGUI, 'Rev hexa chain:', 8, 8, 192, 16);
+		$tRevHexa = GUICreate('TextBox', $ConvGUI, '', 8, 24, 192, 20);
+		GUICreate('Label', $ConvGUI, 'Data Type:', 208, 8, 192, 16);
+		$cDataType = GUICreate('ComboBox', $ConvGUI, 208, 24, 192, 21);
+		GUICreate('Label', $ConvGUI, 'Hex:', 8, 48, 192, 16);
+		$tHex = GUICreate('TextBox', $ConvGUI, '', 8, 64, 192, 20);
+		GUICreate('Label', $ConvGUI, 'Decimal:', 208, 48, 192, 16);
+		$tDecimal = GUICreate('TextBox', $ConvGUI, '', 208, 64, 192, 20);
+		GUICreate('Label', $ConvGUI, 'Binary:', 8, 88, 392, 16);
+		$tBinary = GUICreate('TextBox', $ConvGUI, '', 8, 104, 392, 20);
+		GUISetProp($tBinary, "ReadOnly", true);
+		GUISetProp($tRevHexa, "ReadOnly", true);
+		GUIComboBox( $cDataType, 'DropDownStyle', 'DropDownList');
+		GUIComboBox( $cDataType, 'SetItems', array(
+												'byte','unsigned byte',
+												'short','unsigned short',
+												'long','unsigned long',
+												'quad','unsigned quad',
+												'float','double'
+												));
+		GUILink($tHex, 'TextChanged', '$param->HexChanged();', $this);
+		GUILink($tDecimal, 'TextChanged', '$param->DecChanged();', $this);
+		GUILink($ConvGUI, 'FormClosed', '$param->Dispose();', $this);
+		GUILink($ConvGUI, 'FormClosing', '$param->Dispose();', $this);
+		if($loadGUI)
+			GUILoad($ConvGUI);
+		GUISetProp($cDataType, "Text", "byte");
+		if($doEvents)
+			While ( GUIStatus( $ConvGUI ) ) DoEvents( );
+	}
+	Function __Destruct()
+	{
+		unset($ConvGUI);
+		unset($tRevHexa);
+		unset($cDataType);
+		unset($tHex);
+		unset($tDecimal);
+		unset($tBinary);
+	}
+	Function Dispose()
+	{
+		// Save Settings
+		my $X = GUIGetProp($ConvGUI, "Left");
+		my $Y = GUIGetProp($ConvGUI, "Top");
+		my $SaveData = Pack('ii', $X, $Y);
+		BinarySave($SaveData, "./Settings/HexConverter.dat");
+		unset($this);
+	}
+	Function GetDataType()
+	{
+		my $Text = GUIGetProp($cDataType, 'Text');
+		switch($Text)
+		{
+			case 'byte':
+				return @typeSByte;
+			case 'unsigned byte':
+				return @typeByte;
+			case 'short':
+				return @typeInt16;
+			case 'unsigned short':
+				return @typeUInt16;
+			case 'long':
+				return @typeInt32;
+			case 'unsigned long':
+				return @typeUInt32;
+			case 'quad':
+				return @typeInt64;
+			case 'unsigned quad':
+				return @typeUInt64;
+			case 'float':
+				return @typeFloat;
+			case 'double':
+				return @typeDouble;
+		}
+		return -1;
+	}
+	Function CastToDataType($Value, $DataType)
+	{
+		switch($DataType)
+		{
+			case @typeSByte:
+				return (SByte)$Value;
+			case @typeByte:
+				return (Byte)$Value;
+			case @typeInt16:
+				return (Int16)$Value;
+			case @typeUInt16:
+				return (UInt16)$Value;
+			case @typeInt32:
+				return (Int32)$Value;
+			case @typeUInt32:
+				return (UInt32)$Value;
+			case @typeInt64:
+				return (Int64)$Value;
+			case @typeUInt64:
+				return (UInt64)$Value;
+			case @typeFloat:
+				return (float)$Value;
+			case @typeDouble:
+				return (double)$Value;
+		}
+	}
+	Function GetDataTypeSize($DataType)
+	{
+		switch($DataType)
+		{
+			case @typeSByte:
+			case @typeByte:
+				return 1;
+			case @typeInt16:
+			case @typeUInt16:
+				return 2;
+			case @typeInt32:
+			case @typeUInt32:
+				return 4;
+			case @typeInt64:
+			case @typeUInt64:
+				return 8;
+			case @typeFloat:
+				return 4;
+			case @typeDouble:
+				return 8;
+		}
+	}
+	Function HexChanged()
+	{
+		my $Text = GUIGetProp($tHex, 'Text');
+		my $Type = GetDataType();
+		if($Type == -1)
+		{
+			MsgBox("Pick a DataType!", $Title, 48);
+			return;
+		}
+		my $TextOrig = $Text;
+		$Text =~ s/[^a-fA-F0-9]//g;
+		if($TextOrig neq $Text)
+		{
+			my $S1 = GUIGetProp($tHex, 'SelectionStart');
+			my $S2 = GUIGetProp($tHex, 'SelectionLength');
+			GUISetProp($tHex, 'Text', $Text);
+			GUISetProp($tHex, 'SelectionStart', $S1);
+			GUISetProp($tHex, 'SelectionLength', $S2);
+		}
+		my $Value;
+		switch($Type)
+		{
+			case @typeFloat:
+				$Value = FDec($Text);
+				break;
+			case @typeDouble:
+				$Value = DDec($Text);
+				break;
+			default:
+				$Value = Dec($Text);
+		}
+		$SetHex = false;
+		SetDec($Value, $Type);
+		$SetHex = true;
+	}
+	Function DecChanged()
+	{
+		my $Value = GUIGetProp($tDecimal, 'Text');
+		my $ValueOrig = $Value;
+		my $Type = GetDataType();
+		if($Type == -1)
+		{
+			MsgBox("Pick a DataType!", $Title, 48);
+			return;
+		}
+		switch($Type)
+		{
+			case @typeByte:
+			case @typeUInt16:
+			case @typeUInt32:
+			case @typeUInt64:
+				$Value =~ s/[^0-9]//g;
+				break;
+			case @typeSByte:
+			case @typeInt16:
+			case @typeInt32:
+			case @typeInt64:
+				$Value =~ s/[^0-9\-\+]//g;
+				break;
+			case @typeFloat:
+			case @typeDouble:
+				$Value =~ s/[^0-9\-\+\.Ee]//g;
+				break;
+		}
+		SetDec($Value, $Type);
+	}
+	Function SetDec($ValueOrig, $Type)
+	{
+		$Value = CastToDataType($ValueOrig, $Type);
+		my $DataSize = GetDataTypeSize($Type);
+		my $Hex;
+		switch($Type)
+		{
+			case @typeFloat:
+				$Hex = sprintf('%A', $Value);
+				break;
+			case @typeDouble:
+				$Hex = sprintf('%llA', $Value);
+				break;
+			default:
+				$Hex = sprintf('%llX', $Value);
+				break;
+		}
+		SetHex($Hex, $DataSize);
+		SetBinary($Value, $Type);
+		if(EndsWith($ValueOrig, '.'))
+		{
+			if(SubStr($ValueOrig, 0, -1) neq $Value)
+				GUISetProp($tDecimal, 'Text', $Value);
+		}
+		else
+		{
+			if($ValueOrig != $Value)
+				GUISetProp($tDecimal, 'Text', $Value);
+		}
+	}
+	Function SetHex($Hex, $DataSize)
+	{
+		$DataSize *= 2;
+		if(StrLen($Hex) % 2 != 0)
+			$Hex ..= '0';
+		if(StrLen($Hex) > $DataSize)
+			$Hex = SubStr($Hex, -$DataSize);
+		while(StrLen($Hex) != $DataSize && StrLen($Hex) < $DataSize)
+			$Hex ..= '0';
+		if($SetHex)
+			GUISetProp($tHex, 'Text', $Hex);
+		SetRevHex($Hex);
+	}
+	Function SetRevHex($Hex)
+	{
+		my $RevHex = RevHex($Hex);
+		$RevHex =~ s/(\w{2})/$1 /g;
+		GUISetProp($tRevHexa, 'Text', trim($RevHex));
+	}
+	Function SetBinary($Value, $Type)
+	{
+		my $bin;
+		switch($Type)
+		{
+			case @typeSByte:
+				$bin = pack('C', $Value);
+				break;
+			case @typeByte:
+				$bin = pack('c', $Value);
+				break;
+			case @typeInt16:
+				$bin = pack('s', $Value);
+				break;
+			case @typeUInt16:
+				$bin = pack('S', $Value);
+				break;
+			case @typeInt32:
+				$bin = pack('l', $Value);
+				break;
+			case @typeUInt32:
+				$bin = pack('L', $Value);
+				break;
+			case @typeInt64:
+				$bin = pack('q', $Value);
+				break;
+			case @typeUInt64:
+				$bin = pack('Q', $Value);
+				break;
+			case @typeFloat:
+				$bin = pack('f', $Value);
+				break;
+			case @typeDouble:
+				$bin = pack('d', $Value);
+				break;
+		}
+		my $Binary = Reverse(unpack('b*', $bin, 3));
+		GUISetProp($tBinary, 'Text', $Binary);
+	}
+};

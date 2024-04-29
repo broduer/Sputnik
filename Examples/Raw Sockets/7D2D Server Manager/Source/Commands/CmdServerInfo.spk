@@ -1,0 +1,23 @@
+﻿$LoadCommands['serverinfo'] = array('CmdServerInfo', 0, 0);
+Class extends ServerManager
+{
+	Function CmdServerInfo($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Get the information about this server';
+		if ($args === 'help')
+			return array('Get the information about this server');
+		if ($commandUser == null)
+			return;
+		my $fileLines = array();
+		if (FileExists('./Variables/ServerInfo.txt'))
+			$fileLines = FileReadLines('./Variables/ServerInfo.txt');
+		SayToUser($commandUser, 'The server information:');
+		foreach($fileLines as my $line)
+			SayToUser($commandUser, $line);
+	}
+}

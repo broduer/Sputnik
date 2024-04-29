@@ -1,0 +1,236 @@
+##TEMPLATE-NAME 'wxWidgets C++ - Engine with reduce routine (code)'
+##LANGUAGE 'wxWidgets C++'
+##ENGINE-NAME 'wxWidgets C++ Engine by Jorgen Bodde'
+##AUTHOR 'Jorgen Bodde' 
+##FILE-EXTENSION 'cpp'
+##NOTES
+Skeleton parse program for wxWidgets C++ (tested with 
+Visual Studio 6, 7 and GCC under linux)
+
+This engine is originally (c) By Alexandre Rai, and ported
+from Delphi to wxWidgets C++. wxWidgets is a cross platform
+toolkit (http://www.wxwidgets.org), for Windows, Linux, 
+MacOS, OS/2, Python and more!
+
+This engine is verified and runs under Linux as well.
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+//---------------------------------------------------------------------------
+//
+// Desc:        wxGoldParser engine skeleton for wxWidgets
+// Author:
+// Created:
+// Copyright:   (c) wxWidgets License
+//
+//---------------------------------------------------------------------------
+
+#error "Enter your include file here!"
+#include "xxxxx.h"
+
+GoldParserCtrl::GoldParserCtrl()
+{
+    // create parser object
+    _parser = new wxGoldParser();
+}
+
+GoldParserCtrl::~GoldParserCtrl()
+{
+    delete _parser;
+}
+
+int GoldParserCtrl::Parse(const wxString &source, bool trimReductions, wxArrayString *messages, wxArrayString *errors)
+{
+    wxString str, msg;
+    int value = -1, result, n;
+    
+    _parser->OpenTextString(source);
+    _parser->SetTrimReductions(trimReductions);
+
+    int parserErrors = 0;
+    bool done = false;
+    while(!done)
+    {
+        // parse a piece of the grammar and handle the
+        // returned message in the case statement
+
+        switch(_parser->Parse())
+        {
+
+        // lexical error occured, which means the parser does not know what to do with the current
+        // token. It is not in any rule set so it cannot be acted upon. Report this to the caller
+
+        case gpMsgLexicalError:
+            // TODO: When no error array, maybe show this in a wxLogMessage structure?
+            if(errors)
+            {
+                str.Printf("Line %i: Lexical Error: Cannot recognise token: '%s'", _parser->GetCurrentLineNumber(),
+                                                                                   _parser->GetCurrentToken()->GetDataVar().c_str());
+                errors->Add(str);
+                parserErrors++;
+
+                // TODO: Is there a way to recover from this, and continue ? One error a time is at least a bit annoying
+            }
+            done = true;
+            break;
+
+        // syntax error occured. The token is recognised but it is not in the right place. Report
+        // this to the caller.
+
+        case gpMsgSyntaxError:
+
+            // fill a token set of expected tokens
+            // TODO: Maybe only show 10 at max? The list can get pretty big with all those statements
+
+            if(errors)
+            {
+                str.Clear();
+                for(n = 0; n < _parser->GetTokenTable()->GetCount(); n++)
+                {
+                    if(n > 0)
+                        str << " ";
+                    str << _parser->GetTokenTable()->GetItem(n)->GetName();
+                }
+
+                wxString err;
+                err.Printf("Line %i: Syntax Error: Expecting the following tokens: %s", _parser->GetCurrentLineNumber(), str.c_str());
+
+                errors->Add(err);
+                parserErrors++;
+
+                // TODO: Is there a way to recover from this, and continue ? One error a time is at least a bit annoying
+            }
+            done = true;
+            break;
+
+        // act upon the reduction of a rule. This is a perfect place to pass pointers or values up the stack to the next
+        // rule set. Check out ReplaceReduction where you can fill in the logic for this reduction action.
+
+        case gpMsgReduction:
+            // if returned nonzero, something went wrong in reduction. Use errors / messages to return problem
+            // if > 0 then continue parsing (i.e. when variable names are not found, etc etc)
+            result = ReplaceReduction(_parser->GetCurrentReduction(), errors, messages);
+            done = result < 0;
+            if(result > 0)
+                parserErrors++;
+            break;
+
+        // accept! The last reduction was a succes, the whole parse tree is now built up. We return with value
+        // is zero to report that everything was ok.
+
+        case gpMsgAccept:
+            done = true;
+            value = 0;
+            break;
+
+        // reports current token read. Use _parser->GetCurrentToken() to get the current token from the parser
+        // it might be useful for storing the last token read or keeping a log
+
+        case gpMsgTokenRead:
+            break;
+
+        // internal error, should nbever happen ofcourse
+
+        case gpMsgInternalError:
+            if(errors)
+            {
+                str.Printf("Line %i: Internal parser error: something is horribly wrong", _parser->GetCurrentLineNumber());
+                errors->Add(str);
+                parserErrors++;
+            }
+            done = true;
+            break;
+
+        // grammar file probably not loaded. This happend when SetGrammarFile has not been
+        // called.
+
+        case gpMsgNotLoadedError:
+            if(errors)
+            {
+                str = "Error: Compiled Grammar Table not loaded";
+                errors->Add(str);
+                parserErrors++;
+            }
+            done = true;
+            break;
+
+        // oops! left a comment block open, and now we are at the end of the file
+
+        case gpMsgCommentError:
+            if(errors)
+            {
+                str.Printf("Line %i: Comment error: Unexpected end of tile", _parser->GetCurrentLineNumber());
+                errors->Add(str);
+                parserErrors++;
+            }
+            done = true;
+            break;
+
+        default:
+            break;
+        }
+
+    }
+
+    // report the parser errors, but retain value (if -1)
+    // because something else could have gone wrong
+
+    if(parserErrors > 0 && value != -1)
+    {
+        value = parserErrors;
+
+        if(errors)
+        {
+            msg.Printf("Parser reported %i errors!", parserErrors);
+            errors->Add(msg);
+        }
+    }
+
+    return value;
+}
+
+int GoldParserCtrl::SetGrammarFile(const wxString &filename)
+{
+    int value = -1;
+    
+    // if file exists, attempt load
+    if(::wxFileExists(filename))
+    {
+        value = -2;
+        if(_parser->LoadCompiledGrammar(filename))
+            value = 0;
+    }
+    
+    return value;
+}
+
+
+int GoldParserCtrl::ReplaceReduction(GpReduction *R, wxArrayString *errors, wxArrayString *messages)
+{
+
+    // NOTE: return != 0 to report an error. If you report > 0 the error is ignored, but recorded
+    // so when the parser quits it will quit with errors. When reporting < 0 it is considered a
+    // serious error and the parser will terminate.
+
+    // TODO: Maybe
+
+    int value = 0;
+    switch(R->GetParentRule()->GetTableIndex())
+    {
+##RULES
+##DELIMITER
+        // %Description%                  
+        case %ID%:       
+            break;
+            
+##END-RULES                   
+        default:
+            // serious error, no cought reduction index
+            value = -1;
+            break;
+    }
+
+    return value;
+}

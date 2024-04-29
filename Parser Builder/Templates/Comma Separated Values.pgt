@@ -1,0 +1,17 @@
+##TEMPLATE-NAME 'Comma Separated Values'
+##LANGUAGE 'None'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'csv'
+##NOTES
+This template creates a simple list the enumerated constants.
+##END-NOTES
+##ID-CASE Uppercase
+##ID-SEPARATOR '_'
+##SYMBOLS
+"Symbol", "%ID%", "%Value%", "%Description%"
+##END-SYMBOLS
+##RULES
+"Rule", "%ID%", "%Value%", "%Description%"
+##END-RULES
+

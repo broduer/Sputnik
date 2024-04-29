@@ -1,0 +1,73 @@
+#<?
+Class PropPicture extends Prop
+{
+    my $Picture;
+    Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+    {
+        parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+        $Picture = null;
+    }
+    Static Function GenPictureName($Object)
+    {
+        return $Object->GetFinalParent()->GetName() . '_' . $Object->GetName();
+    }
+    override Function GetDefault($Object)
+    {
+        return $Default;
+    }
+    override Function GetProp($Object)
+    {
+        return '[PICTURE]';
+    }
+    override Function SetProp($Object, $Value)
+    {
+        my $Ret = FileOpenDialog('Select a picture', @CurDir, 'Image Files|*.bmp;*.png;*.jpg;;*.gif;*.ico', 4 + 1 );
+        if($Ret === null)
+            return;
+        if(!$Ret)
+        @{
+            MsgBox('You must pick an image file!', $Title, 48);
+            return;
+        }
+        my $Image = $Ret[0];
+        my $Name = self::GenPictureName($Object);
+        my $ImageLoc = CombinePath(".\\Projects\\$ProjectName", $Name);
+        FileCopy($Ret[0], $ImageLoc);
+        GUIPictureBox($Object->GetObject(), 'Load', $ImageLoc);
+        $Picture = $ImageLoc;
+        return $Ret;
+    }
+    override Function LoadProp($Object, $Value)
+    {
+        $Picture = $Value;
+        if(FileExists($Picture))
+            GUIPictureBox($Object->GetObject(), 'Load', $Picture);
+        else
+            $Picture = null;
+    }
+    override Function SaveProp($Object)
+    {
+        return (string)$Picture;
+    }
+    override Function CodeGen($Window, $Object, $ObjName)
+    {
+        my $Code = '';
+        if($Compiling)
+        {
+            if(!IsEmptyOrNull($Picture))
+            {
+                my $PicName = self::GenPictureName($Object);
+                $Code .= "GUIPictureBox(\$$ObjName, 'Load', \$$PicName);\r\n";
+            }
+        }
+        else
+        {
+            if(!IsEmptyOrNull($Picture))
+            {
+                $PicName = MakeText($Picture);
+                $Code .= "GUIPictureBox(\$$ObjName, 'Load', $PicName);\r\n";
+            }
+        }
+        return $Code;
+    }
+};

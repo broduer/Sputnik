@@ -1,0 +1,136 @@
+﻿Enum ItemType
+{
+	$THUNDERBOLT,
+	$AMMO,
+	$MELEE,
+	$KEY,
+	$FOOD,
+	$DRINK,
+	$UNKNOWN
+};
+
+Global $ItemList = array();
+Global $Items = array();
+
+$Items[0] = array(ItemType->$UNKNOWN, "Empty");
+$Items[1] = array(ItemType->$UNKNOWN, "Old Uniform of Bogdaran's");
+$Items[2] = array(ItemType->$KEY, "Bow of Rylsadhar's Key");
+$Items[3] = array(ItemType->$UNKNOWN, "Punched Metal Plate");
+$Items[4] = array(ItemType->$UNKNOWN, "Dish");
+$Items[5] = array(ItemType->$UNKNOWN, "Metal Pole");
+$Items[6] = array(ItemType->$AMMO, "Refill for Flame-thrower");
+$Items[7] = array(ItemType->$AMMO, "Lead Bullets for Spitrod");
+$Items[8] = array(ItemType->$AMMO, "Boiler for Spitrod");
+$Items[9] = array(ItemType->$UNKNOWN, "Metal Handle");
+$Items[10] = array(ItemType->$KEY, "Plate from Before");
+$Items[11] = array(ItemType->$KEY, "Key made of Red Gemstone");
+$Items[12] = array(ItemType->$KEY, "Pointed Cut-crystal");
+$Items[13] = array(ItemType->$UNKNOWN, "Large Vegetable");
+$Items[14] = array(ItemType->$KEY, "Konkalite Key");
+$Items[15] = array(ItemType->$KEY, "Sordos' Key");
+$Items[16] = array(ItemType->$KEY, "Bogdaran's key");
+$Items[17] = array(ItemType->$MELEE, "Hammer");
+$Items[18] = array(ItemType->$KEY, "Key Crystal (bevelled on left)");
+$Items[19] = array(ItemType->$KEY, "Key Crystal (bevelled on right)");
+$Items[20] = array(ItemType->$UNKNOWN, "Mirror from Before");
+$Items[21] = array(ItemType->$FOOD, "Round Vial");
+$Items[22] = array(ItemType->$UNKNOWN, "Flagon");
+$Items[23] = array(ItemType->$THUNDERBOLT, "Thunderbolt from Before");
+$Items[24] = array(ItemType->$UNKNOWN, "Gourd of Stohll (full)");
+$Items[25] = array(ItemType->$UNKNOWN, "Clothing");
+$Items[26] = array(ItemType->$MELEE, "Battle-ax");
+$Items[27] = array(ItemType->$THUNDERBOLT, "Flame-thrower");
+$Items[28] = array(ItemType->$MELEE, "Long Knife");
+$Items[29] = array(ItemType->$UNKNOWN, "Pulley Shaft");
+$Items[30] = array(ItemType->$MELEE, "Provider Woman's Cleaver");
+$Items[31] = array(ItemType->$FOOD, "Thanandar's Potion");
+$Items[32] = array(ItemType->$THUNDERBOLT, "Thunderbolt from Kalhi");
+$Items[33] = array(ItemType->$AMMO, "Lead Plaque");
+$Items[34] = array(ItemType->$FOOD, "Potato");
+$Items[35] = array(ItemType->$THUNDERBOLT, "Zed's Thunderbolt");
+$Items[36] = array(ItemType->$FOOD, "Large Root");
+$Items[37] = array(ItemType->$MELEE, "Short Halberd");
+$Items[38] = array(ItemType->$MELEE, "Guardian of Fire Saber");
+$Items[39] = array(ItemType->$AMMO, "Ammo for Thunderbolt from Kalhi");
+$Items[40] = array(ItemType->$UNKNOWN, "Unknown Object from Before (soaked in oil)");
+$Items[41] = array(ItemType->$UNKNOWN, "Unknown Object from Before");
+$Items[42] = array(ItemType->$UNKNOWN, "Flagon");
+$Items[43] = array(ItemType->$FOOD, "Fish");
+$Items[44] = array(ItemType->$FOOD, "Smoked Meat");
+$Items[45] = array(ItemType->$KEY, "Sliver of Rock Crystal");
+$Items[46] = array(ItemType->$UNKNOWN, "Rylsadhar's Notes");
+$Items[47] = array(ItemType->$MELEE, "Heavy Konkalite Ax");
+$Items[48] = array(ItemType->$UNKNOWN, "Pulley Shaft (broken)");
+$Items[49] = array(ItemType->$UNKNOWN, "Sordos' Document");
+$Items[50] = array(ItemType->$UNKNOWN, "Diagram of Weapon");
+$Items[51] = array(ItemType->$UNKNOWN, "Pulley Blade from Well");
+$Items[52] = array(ItemType->$UNKNOWN, "Rylsadhar's Drawings");
+$Items[53] = array(ItemType->$MELEE, "Konkalite Spear");
+$Items[54] = array(ItemType->$UNKNOWN, "Fireball");
+$Items[55] = array(ItemType->$THUNDERBOLT, "Spitrod");
+$Items[56] = array(ItemType->$FOOD, "Crushed Rat");
+$Items[57] = array(ItemType->$MELEE, "Sordos' Weapon");
+$Items[58] = array(ItemType->$MELEE, "Zed's Saber");
+$Items[59] = array(ItemType->$MELEE, "Wanderer's Saber");
+$Items[60] = array(ItemType->$KEY, "Dhorkan's Coin");
+$Items[61] = array(ItemType->$UNKNOWN, "Phedoria's Flail (zzz)");
+$Items[62] = array(ItemType->$MELEE, "Halberd (zzz)");
+$Items[63] = array(ItemType->$MELEE, "Kalhi's Dagger");
+$Items[64] = array(ItemType->$FOOD, "Piece of Roast Bird");
+$Items[65] = array(ItemType->$UNKNOWN, "Terra-cotta Bowl");
+$Items[66] = array(ItemType->$THUNDERBOLT, "Lory's Thunderbolt");
+$Items[67] = array(ItemType->$MELEE, "Battle-ax (Alt)");
+$Items[68] = array(ItemType->$THUNDERBOLT, "Zed's Thunderbolt (on Zed)");
+$Items[69] = array(ItemType->$UNKNOWN, "*Save* icon");
+$Items[70] = array(ItemType->$UNKNOWN, "Master Builder's Diagram");
+$Items[71] = array(ItemType->$UNKNOWN, "Metal suit (very heavy)");
+$Items[72] = array(ItemType->$AMMO, "Ammunition for Thunderbolts from Before");
+$Items[73] = array(ItemType->$AMMO, "Ammunition for Zed's Thunderbolt");
+$Items[74] = array(ItemType->$UNKNOWN, "Danrys' Pick-ax");
+$Items[75] = array(ItemType->$KEY, "Rylsadhar's Crystal Key");
+$Items[76] = array(ItemType->$MELEE, "Maor's Mace");
+$Items[77] = array(ItemType->$UNKNOWN, "Flask (empty)");
+$Items[78] = array(ItemType->$MELEE, "Danrys' Small Weapon");
+$Items[79] = array(ItemType->$MELEE, "Guardian of Fire Ax");
+$Items[80] = array(ItemType->$MELEE, "Dhorkan's Sword");
+$Items[81] = array(ItemType->$UNKNOWN, "Rylsadhar's Parchment");
+$Items[82] = array(ItemType->$UNKNOWN, "Archivist's Book");
+$Items[83] = array(ItemType->$MELEE, "Guardian of Fire Saber");
+$Items[84] = array(ItemType->$UNKNOWN, "Metal Helmet");
+$Items[85] = array(ItemType->$UNKNOWN, "Metal Breastplate (very heavy)");
+$Items[86] = array(ItemType->$UNKNOWN, "Flask from Before");
+$Items[87] = array(ItemType->$UNKNOWN, "Counter for Game of Yong");
+$Items[88] = array(ItemType->$UNKNOWN, "Bogdaran's Tube");
+$Items[89] = array(ItemType->$KEY, "Stockade Key");
+$Items[90] = array(ItemType->$UNKNOWN, "Lead Bullet");
+$Items[91] = array(ItemType->$MELEE, "Dagger");
+$Items[92] = array(ItemType->$MELEE, "Long Dagger");
+$Items[93] = array(ItemType->$KEY, "Dhorkan's Stiletto");
+$Items[94] = array(ItemType->$UNKNOWN, "Kabak's Pestle");
+$Items[95] = array(ItemType->$UNKNOWN, "Kabak's Mortar");
+$Items[96] = array(ItemType->$KEY, "Large Steel Key");
+$Items[97] = array(ItemType->$UNKNOWN, "Jerrycan");
+$Items[98] = array(ItemType->$UNKNOWN, "Grindstone");
+$Items[99] = array(ItemType->$UNKNOWN, "Sealed Metal Can");
+$Items[100] = array(ItemType->$UNKNOWN, "(Broken Weapon)");
+
+Function ItemExists( $ID )
+{
+	If( IsIndexSet($Items, $ID) )
+		return 1;
+	return 0;
+}
+
+Function ItemName( $ID )
+{
+	if( ItemExists($ID) )
+		return $Items[$ID][1];
+	return 0;	
+}
+
+Function ItemType( $ID )
+{
+	if( ItemExists($ID) )
+		return $Items[$ID][0];
+	return 0;	
+}

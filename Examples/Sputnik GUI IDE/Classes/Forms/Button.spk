@@ -1,0 +1,44 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$Button] = false;
+Object::$Names[ObjectType->$Button] = 'Button';
+Object::$Props[ObjectType->$Button] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropString('Text', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$Events[ObjectType->$Button] = array(
+												Object::$GenericEvents[<=>]
+											);
+Object::$MenuAdd[ObjectType->$Button] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$Button]);
+GUILink(Object::$MenuAdd[ObjectType->$Button], 'Click', 'CreateControl(ObjectType->$Button);');
+Class Button extends Object
+{
+	Function __construct($myParent, $Name, $Text = 'New ' . Object::$Names[ObjectType->$Button], $Left = 8, $Top = 8, $Width = 110, $Height = 25)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$Button);
+		SetName($Name);
+		SetObject(GUICreate('Button', $myParent->GetObject(), $Text, $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

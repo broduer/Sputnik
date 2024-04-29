@@ -1,0 +1,84 @@
+﻿$onServerInit[] = 'TimedAnnouncementsInit';
+$onServerProcess[] = 'TimedAnnouncementsProcess';
+Class extends ServerManager
+{
+	my $TimedAnnouncementsCurDay;
+	my $TimedAnnouncementsDoneMessages;
+	Function TimedAnnouncementsInit()
+	{
+		$TimedAnnouncementsCurDay = -1;
+		$TimedAnnouncementsDoneMessages = array();
+	}
+	Function TimedAnnouncementsProcess()
+	{
+		my list($TimeIsReady, $TimeDay, $TimeHour, $TimeMinute) = GetTime();
+		if (!$TimeIsReady)
+			return;
+		if ($TimedAnnouncementsCurDay != $TimeDay)
+		{
+			$TimedAnnouncementsCurDay = $TimeDay;
+			$TimedAnnouncementsDoneMessages = array();
+		}
+		my $timedAnnouncements = $utils->getTimedAnnouncementsFile();
+		foreach($timedAnnouncements as my $timedAnnouncement)
+		{
+			my list($Day, $Hour, $Minute, $Message) = $timedAnnouncement;
+			select
+			{
+				case $Day == 0:
+					break;
+				case $Day > 0:
+					if ($TimeDay != $Day)
+						continue;
+					break;
+				case $Day < 0:
+					if (($TimeDay % abs($Day)) != 0)
+						continue;
+					break;
+			}
+			if ($TimeHour == $Hour && ($TimeMinute >= $Minute && $TimeMinute <= $Minute + 10))
+			{
+				my $hash = Hash($Message);
+				if (InArray($TimedAnnouncementsDoneMessages, $hash))
+					continue;
+				$TimedAnnouncementsDoneMessages[] = $hash;
+				SayToAll($Message);
+			}
+		}
+	}
+}
+Class extends Utils
+{
+	Function getTimedAnnouncementsFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/TimedAnnouncements.txt'))
+			return $cashFileData;
+		my $timedAnnouncementsFile = FileReadLines('./Variables/TimedAnnouncements.txt');
+		my $timedAnnouncements = array();
+		foreach($timedAnnouncementsFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 3)
+				continue;
+			my List($Day, $Time, $Message) = $split;
+			if (IsEmptyOrNull($Message))
+				continue;
+			my List($Hour, $Minute) = split($Time, ':');
+			$Hour = TrimLeft($Hour, '0');
+			if (strlen($Hour) < 1)
+				$Hour = 0;
+			$Minute = TrimLeft($Minute, '0');
+			if (strlen($Minute) < 1)
+				$Minute = 0;
+			$fileInfo[] = array((int)$Day, (int)$Hour, (int)$Minute, $Message);
+		}
+		return $fileInfo;
+	}
+}

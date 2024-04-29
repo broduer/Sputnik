@@ -1,0 +1,78 @@
+﻿Enum CommandRanks
+{
+	$Admin,
+	$Moderator,
+	$Player
+}
+Class extends ServerManager
+{
+	Function NameToRank($rank)
+	{
+		switch ($rank)
+		{
+			case 'Administrator':
+				return CommandRanks->$Admin;
+			case 'Moderator':
+				return CommandRanks->$Moderator;
+			case 'Player':
+				return CommandRanks->$Player;
+		}
+		return null;
+	}
+	Function RankToName($rank)
+	{
+		switch ($rank)
+		{
+			case CommandRanks->$Admin:
+				return 'Administrator';
+			case CommandRanks->$Moderator:
+				return 'Moderator';
+			case CommandRanks->$Player:
+				return 'Player';
+		}
+		return 'N/A';
+	}
+	Function IsRankOrAbove($userRank, $rankCheck)
+	{
+		if ($userRank == $rankCheck)
+			return true;
+		switch ($userRank)
+		{
+			case CommandRanks->$Admin:
+				switch ($rankCheck)
+				{
+					case CommandRanks->$Admin:
+					case CommandRanks->$Moderator:
+					case CommandRanks->$Player:
+						return true;
+				}
+				break;
+			case CommandRanks->$Moderator:
+				switch ($rankCheck)
+				{
+					case CommandRanks->$Moderator:
+					case CommandRanks->$Player:
+						return true;
+				}
+				break;
+			case CommandRanks->$Player:
+				switch ($rankCheck)
+				{
+					case CommandRanks->$Player:
+						return true;
+				}
+				break;
+		}
+		AppendLine("fa fuck $userRank == $rankCheck");
+		return false;
+	}
+	Function GetUserRank($user)
+	{
+		if (IsUserAdmin($user))
+			return CommandRanks->$Admin;
+		else if (IsUserModerator($user))
+			return CommandRanks->$Moderator;
+		else 
+			return CommandRanks->$Player;
+	}
+}

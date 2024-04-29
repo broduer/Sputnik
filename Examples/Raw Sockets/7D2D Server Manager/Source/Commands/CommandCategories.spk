@@ -1,0 +1,10 @@
+﻿Enum CommandCategories
+{
+	$Information,
+	$Player,
+	$Administration,
+	$Moderation,
+	$Economy,
+	$Gambling,
+	$Events
+}

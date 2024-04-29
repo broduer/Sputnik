@@ -1,0 +1,48 @@
+﻿$LoadCommands['kick'] = array('CmdKick', 1, 2);
+Class extends ServerManager
+{
+	Function CmdKick($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Kick a player from the server';
+		if ($args === 'help')
+			return array("Kick a player from the server");
+		if ($commandUser == null)
+			return;
+		my $findWho = $args[0];
+		if (IsEmptyOrNull($findWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my $found = $currentPlayers->FindByIdOrPartialName($findWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$findWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot kick yourself");
+			return;
+		}
+		if (IsUserAdmin($found))
+		{
+			SayToUser($commandUser, "You cannot kick an Administrator");
+			return;
+		}
+		if (!IsUserAdmin($commandUser) && IsUserModerator($found))
+		{
+			SayToUser($commandUser, "You cannot kick a Moderator");
+			return;
+		}
+		my $name = $commandUser->$Name;
+		my $foundName = $found->$Name;
+		my $reason = $argCount > 1 ? $args[1] : 'N/A';
+		KickUser($found, $reason);
+	}
+}

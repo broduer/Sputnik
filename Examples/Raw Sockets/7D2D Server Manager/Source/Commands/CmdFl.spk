@@ -1,0 +1,37 @@
+﻿$LoadCommands['fl'] = array('CmdFl', 0, 0);
+Class extends ServerManager
+{
+	Function CmdFl($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'View the list of your friends on the server';
+		if ($args === 'help')
+			return array('View the list of your friends on the server');
+		if ($commandUser == null)
+			return;
+		my $friendList = GetFriendList($commandUser);
+		my $count = count($friendList);
+		SayToUser($commandUser, "You have '$count' friend(s) here is the list:");
+		my $i = 1;
+		foreach($friendList as my $friendSteamId)
+		{
+			my $Name = '';
+			my List($found, $isOnline) = FindOnlineOrOfflinePlayer($friendSteamId);
+			if ($found == null)
+				$Name = '<cannot get userName>';
+			else
+				$Name = $found->$Name;
+			my $status = $isOnline ? 'Online' : 'Offline';
+			my $bothFriends = AreBothFriends($commandUser, $found);
+			if ($bothFriends)
+				SayToUser($commandUser, "$i, $Name, $status");
+			else
+				SayToUser($commandUser, "$i, $Name, $status (Has not friended you)");
+			$i++;
+		}
+	}
+}

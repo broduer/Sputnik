@@ -1,0 +1,88 @@
+﻿#<?
+$mAboutIDE = GUICreate("MenuItem", $mAbout, "About Sputnik IDE");
+GUILink($mAboutIDE, "Click", 'new About();');
+Class About
+{
+	my $Window;
+	Function __construct()
+	{
+		// Create the About Window
+		$this->$Window = GUICreate("Window", "About", 455, 525, 0, 0, 5);
+		GUIMDIParent($this->$Window, $GUI);
+		// Create the controls
+		my $Banner = GUICreate("PictureBox", $this->$Window, 16, 8, 418, 90);
+		my $Close = GUICreate("Button", $this->$Window, "Close Window", 8, 472, 433, 20);
+		GUILink($Close, "Click", @"$param->Close();", $this);
+		my $Tab = GUICreate( "TabSheet", $this->$Window, 8, 104, 433, 361 );
+		my $TabAbout = GUICreate("TabPage", $Tab, "About");
+		my $AboutText = GUICreate("TextBoxEx", $TabAbout, "", 0, 0, 425, 333);
+		GUISetProp($AboutText, "ReadOnly", true);
+		my $TabCredits = GUICreate("TabPage", $Tab, "Credits");
+		my $CreditText = GUICreate("TextBoxEx", $TabCredits , "", 0, 0, 425, 353);
+		GUISetProp($CreditText, "ReadOnly", true);
+		if(@Compiled)
+			GUIPictureBox($Banner, "Load", $BannerBig);
+		else
+			GUIPictureBox($Banner, "Load", "./Images/banner.jpg");
+		// Load Settings
+		if(FileExists("./Settings/About.dat"))
+		{
+			my $LoadData = BinaryLoad("./Settings/About.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($this->$Window, "Left", $BData[0]);
+			GUISetProp($this->$Window, "Top", $BData[1]);
+		}
+		// About Text
+		GUISetProp($AboutText, "Text",
+										"Sputnik IDE and GUI Builder\r\n" .
+										"etc etc\r\n" .
+										"	Coded by UberFoX\r\n" .
+										"\r\n" .
+										"E-Mail:\r\n" .
+										"uberfox\@hotmail.com\r\n" .
+										"\r\n" .
+										"Sputnik Wiki:\r\n" .
+										"http://uberfox.no-ip.org/Sputnik/wiki/\r\n" .
+										"\r\n" .
+										"Sputnik Forum:\r\n" .
+										"http://ubersoft.org\r\n"
+									);
+		// Credits Text
+		GUISetProp($CreditText, "Text",		
+										"Credits :\r\n" .
+										"	Programming :\r\n" .
+										"		Sputnik Lead Programmer :\r\n" .
+										"			UberFoX\r\n" .
+										"		IDE Lead Programmer :\r\n" .
+										"			UberFoX\r\n" .
+										"	 ArtWork :\r\n" .
+										"		Taltan\r\n" .
+										"		UberFoX\r\n" .
+										"	Beta-Testers :\r\n" .
+										"		UberFoX\r\n" .
+										"	Special Thanks (Current Version) :\r\n" .
+										"		UberFoX\r\n"
+									);
+		// Finally Show the Window
+		GUILoad( $this->$Window );
+	}
+	Function __destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		// Save Settings
+		my $X = GUIGetProp($this->$Window, "Left");
+		my $Y = GUIGetProp($this->$Window, "Top");
+		my $SaveData = Pack('ii', $X, $Y);
+		BinarySave($SaveData, "./Settings/About.dat");
+		// Clean Up
+		GUIUnload($this->$Window);
+		unset($this->$Window);
+	}
+	Function Close()
+	{
+		Dispose();
+	}
+};

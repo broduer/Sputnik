@@ -1,0 +1,22 @@
+﻿$LoadCommands['about'] = array('CmdAbout', 0, 0);
+Class extends ServerManager
+{
+	Function CmdAbout($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Learn about this server manager';
+		if ($args === 'help')
+			return array('This command will show information on this server manager and who made it');
+		if ($commandUser == null)
+			return;
+		SayToUser($commandUser, "This server is running");
+		SayToUser($commandUser, "UberSoft's 7D2D Server Manager $appVersion");
+		SayToUser($commandUser, "Coded by UberFoX");
+		SayToUser($commandUser, "It is coded in Sputnik a programming language made by UberFoX");
+		SayToUser($commandUser, "Learn more at http://ubersoft.org");
+	}
+}

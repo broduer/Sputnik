@@ -1,0 +1,164 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "Try/Catch/Finally";
+println("[$CurrentName] Begins");
+TryCatchTest1();
+TryCatchTest2();
+TryCatchTest3();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function TryCatchTest1()
+{
+	println("$CurrentName Test 1");
+	my $capture = array();
+	my $attempt = 0;
+	Try
+	{
+		$capture[] = "Lets throw...";
+		throw new Exception("My Message", 777, null);
+	}
+	Catch ( Exception $e )
+	{
+		$capture[] = "Exception!!!!! $attempt";
+		$attempt++;
+		if($attempt < 3)
+			redo;
+	}
+	Finally
+	{
+		$capture[] = "Finally complete";
+	}
+	// PRINTS
+	// Lets throw...
+	// Exception!!!!! 0
+	// Lets throw...
+	// Exception!!!!! 1
+	// Lets throw...
+	// Exception!!!!! 2
+	// Finally complete
+	if(
+		$capture == array(
+							"Lets throw...", "Exception!!!!! 0",
+							"Lets throw...", "Exception!!!!! 1",
+							"Lets throw...", "Exception!!!!! 2",
+							"Finally complete"
+					)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TryCatchTest2()
+{
+	println("$CurrentName Test 2");
+	my $capture = array();
+	Try
+	{
+		$capture[] = "This code always executes";
+	    my $parent = "someClass";
+	    throw new Exception("My Message", 777, $parent);
+		$capture[] = "This code below the exception will not be executed if there was an exception";
+	}
+	Catch ( Exception $e )
+	{
+		$capture[] = "This code only gets executed if an exception happened";
+		$capture[] = "Message: " . $e->getMessage();
+		$capture[] = "Code: " . $e->getCode();
+		$capture[] = "Parent: " . $e->getParent();
+	}
+	Finally
+	{
+		$capture[] = "This code gets executed regardless if there was an exception or not";
+	}
+	if(
+		$capture == array(
+					"This code always executes",
+					"This code only gets executed if an exception happened",
+					"Message: My Message",
+					"Code: 777",
+					"Parent: someClass",
+					"This code gets executed regardless if there was an exception or not"
+					)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TryCatchTest3()
+{
+	println("$CurrentName Test 3");
+	my $capture = array();
+	Embedded Class myException extends Exception
+	{
+		my $myParam;
+		Function __Construct($Message, $Code, $Param, $Parent)
+		{
+			// Assign our special variable
+			$myParam = $Param;
+			// Call the parent (Exception) class
+			parent::__construct($Message, $Code, $Parent);
+		}
+		Function myParam()
+		{
+			return $myParam;
+		}
+	};	 
+	Try
+	{
+		$capture[] = "This code always executes";
+		// None of the exceptions params are required
+		// but it helps to at least have a message (First param)
+		// The second param is the error code can be anything you want
+		// The third param is the PARENT inside a class you would use
+		// the $this variable as the parent for obvious reasons
+	    my $parent = "someClass";
+		throw new myException("My Message", 777, "my special param", $parent);
+		$capture[] = "This code below the exception will not be executed if there was an exception";
+	}
+	Catch ( myException $e )
+	{
+		$capture[] = "This code only gets executed if an exception happened";
+		$capture[] = "Message: " . $e->getMessage(); // Gets the default or new message
+		$capture[] = "Code: " . $e->getCode(); // Gets the error code if one exists
+		$capture[] = "MyParam: " . $e->myParam(); // Gets our new param that was extended to exception
+		$capture[] = "Parent: " . $e->getParent(); // Gets the parent if one exists
+	}
+	Finally
+	{
+		$capture[] = "This code gets executed regardless if there was an exception or not";
+	}
+	if(
+		$capture == array(
+						"This code always executes",
+						"This code only gets executed if an exception happened",
+						"Message: My Message",
+						"Code: 777",
+						"MyParam: my special param",
+						"Parent: someClass",
+						"This code gets executed regardless if there was an exception or not"
+					)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+

@@ -1,0 +1,265 @@
+﻿#<?
+Include('./Doc/SPKFunctionList.spk');
+
+Global $SPKFunctionList = array();
+foreach($SPKFunctionDescList as my $k => my $v)
+	$SPKFunctionList[] = $k;
+Sort($SPKFunctionList, 1, Function( $a, $b ){ return StrNatCmp($a, $b, true); });
+
+Global $mToolsObjectBrowser = GUICreate("MenuItem", $mTools, "Object Browser");
+GUICreate("MenuItem", $mTools, '-');
+GUILink($mToolsObjectBrowser, "Click", q~
+if($ObjectBrowser == null)
+	$ObjectBrowser = new ObjectBrowser();
+$ObjectBrowser->Show();
+~);
+Global $ObjectBrowser = null;
+Class ObjectBrowser
+{
+	my $DClasses;
+	my $DMemberDesc;
+	my $DMemberExamp;
+    my $Form;
+    my $tFind;
+    my $cRegex;
+    my $l1;
+    my $cClasses;
+    my $l2;
+    my $tDesc;
+    my $l3;
+    my $tExample;
+    my $bRun;
+    my $cLibraries;
+    my $bClose;
+    my $tMembers;
+    my $bFind;
+    my $l4;
+    Function __Construct()
+    {
+        If( FunctionExists('Form_Initialize', $this) )
+            Form_Initialize();
+        $Form = GUICreate("Window", "Object Browser", 454, 526);
+		GUIMDIParent($Form, $GUI);
+        GUISetProp($Form, 'TabIndex', 21);
+        GUISetProp($Form, 'Enabled', true);
+        GUISetProp($Form, 'MinimizeBox', true);
+        GUISetProp($Form, 'MaximizeBox', true);
+        GUISetProp($Form, 'TopMost', true);
+        GUIWindow($Form, 'BorderStyle', 4);
+        $tFind = GUICreate("TextBox", $Form, '', 120, 8, 110, 20);
+        GUISetProp($tFind, 'Anchor', 5);
+        GUISetProp($tFind, 'TabIndex', 8);
+        GUISetProp($tFind, 'ReadOnly', false);
+        GUISetProp($tFind, 'PasswordChar', @'');
+        GUISetProp($tFind, 'Enabled', true);
+        GUISetProp($tFind, 'Visible', true);
+        $cRegex = GUICreate("CheckBox", $Form, 'Regex', 344, 8, 88, 24);
+        GUISetProp($cRegex, 'Anchor', 5);
+        GUISetProp($cRegex, 'TabIndex', 9);
+        GUISetProp($cRegex, 'Checked', false);
+        GUISetProp($cRegex, 'Enabled', true);
+        GUISetProp($cRegex, 'Visible', true);
+        GUILink($cRegex, 'CheckedChanged', '$param->cRegex_CheckedChanged();', $this);
+        $l1 = GUICreate("Label", $Form, 'Classes :', 8, 40, 110, 24);
+        GUISetProp($l1, 'Anchor', 5);
+        GUISetProp($l1, 'TabIndex', 10);
+        GUISetProp($l1, 'Enabled', true);
+        GUISetProp($l1, 'Visible', true);
+        $cClasses = GUICreate("ListBox", $Form, 8, 64, 110, 147);
+        GUISetProp($cClasses, 'Anchor', 5);
+        GUISetProp($cClasses, 'TabIndex', 11);
+        GUISetProp($cClasses, 'Enabled', true);
+        GUISetProp($cClasses, 'Visible', true);
+        GUIListBox($cClasses, 'SelectionMode', 'One');
+        GUIListBox( $cClasses, 'SetItems', Unserialize(StrUncompress(Hex2Str('789c4bb4cab132b086e14c28b6aaae05005a71071d'))));
+        GUILink($cClasses, 'SelectedIndexChanged', '$param->cClasses_SelectedIndexChanged( $arg );', $this);
+        $l2 = GUICreate("Label", $Form, 'Description :', 8, 216, 424, 24);
+        GUISetProp($l2, 'Anchor', 5);
+        GUISetProp($l2, 'TabIndex', 12);
+        GUISetProp($l2, 'Enabled', true);
+        GUISetProp($l2, 'Visible', true);
+        $tDesc = GUICreate("TextBoxEx", $Form, '', 8, 240, 424, 64);
+        GUISetProp($tDesc, 'Anchor', 5);
+        GUISetProp($tDesc, 'TabIndex', 13);
+        GUISetProp($tDesc, 'ReadOnly', true);
+        GUISetProp($tDesc, 'PasswordChar', @'');
+        GUISetProp($tDesc, 'Enabled', true);
+        GUISetProp($tDesc, 'Visible', true);
+        $l3 = GUICreate("Label", $Form, 'Example :', 8, 304, 424, 24);
+        GUISetProp($l3, 'Anchor', 5);
+        GUISetProp($l3, 'TabIndex', 14);
+        GUISetProp($l3, 'Enabled', true);
+        GUISetProp($l3, 'Visible', true);
+        $tExample = GUICreate("CodeBox", $Form, '', 8, 328, 424, 120);
+        GUISetProp($tExample, 'Anchor', 5);
+        GUISetProp($tExample, 'TabIndex', 15);
+        GUISetProp($tExample, 'ReadOnly', true);
+        GUISetProp($tExample, 'WordWrap', false);
+        GUISetProp($tExample, 'Enabled', true);
+        GUISetProp($tExample, 'Visible', true);
+        GUICodeBox($tExample, 'Lang', '7');
+        $bRun = GUICreate("Button", $Form, 'Run example code', 8, 456, 304, 25);
+        GUISetProp($bRun, 'Anchor', 5);
+        GUISetProp($bRun, 'TabIndex', 16);
+        GUISetProp($bRun, 'Enabled', true);
+        GUISetProp($bRun, 'Visible', true);
+        GUILink($bRun, 'Click', '$param->bRun_Click();', $this);
+        $cLibraries = GUICreate("ComboBox", $Form, 8, 8, 110, 21);
+        GUISetProp($cLibraries, 'Anchor', 5);
+        GUISetProp($cLibraries, 'TabIndex', 17);
+        GUISetProp($cLibraries, 'Enabled', true);
+        GUISetProp($cLibraries, 'Visible', true);
+        GUIComboBox($cLibraries, 'DropDownStyle', 'DropDownList');
+        GUIComboBox( $cLibraries, 'SetItems', Unserialize(StrUncompress(Hex2Str('789c4bb4cab132b086e14c28b6aaae05005a71071d'))));
+        GUILink($cLibraries, 'SelectedIndexChanged', '$param->cLibraries_SelectedIndexChanged( $arg );', $this);
+        $bClose = GUICreate("Button", $Form, 'Close', 320, 456, 110, 25);
+        GUISetProp($bClose, 'Anchor', 5);
+        GUISetProp($bClose, 'TabIndex', 18);
+        GUISetProp($bClose, 'Enabled', true);
+        GUISetProp($bClose, 'Visible', true);
+        GUILink($bClose, 'Click', '$param->bClose_Click();', $this);
+        $tMembers = GUICreate("ListBox", $Form, 120, 64, 312, 147);
+        GUISetProp($tMembers, 'Anchor', 5);
+        GUISetProp($tMembers, 'TabIndex', 19);
+        GUISetProp($tMembers, 'Enabled', true);
+        GUISetProp($tMembers, 'Visible', true);
+        GUIListBox($tMembers, 'SelectionMode', 'One');
+        GUIListBox( $tMembers, 'SetItems', Unserialize(StrUncompress(Hex2Str('789c4bb4cab132b086e14c28b6aaae05005a71071d'))));
+        GUILink($tMembers, 'SelectedIndexChanged', '$param->tMembers_SelectedIndexChanged( $arg );', $this);
+        $bFind = GUICreate("Button", $Form, 'Find', 232, 8, 110, 25);
+        GUISetProp($bFind, 'Anchor', 5);
+        GUISetProp($bFind, 'TabIndex', 20);
+        GUISetProp($bFind, 'Enabled', true);
+        GUISetProp($bFind, 'Visible', true);
+        GUILink($bFind, 'Click', '$param->bFind_Click();', $this);
+        $l4 = GUICreate("Label", $Form, 'Members of ''<Core>'' (Sputnik core functions) :', 120, 40, 312, 24);
+        GUISetProp($l4, 'Anchor', 5);
+        GUISetProp($l4, 'TabIndex', 21);
+        GUISetProp($l4, 'Enabled', true);
+        GUISetProp($l4, 'Visible', true);
+        GUILink($Form, 'FormClosing', 'if(isvarclass($param))$param->Hide(true);', $this);
+        If( FunctionExists('Form_Load', $this) )
+            Form_Load();
+    }
+    Function __Destruct()
+    {
+		$ObjectBrowser = null;
+        If( FunctionExists('Form_Unload', $this) )
+            Form_Unload();
+        Unset($Form);
+        Unset($tFind);
+        Unset($cRegex);
+        Unset($l1);
+        Unset($cClasses);
+        Unset($l2);
+        Unset($tDesc);
+        Unset($l3);
+        Unset($tExample);
+        Unset($bRun);
+        Unset($cLibraries);
+        Unset($bClose);
+        Unset($tMembers);
+        Unset($bFind);
+        Unset($l4);
+    }
+    Function Show()
+    {
+		if( -e "./Settings/ObjectBrowser.dat" )
+		{
+			my $LoadData = BinaryLoad("./Settings/ObjectBrowser.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($Form, "Left", $BData[0]);
+			GUISetProp($Form, "Top", $BData[1]);
+		}
+		else
+		{
+			GUISetProp($Form, "Left", 0);
+			GUISetProp($Form, "Top", 0);
+		}
+        If( FunctionExists('Form_Show', $this) )
+            Form_Show();
+        if(GUIStatus($Form))
+            GUIWindow($Form, 'Focus');
+        else
+        @{
+            $OpenWindows++;
+            GUILoad($Form);
+        }
+    }
+    Function Hide($Event = false)
+    {
+        If( FunctionExists('Form_Hide', $this) )
+            Form_Hide();
+        if($Event)
+            $OpenWindows--;
+        if(GUIStatus($Form))
+            GUIUnload($Form);
+		// Save Settings
+		my $X = GUIGetProp($Form, "Left");
+		my $Y = GUIGetProp($Form, "Top");
+		my $SaveData = Pack('ii', $X, $Y);
+		BinarySave($SaveData, "./Settings/ObjectBrowser.dat");
+    }
+    Function Dispose()
+    {
+        Unset($this);
+    }
+    Function Form_Show()
+    {
+		$DClasses['<Core>'] = $SPKFunctionList;
+		$DMemberDesc['<Core>'] = $SPKFunctionDescList;
+		
+        GUIComboBox($cLibraries, 'Clear');
+        GUIComboBox($cLibraries, 'AddItem', '<Core>');
+        GUISetProp($cLibraries, 'Text', '<Core>');		
+		
+        GUIListBox($cClasses, 'Clear');
+        GUIListBox($cClasses, 'AddItem', '<Core>');
+        GUIListBox($cClasses, 'SelectedItem', '<Core>');
+		
+    } # Form_Show
+    
+    Function Form_Unload()
+    {
+    } # Form_Unload
+    
+    Function bFind_Click()
+    {
+    } # bFind_Click
+    
+    Function bClose_Click()
+    {
+		Dispose();
+    } # bClose_Click
+    
+    Function bRun_Click()
+    {
+    } # bRun_Click
+    
+    Function cLibraries_SelectedIndexChanged( $arg )
+    {
+        my List( $Index, $Text ) = $arg;
+    } # cLibraries_SelectedIndexChanged
+    
+    Function cRegex_CheckedChanged()
+    {
+    } # cRegex_CheckedChanged
+    
+    Function cClasses_SelectedIndexChanged( $arg )
+    {
+        my List( $Index, $Text ) = $arg;
+        GUIListBox($tMembers, 'SetItems', $DClasses[$Text]);
+    } # cClasses_SelectedIndexChanged
+    
+    Function tMembers_SelectedIndexChanged( $arg )
+    {
+        my List( $Index, $Text ) = $arg;
+        my $CLS = GUIListBox($cClasses, 'SelectedItem');
+		
+		if(Isset($DMemberDesc[$CLS][$Text]))
+			GUISetProp($tDesc, 'Text', $Text . $DMemberDesc[$CLS][$Text]);
+		else
+			GUISetProp($tDesc, 'Text', 'NO DESCRIPTION AVAILABLE YET');
+		GUISetProp($tExample, 'Text', 'NO EXAMPLE AVAILABLE YET');
+    } # tMembers_SelectedIndexChanged
+};

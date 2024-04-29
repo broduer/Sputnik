@@ -1,0 +1,48 @@
+﻿$LoadCommands['kill'] = array('CmdKill', 1, 1);
+Class extends ServerManager
+{
+	Function CmdKill($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Kill a player';
+		if ($args === 'help')
+			return array("Kill a player");
+		if ($commandUser == null)
+			return;
+		my $findWho = $args[0];
+		if (IsEmptyOrNull($findWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my $found = $currentPlayers->FindByIdOrPartialName($findWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$findWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot kill yourself");
+			return;
+		}
+		if (IsUserAdmin($found))
+		{
+			SayToUser($commandUser, "You cannot kill an Administrator");
+			return;
+		}
+		if (!IsUserAdmin($commandUser) && IsUserModerator($found))
+		{
+			SayToUser($commandUser, "You cannot kill a Moderator");
+			return;
+		}
+		my $name = $commandUser->$Name;
+		my $foundName = $found->$Name;
+		SayToAll($commandUser, "$name terminated $foundName with the kill command");
+		KillUser($found);
+	}
+}

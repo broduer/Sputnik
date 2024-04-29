@@ -1,0 +1,68 @@
+#<?
+Class PropFont extends Prop
+{
+	my $Font;
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+		$Font = null;
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return '[FONT]';
+	}
+	override Function SetProp($Object, $vv)
+	{
+		if(RealGetKeyState(@KeyControlKey))
+		{
+			GUISetProp($Object->GetObject(), $Name, 'default');
+			$Object->SetChanged($Name, false);
+		}
+		else
+		{
+			my $Value = FontDialog();
+			if($Value !== null)
+			{
+				my List ( $FName, $Size, $Bold, $Italic, $Strikeout, $Underline ) = $Value;
+				my $Flags = 0;
+				if($Bold) $Flags |= @fontBold;
+				if($Italic) $Flags |= @fontItalic;
+				if($Strikeout) $Flags |= @fontStrikeout;
+				if($Underline) $Flags |= @FontUnderline;
+				my $NewFont = GUICreate('Font', $FName, $Size, $Flags);
+				GUISetProp($Object->GetObject(), $Name, $NewFont);
+				$Object->SetChanged($Name);
+				$Font = array($FName, $Size, $Flags);
+			}
+		}
+		return null;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		$Font = Unserialize($Value);
+		my $NewFont = GUICreate('Font', $Font[0], $Font[1], $Font[2]);
+		GUISetProp($Object->GetObject(), $Name, $NewFont);
+	}
+	override Function SaveProp($Object)
+	{
+		if(!$Object->IsChanged($Name))
+			return null;
+		return Serialize($Font);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		if($Object->IsChanged($Name) && $Font ~~ Array && Count($Font) == 3)
+		{
+			$FName = MakeText($Font[0]);
+			$FSize = $Font[1];
+			$FFlags = $Font[2];
+			$Code .= "GUISetProp(\$$ObjName, '$Name', GUICreate('Font', $FName, $FSize, $FFlags));\r\n";
+		}
+		return $Code;
+	}
+};

@@ -1,0 +1,80 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$Hotkey] = true;
+Object::$Names[ObjectType->$Hotkey] = 'Hotkey';
+Object::$Props[ObjectType->$Hotkey] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, false),
+												new PropHotkey('Hotkey', null, null, null),
+												new PropFakeBool('AllowShiftKeys', null, false, null, false),
+												new PropFakeBool('AllowClear', null, true, null, false),
+												new PropFakeBool('OnceWithTimer', null, false, null, false),
+												new PropFakeBool('RegisterHotKey', null, false, null, false)
+											);
+Object::$ReadonlyProps[ObjectType->$Hotkey] = array('Width','Height');
+Object::$HiddenProps[ObjectType->$Hotkey] = array('Width','Height');
+Object::$Events[ObjectType->$Hotkey] = array(
+												'Triggered' => EventType->$CustomLink
+											);
+Object::$MenuAdd[ObjectType->$Hotkey] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$Hotkey]);
+GUILink(Object::$MenuAdd[ObjectType->$Hotkey], "Click", 'CreateControl(ObjectType->$Hotkey);');
+Class Hotkey extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 25, $Height = 25)
+	{
+		CreateParent($myParent);
+		CreateParentOffset(0, 0);
+		SetType(ObjectType->$Hotkey);
+		SetName($Name);
+		SetObject(GUICreate('PictureBox', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		SetGrid();
+		SetZorder(ZorderType->$AlwaysTop);
+		if(@Compiled)
+			GUIPictureBox(GetObject(), 'Load', $HotkeyImg);
+		else
+			GUIPictureBox(GetObject(), 'Load', './Images/hotkey.ico');
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function __GetLinkSource($Window, $Name, $NameLink, $LinkName)
+	{
+		my $Code = '';
+		my $Hotkey = GetPropClass('Hotkey')->$Hotkey;
+		if(GetProp('Enabled') && $Hotkey[0] != 'None')
+		{
+			if(GetProp('RegisterHotKey'))
+			{
+				my $HKey = '';
+				my $Char = LC(Chr($Hotkey[1]));
+				my $HMods = $Hotkey[2];
+				if($HMods & @KeyControl) $HKey .= '^';
+				if($HMods & @KeyAlt) $HKey .= '!';
+				if($HMods & @KeyShift) $HKey .= '+';
+				$HKey .= $Char;
+				$Code .= "HotKeySet('$HKey', '\$param->$NameLink();', \$this);\r\n";
+			}
+			else
+			{
+				my $HKey = $Hotkey[1];
+				my $HMods = $Hotkey[2];
+				my $isOnce = 'false';
+				if(GetProp('OnceWithTimer'))
+					$isOnce = 'true';
+				$Code .= "push(\$FormHKeyTimerFuncs, array(array($HKey, $HMods), '$NameLink', $isOnce));\r\n";
+			}
+		}
+		return $Code;
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

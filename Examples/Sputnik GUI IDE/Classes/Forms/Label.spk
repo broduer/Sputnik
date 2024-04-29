@@ -1,0 +1,44 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$Label] = false;
+Object::$Names[ObjectType->$Label] = 'Label';
+Object::$Props[ObjectType->$Label] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropString('Text', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$Events[ObjectType->$Label] = array(
+												Object::$GenericEvents[<=>]
+											);
+Object::$MenuAdd[ObjectType->$Label] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$Label]);
+GUILink(Object::$MenuAdd[ObjectType->$Label], 'Click', 'CreateControl(ObjectType->$Label);');
+Class Label extends Object
+{
+	Function __construct($myParent, $Name, $Text = 'New ' . Object::$Names[ObjectType->$Label], $Left = 8, $Top = 8, $Width = 110, $Height = 25)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$Label);
+		SetName($Name);
+		SetObject(GUICreate('Label', $myParent->GetObject(), $Text, $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

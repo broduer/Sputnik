@@ -1,0 +1,89 @@
+﻿// Include what we need for this script to work
+Include('Console.spk', true);
+Include('String.spk', true);
+
+// We will use #include here since if we try use the normal include it
+// wont get parsed until the code runs and that is a big problem since
+// our client extends another class and the one to extend wont be found
+// So by doing it like this we ensure it will be found
+#Include "TelnetBase.spk"
+
+// Create the Client instance
+Global $client = new Client('Client Example');
+$client->Connect('127.0.0.1', 1100); // connect to server
+$client->Go(); // begin main loop and start processing
+
+Class Client extends TelnetBase
+{
+	Function __Construct($myAppName)
+	{
+		// Store our app name
+		$appName = $myAppName;
+		// Set us as the client
+		$isServer = false;
+		// Init the Telnet base
+		Init();
+	}
+	// Connect to the server
+	Function Connect($ip, $port)
+	{
+		// Connect and join the server
+		SocketConnect($Socket, $ip, $port) or die('Failed to connect');
+		// Inform what we are doing
+		AppendLine("Client is connecting to IP '$ip' and Port '$port'");
+		// Send our name to the server
+		SocketSend($Socket, "$name\n");
+		// Create the network processing thread
+		// we need it on a separate thread since
+		// it will prevent console input if we dont
+		ThreadCreate('netProcessing', '$arg->ReadNetwork();', $this);
+	}
+	// Read all network packets
+	Function ReadNetwork()
+	{
+		// Loop forever
+		while (true)
+		{
+			// Obtain a line of text from the server
+			my $line = SocketReadLine($Socket);
+			// Trim whats left
+			my $lineTrim = trim($line);
+			// Got something to process?
+			if (!IsEmptyOrNull($lineTrim))
+			{
+				// Make sure to lock the array
+				ThreadLock("ToProcess")
+				{
+					// Add the line to processing array to
+					// be processed later by the main thread
+					push($toProcess, $lineTrim);
+				}
+			}
+			sleep(1);
+		}
+	}
+	// Process all network packets
+	Function ProcessNetwork()
+	{
+		// if there is nothing to do just return
+		if (count($toProcess) <= 0)
+			return;
+		// get the first element so we can process it
+		my $line = shift($toProcess);
+		// make sure the array stays in order
+		order($toProcess);
+		// print the line
+		OnProcess($line);
+	}
+	// Handle the user typing in the console and send it as chat
+	Function UserTyped($Text)
+	{
+		// Send what the we typed to the server
+		SocketSend($Socket, "$Text\n");
+	}
+	// Triggered when we got a message to process from the server
+	Function OnProcess($line)
+	{
+		AppendLine($line);
+	}
+}

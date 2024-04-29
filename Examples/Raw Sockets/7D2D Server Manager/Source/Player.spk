@@ -1,0 +1,32 @@
+﻿Class Player
+{
+	my $Id;
+	my $Name;
+	my $Pos;
+	my $Rot;
+	my $Remote;
+	my $Health;
+	my $Deaths;
+	my $ZombieKills;
+	my $PlayerKills;
+	my $Level;
+	my $SteamId;
+	my $Ip;
+	my $Ping;
+	Function __construct($Id, $Name, $Pos, $Rot, $Remote, $Health, $Deaths, $ZombieKills, $PlayerKills, $Level, $SteamId, $Ip, $Ping)
+	{
+		$this->$Id = $Id;
+		$this->$Name = $Name;
+		$this->$Pos = $Pos;
+		$this->$Rot = $Rot;
+		$this->$Remote = $Remote;
+		$this->$Health = (double)$Health;
+		$this->$Deaths = (double)$Deaths;
+		$this->$ZombieKills = (double)$ZombieKills;
+		$this->$PlayerKills = (double)$PlayerKills;
+		$this->$Level = (double)$Level;
+		$this->$SteamId = $SteamId;
+		$this->$Ip = $Ip;
+		$this->$Ping = $Ping;
+	}
+}

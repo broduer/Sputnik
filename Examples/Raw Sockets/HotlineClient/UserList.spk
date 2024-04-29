@@ -1,0 +1,110 @@
+Class UserInfo
+{
+	my $UserID;
+	my $UserIconID;
+	my $UserFlags;
+	my $UserName;
+	Function __Construct($UserID, $UserIconID, $UserFlags, $UserName)
+	{
+		$this->$UserID = $UserID;
+		$this->$UserIconID = $UserIconID;
+		$this->$UserFlags = $UserFlags;
+		$this->$UserName = $UserName;
+	}
+}
+Class UserList
+{
+	my $UserList;
+	my $HLSocket;
+	Function __Construct( HLSocket $H )
+	{
+		$HLSocket = $H;
+		$CurrentTransaction = null;
+		$UserList = array();
+	}
+	Function ClearAll()
+	{
+		foreach($UserList as my $UserInfo)
+			unset($UserInfo);
+		$UserList = array();
+	}
+	Function UpdateUserList()
+	{
+		$HLSocket->$Client->OnGetUserNameList($UserList);
+	}
+	Function FindUserID( $UserID )
+	{
+		foreach($UserList as my $UserInfo)
+		{
+			if($UserInfo->$UserID ==  $UserID)
+				return $UserInfo;
+		}
+		return null;
+	}
+	Function FindUserName( $UserName, $IgnoreCase = true )
+	{
+		foreach($UserList as my $UserInfo)
+		{
+			if($UserInfo->$UserName == $UserName)
+				return $UserInfo;
+			else if($IgnoreCase && $UserInfo->$UserName eqi $UserName)
+				return $UserInfo;
+		}
+		return null;
+	}
+	Function ParseUserNameWithInfo( $Params )
+	{
+		$UserList = array();
+		foreach($Params->$Fields as my $Field)
+		{
+			if($Field->$FieldID == FieldID->$UserNameWithInfo)
+			{
+				my $UserID = Unpack('x0/n', $Field->$FieldData, 2);
+				my $UserIconID = Unpack('x2/n', $Field->$FieldData, 2);
+				my $UserFlags = Unpack('x4/n', $Field->$FieldData, 2);
+				my $UserNameSize = Unpack('x6/n', $Field->$FieldData, 2);
+				my $UserNameData = BinaryMid($Field->$FieldData, 8, $UserNameSize);
+				my $UserName = Unpack('z0', $UserNameData, 2);
+				$UserList[] = new UserInfo($UserID, $UserIconID, $UserFlags, $UserName);
+			}
+		}
+		UpdateUserList();
+	}
+	Function ParseNotifyChangeUser( $Params )
+	{
+		my $UserID = $Params->GetInteger(FieldID->$UserID);
+		my $UserIconID = $Params->GetInteger(FieldID->$UserIconID);
+		my $UserFlags = $Params->GetInteger(FieldID->$UserFlags);
+		my $UserName = $Params->GetString(FieldID->$UserName);
+		
+		my $FoundUser =  FindUserID($UserID);
+		if($FoundUser !== null)
+		{
+			my $OldUserName =  $FoundUser->$UserName;
+			$FoundUser->$UserIconID = $UserIconID;
+			$FoundUser->$UserFlags = $UserFlags;
+			$FoundUser->$UserName = $UserName;
+			if($OldUserName != $UserName)
+				$HLSocket->$Client->OnUserChangeName($OldUserName, $UserName);
+		}
+		else
+		{
+			my $UserInfo = new UserInfo($UserID, $UserIconID, $UserFlags, $UserName);
+			$UserList[] = $UserInfo;
+			$HLSocket->$Client->OnUserJoined($UserInfo);
+		}
+		UpdateUserList();
+	}
+	Function ParseNotifyDeleteUser( $Params )
+	{
+		my $UserID = $Params->GetInteger(FieldID->$UserID);
+		my $FoundUser =  FindUserID($UserID);
+		if($FoundUser !== null)
+		{
+			RemoveValue($UserList, $FoundUser);
+			my $UserName = $FoundUser->$UserName;
+			$HLSocket->$Client->OnUserLeft($FoundUser);
+			UpdateUserList();
+		}
+	}
+}

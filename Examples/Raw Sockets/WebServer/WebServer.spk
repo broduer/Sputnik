@@ -1,0 +1,272 @@
+// The class for all Clients to use
+Class hClient
+{
+	my $Server;			// The main webserver SOCKET this client is using
+	my $ID;				// The Unique ID of the client
+	my $IP;				// The IP of the client useful if banning or something
+	my $Socket;			// The socket the client is connected on
+	my $Request; 		// The last "?key=value&key=value" query
+						// from the client in array form
+	my $EvalSpk;		// Holds a new Sputnik interp to run spk stuff
+						// for this client only
+	Function __Construct($cServer, $cSocket, $cID)
+	{
+		$Server = $cServer;
+		$Socket = $cSocket;
+		$ID = $cID;
+		$IP = SocketIP($Socket); // Get the IP right away
+		$Request = array();
+		$EvalSpk = EvalCreate(); // Create a new Interp this client can use
+	}
+	Function __Destruct()
+	{
+		printf("Finished with client IP '%s'\n", $IP);
+		SocketShutdown($Socket, 'Both'); // First shutdown send/recieve
+										 // We dont want the client to have
+										 // a panic attack and fail to display
+										 // the page!
+		SocketClose($Socket); // Finally close the socket (full disconnect)
+		unset($Socket); // Unset it just to be extra sure
+		unset($EvalSpk); // Don't want the new instance floating around
+	}
+	// The main processing for the client
+	Function Process()
+	{
+		printf("Handling client IP '%s'\n", $IP);
+		// Send HTTP header so the client will
+		// Handle any GET requests from client
+		HandleRecv();
+		// Print any GET query for testing
+		if(Count($Request))
+		{
+			foreach($Request as my $Key => my $Value)
+				SendText("Key '$Key' Value '$Value'<br>");
+		}
+		// All done
+		unset($this);
+	}
+	// Handles reciving requests from client
+	// currently it gets the clients GET and QUERY
+	// then it displays the page the client asks for
+	Function HandleRecv()
+	{
+		// This is obviously... Is the client connected to the server still...
+		while(SocketConnected($Socket))
+		{
+			// This is less obvious it returns the number of bytes ready to read
+			// so if this is TRUE then there must be bytes to read
+			if( SocketAvailable($Socket) )
+			{
+				// Read all posible bytes available to read
+				my $Data = SocketReceive($Socket, SocketAvailable($Socket))[1];
+				// Convert the binary we just read into a string
+				my $StrData = (string)$Data; 	// This will use ASCII which is fine
+												// since all requests seem to be ASCII...
+												// although we could convert it to UTF-8
+												// unicode easily enough
+				// Print the binary in an easy to read way
+				printf("Recv Binary BELOW:\n%s\nRecv Binary ABOVE:\n", BinaryExpand($Data));
+				// Print the string in an easy to read way
+				printf("Recv String BELOW:\n%s\nRecv String ABOVE:\n", $StrData);
+				// Check if we got a valid GET request
+				if($StrData =~ m/GET (.*) HTTP\/1.1/)
+				{
+					my $GetRequest = $1;
+					printf("GET: %s\n", $GetRequest);
+					my $File = '';
+					my $Req = '';
+					// Process the query and file name
+					if($GetRequest =~ m/(.*)\?(.*)/)
+					{
+						$File = $1;
+						$Req = $2;
+					}
+					else
+						$File = $GetRequest;
+					// We got a query?
+					if(!IsEmptyOrNull($Req)) // If so store it for later use
+						$Request = $Server->ResolveQueryString($Req);
+					// Default will be index.html
+					if($File == '/')
+						$File = 'index.html';
+					my $FileLoc = "./root/$File";
+					// Found the requested item?
+					if(FileExists($FileLoc))
+					{
+                        my $ex = GetExtension($FileLoc);
+                        switch(lc($ex))
+                        {
+                            // Send as Raw binary
+                            case ".zip":
+                            case ".png":
+                                my $Data = BinaryLoad($FileLoc);
+                                my $BinSize = Count($Data);
+                                SendRaw($Data);
+                                break;
+                            // Send with HTML header
+                            case ".htm":
+                            case ".html":
+                                SendHTMLHeader();
+                                my $FileText = FileLoad($FileLoc);
+                                my $FinalText = ResolveSPKTags($FileText);
+                                SendText($FinalText);
+                                break;
+                            default: // Send 512 if we cant process this type of file
+                                SendTemplate(415, $File);
+                                break;
+                            
+                        }
+					}
+					else // Send 404 if it cannot be found
+						SendTemplate(404, $File);
+					return;
+				}
+				else // Got unknown responce from client -- Terminate
+					return;
+			}
+		}
+	}
+	// This handles resolving SPK tags inside HTML
+	// it is smart enough that even print statements
+	// get added to the HTML
+	//
+	// This function needs some serious optimization
+	// since it is very slow with large amounts of text
+	// i think it would be best to 
+	Function ResolveSPKTags( $Text )
+	{
+		my $FinalText = RegexReplace($Text, 's/<\?spk(.*?)(?<=^([^"]|"[^"]*")*)\?>/iegso', '$this->ResolveSPKTag($1)');
+		return $FinalText;
+	}
+	// This is just a helper for the above function
+	Function ResolveSPKTag( $Text )
+	{
+		// Parse the code inside an SPK tag
+		// all print etc statements will add to the return value
+		// if RETURN is used it will append onto everything printed
+		// so it is safe to use RETURN despite printing however
+		// only return!
+		//
+		// Its worth noting the Eval has access to our variables
+		// so it can use the $Request etc
+		// Also it cleans up after itself so any functions etc
+		// made by the tags code will be removed immediately afterwards
+		return Eval($Text, $EvalSpk, false, true);
+	}
+	// Send the HTTP header so any decent browser
+	// will know HTTP is coming next and it will
+	// display it accordingly
+	// we should probably make this auto activate
+	// if it detects you sending html to the client
+	// but for now its manual
+	Function SendHTMLHeader()
+	{
+		// Simple HTML header
+		// We are using UTF-8 here
+		// so we can send UTF-8 unicode to the client
+		// with no problem at all
+		my $Header = "HTTP/1.1 200 OK\r\n" .
+					 "Content-Type: text/html; charset=UTF-8\r\n\r\n";
+		SendText($Header);
+	}
+    // Send Raw binary, text, files etc
+	Function SendRaw( $Bin )
+	{
+		my $ToSend = Count($Bin);
+		my $Sent = 0;
+		while($Sent != $ToSend)
+		{
+			my $SendBytes = 10240;
+			my $LeftToSend = $ToSend - $Sent;
+			if($LeftToSend < $SendBytes)
+				$SendBytes = $LeftToSend;
+			SocketSend($Socket, $Bin, $Sent, $SendBytes);
+			$Sent += $SendBytes;
+		}
+	}
+	// Sending raw text to the client
+	// if you are sending HTML here then you
+	// should send the HEADER first before
+	// doing all the SendText() statements
+	// the header only needs to be sent once
+	// Sends as UTF-8
+	Function SendText( $Text )
+	{
+		// Obtain binary to send to client
+		my $Bin = Pack('z7', $Text);
+        SendRaw($Bin);
+	}
+	// This handles sending a template from the ./templates folder
+	// such as 404.html
+	// Sends as UTF-8
+	Function SendTemplate( $Code, $Item )
+	{
+		my $File = "./templates/$Code.html";
+		if(FileExists($File))
+		{
+			my $FileText = FileLoad($File);
+			$FileText = Replace($FileText, '$Item', $Item); // Will add more variables in future
+			SendText($FileText);
+		}
+	}
+};
+// The main Webserver class SputHTTPd !
+Class SputHTTPd
+{
+	my $UniqueIDs; // Never modify directly
+	my $Socket; // The main webserver socket
+	Function __Construct()
+	{
+		$UniqueIDs = (Int64)0;  // Just make sure its an Int64
+								// We dont want no 2 billion limit
+		$Socket = null;
+	}
+	// Start the actual webserver
+	Function Start($IP = '0.0.0.0', $Port = 8080)
+	{
+		$Socket = SocketCreate('Stream', 'TCP');
+		SocketBind($Socket, $IP, $Port);
+		SocketListen($Socket, 10);
+		printf("SputHTTPd started\n");
+		printf("Listening on port %d\n", $Port);
+		printf("Waiting for a clients\n");
+		while (true) // Loop forever
+		{
+			// Found a client
+			my $cSocket = SocketAccept($Socket);
+			// Get a unique ID for the client
+			my $cID = GetUniqueId();
+			// Create a class for the client
+			my $Client = new hClient($this, $cSocket, $cID);
+			printf("Client IP '%s' connected\n", $Client->$IP);
+			// Spawn a thread to handle the Client
+			// each client runs in its own thread for now
+			ThreadCreate('Client' . $cID, '$arg->Process();', $Client);
+		}
+	}
+	// Always returns a unique ID every time its called
+	Function GetUniqueId()
+	{
+		$UniqueIDs++;
+		return $UniqueIDs;
+	}
+	// This resolves a GET/POST etc query string into an array
+	Function ResolveQueryString( $QueryString )
+	{
+		my $Request = array();
+		my $QueryList = Split($QueryString, '&');
+		Foreach($QueryList as my $i)
+		{
+			my List ( $Key, $Value ) = Split($i, '=');
+			$Value =~ s/%([a-fA-F0-9][a-fA-F0-9])/ChrW(Dec($1))/ego;
+			$Value =~ s/\+/ /gi; 
+			$Value =~ s/\</&lt;/gi; 
+			$Value =~ s/\>/&gt;/gi; 
+			$Request[$Key] = $Value;
+		}
+		return $Request;
+	}
+}
+// Spawn a new webserver and run it
+my $Server = new SputHTTPd();
+$Server->Start();

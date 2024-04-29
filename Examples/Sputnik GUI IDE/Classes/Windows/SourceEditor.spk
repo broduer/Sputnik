@@ -1,0 +1,646 @@
+#<?
+Class SourceEditor
+{
+	my $Window;
+	my $cInt;
+	my $cIndex;
+	my $tSource;
+	my $bStatus;
+	my $ObjectType;
+	my $Name;
+	my $Disposed;
+	my $SourceRef;
+	my $UseSourceRef;
+	my $EditorMenu;
+	my $EditorContextMenu;
+	my $SaveName;
+	my $DontUpdateIndex;
+	[Args("false")]
+	Function __Construct($UseSourceRef, $SourceRef, $WhatIs, $Name, $useIndex = true, $loadGUI = true, $doEvents = true, $Parent = null)
+	{
+		$Disposed = false;
+		$SaveName = null;
+		$this->$Name = $Name;
+		$this->$SourceRef = $SourceRef;
+		$this->$UseSourceRef = $UseSourceRef;
+		$Window = GUICreate('Window', "Source Editor -- $WhatIs", 684, 474);
+		if($Parent !== null)
+		{
+			GUIMDIParent($Window, $Parent);
+			GUISetProp($Window, 'Top', 0);
+			GUISetProp($Window, 'Left', 0);
+		}
+		if( -e "./Settings/SourceEditor_$Name.dat" )
+		{
+			my $LoadData = BinaryLoad("./Settings/SourceEditor_$Name.dat");
+			my $BData = Unpack('i/i/i/i', $LoadData);
+			GUISetProp($Window, "Left", $BData[0]);
+			GUISetProp($Window, "Top", $BData[1]);
+			GUISetProp($Window, "Width", $BData[2]);
+			GUISetProp($Window, "Height", $BData[3]);
+		}
+		$cIndex = GUICreate('ComboBox', $Window, 0, 0, 145, 21);
+		$cInt = GUICreate('ComboBox', $Window, 128, 0, 145, 21);
+		$tSource = GUICreate('CodeBox', $Window, '', 0, 24, 201, 137);
+		$bStatus = GUICreate('StatusBar', $Window);
+		GUICodeBox($tSource, 'Lang', @LangSPK);
+		GUICodeBox($tSource, 'HighlightingRangeType', @hrtVisibleRange);
+		GUICodeBox($tSource, 'CurrentLineColor', RGB(100, 210, 210));
+		GUIComboBox($cIndex, 'AddItem', '(General)');
+		GUIComboBox($cInt, 'DropDownStyle', 'DropDownList');
+		GUIComboBox($cIndex, 'DropDownStyle', 'DropDownList');
+		GUILink($Window, 'FormClosed', '$param->Dispose();', $this);
+		GUILink($Window, 'FormClosing', '$param->Dispose();', $this);
+		
+		$DontUpdateIndex = false;
+		if(!$useIndex)
+		{
+			GUISetProp($cIndex, 'Enabled', false);
+			GUISetProp($cInt, 'Enabled', false);
+		}
+		else
+		{
+			onMouseEnterIndex();
+			GUILink($cIndex, 'MouseEnter', '$param->onMouseEnterIndex();', $this);
+			GUILink($cIndex, 'SelectedIndexChanged', '$param->onChangeIndex();', $this);
+			GUILink($cInt, 'SelectedIndexChanged', '$param->onChangeInt();', $this);
+		}
+		
+		$EditorMenu = GUICreate('Menu', $Window);
+		my $EditorMenuFile = GUICreate('MenuItem', $EditorMenu, '*** Editor Menu ***');
+		if(!$UseSourceRef)
+		{
+			my $EditorMenuFileSave = GUICreate('MenuItem', $EditorMenuFile, 'Save');
+			my $EditorMenuFileSaveAs = GUICreate('MenuItem', $EditorMenuFile, 'Save as');
+			my $EditorMenuFileLoad = GUICreate('MenuItem', $EditorMenuFile, 'Load');
+			GUICreate('MenuItem', $EditorMenuFile, '-');
+			my $EditorMenuFileRun = GUICreate('MenuItem', $EditorMenuFile, 'Run Script [F5]');
+			my $EditorMenuFileCompile = GUICreate('MenuItem', $EditorMenuFile, 'Make .exe [F9]');
+			my $EditorMenuFileCompileWin = GUICreate('MenuItem', $EditorMenuFile, 'Make .exe (Auto Hide Console)');
+			GUICreate('MenuItem', $EditorMenuFile, '-');
+			GUILink($EditorMenuFileSave, 'Click', '$param->SaveFile();', $this);
+			GUILink($EditorMenuFileSaveAs, 'Click', '$param->SaveFileAs();', $this);
+			GUILink($EditorMenuFileLoad, 'Click', '$param->LoadFile();', $this);
+			GUILink($EditorMenuFileRun, 'Click', '$param->RunScript();', $this);
+			GUILink($EditorMenuFileCompile, 'Click', '$param->CompileScript(false);', $this);
+			GUILink($EditorMenuFileCompileWin, 'Click', '$param->CompileScript(true);', $this);
+		}
+		my $EditorMenuFileSyntax = GUICreate('MenuItem', $EditorMenuFile, 'Check script syntax for errors [F4]');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileFind = GUICreate('MenuItem', $EditorMenuFile, 'Find [Ctrl+F]');
+		my $EditorMenuFileReplace = GUICreate('MenuItem', $EditorMenuFile, 'Replace [Ctrl+H]');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileReadonly = GUICreate('MenuItem', $EditorMenuFile, 'Set selected as readonly');
+		my $EditorMenuFileWritable = GUICreate('MenuItem', $EditorMenuFile, 'Set selected as writable');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileCollapseSelected = GUICreate('MenuItem', $EditorMenuFile, 'Collapse selected block');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileCollapse = GUICreate('MenuItem', $EditorMenuFile, 'Collapse all #region');
+		my $EditorMenuFileExpand = GUICreate('MenuItem', $EditorMenuFile, 'Expand all #region');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileTab = GUICreate('MenuItem', $EditorMenuFile, 'Increase Indent [Tab]');
+		my $EditorMenuFileUnTab = GUICreate('MenuItem', $EditorMenuFile, 'Decrease Indent [Shift + Tab]');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileAutoTab = GUICreate('MenuItem', $EditorMenuFile, 'Auto Indent selected text');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileLeftBracket = GUICreate('MenuItem', $EditorMenuFile, 'Go to Left Bracket');
+		my $EditorMenuFileRightBracket = GUICreate('MenuItem', $EditorMenuFile, 'Go to Right Bracket');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileExportRtf = GUICreate('MenuItem', $EditorMenuFile, 'Export RTF');
+		my $EditorMenuFileExportHtml = GUICreate('MenuItem', $EditorMenuFile, 'Export HTML');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFilePrint = GUICreate('MenuItem', $EditorMenuFile, 'Print');
+		GUICreate('MenuItem', $EditorMenuFile, '-');
+		my $EditorMenuFileHotkeys = GUICreate('MenuItem', $EditorMenuFile, 'Setup Hotkeys');
+		GUISetProp($Window, 'Menu', $EditorMenu);
+		GUILink($EditorMenuFileSyntax, 'Click', '$param->CheckSyntax();', $this);
+		GUILink($EditorMenuFileFind, 'Click', q~GUICodeBox($param->$tSource, 'ShowFind');~, $this);
+		GUILink($EditorMenuFileReplace, 'Click', q~GUICodeBox($param->$tSource, 'ShowReplace');~, $this);
+		GUILink($EditorMenuFileReadonly, 'Click', q~GUICodeBox($param->$tSource, 'SelectionReadonly');~, $this);
+		GUILink($EditorMenuFileWritable, 'Click', q~GUICodeBox($param->$tSource, 'SelectionWriteable');~, $this);
+		GUILink($EditorMenuFileCollapseSelected, 'Click', q~GUICodeBox($param->$tSource, 'CollapseSelectedBlock');~, $this);
+		GUILink($EditorMenuFileCollapse, 'Click', q~GUICodeBox($param->$tSource, 'CollapseAll', @"#region");~, $this);
+		GUILink($EditorMenuFileExpand, 'Click', q~GUICodeBox($param->$tSource, 'ExpandAll', @"#region");~, $this);
+		GUILink($EditorMenuFileTab, 'Click', q~GUICodeBox($param->$tSource, 'IncIndent');~, $this);
+		GUILink($EditorMenuFileUnTab, 'Click', q~GUICodeBox($param->$tSource, 'DecIndent');~, $this);
+		GUILink($EditorMenuFileAutoTab, 'Click', q~GUICodeBox($param->$tSource, 'AutoIndent');~, $this);
+		GUILink($EditorMenuFileLeftBracket, 'Click', q~GUICodeBox($param->$tSource, 'GoLeftBracket', '{', '}');~, $this);
+		GUILink($EditorMenuFileRightBracket, 'Click', q~GUICodeBox($param->$tSource, 'GoRightBracket', '{', '}');~, $this);
+		GUILink($EditorMenuFileExportRtf, 'Click', q~GUICodeBox($param->$tSource, 'ExportRTF');~, $this);
+		GUILink($EditorMenuFileExportHtml, 'Click', q~GUICodeBox($param->$tSource, 'ExportHTML');~, $this);
+		GUILink($EditorMenuFilePrint, 'Click', q~GUICodeBox($param->$tSource, 'Print');~, $this);
+		GUILink($EditorMenuFileHotkeys, 'Click', q~GUICodeBox($param->$tSource, 'ShowHotkeys');~, $this);
+		
+		$EditorContextMenu = GUICreate('ContextMenu', $Window);
+		$EditorContextMenuCut = GUICreate('MenuItem', $EditorContextMenu, 'Cut');
+		$EditorContextMenuCopy = GUICreate('MenuItem', $EditorContextMenu, 'Copy');
+		$EditorContextMenuPaste = GUICreate('MenuItem', $EditorContextMenu, 'Paste');
+		$EditorContextMenuSelectAll = GUICreate('MenuItem', $EditorContextMenu, 'Select all');
+		GUICreate('MenuItem', $EditorContextMenu, '-');
+		$EditorContextMenuUndo = GUICreate('MenuItem', $EditorContextMenu, 'Undo');
+		$EditorContextMenuRedo = GUICreate('MenuItem', $EditorContextMenu, 'Redo');
+		GUICreate('MenuItem', $EditorContextMenu, '-');
+		$EditorContextMenuFind = GUICreate('MenuItem', $EditorContextMenu, 'Find');
+		$EditorContextMenuReplace = GUICreate('MenuItem', $EditorContextMenu, 'Replace');
+		GUICreate('MenuItem', $EditorContextMenu, '-');
+		$EditorContextMenuAutoIndent = GUICreate('MenuItem', $EditorContextMenu, 'AutoIndent selected text');
+		$EditorContextMenuComment = GUICreate('MenuItem', $EditorContextMenu, 'Comment selected');
+		$EditorContextMenuUncomment = GUICreate('MenuItem', $EditorContextMenu, 'Uncomment selected');
+		$EditorContextMenuClone = GUICreate('MenuItem', $EditorContextMenu, 'Clone line(s)');
+		$EditorContextMenuCloneComment = GUICreate('MenuItem', $EditorContextMenu, 'Clone line(s) and comment');
+		GUICreate('MenuItem', $EditorContextMenu, '-');
+		$EditorContextUppercase = GUICreate('MenuItem', $EditorContextMenu, 'Make Uppercase');
+		$EditorContextLowercase = GUICreate('MenuItem', $EditorContextMenu, 'Make Lowercase');
+		GUISetProp($tSource, 'ContextMenu', $EditorContextMenu);
+		GUILink($EditorContextMenuCut, 'Click', q~GUICodeBox($param->$tSource, 'Cut');~, $this);
+		GUILink($EditorContextMenuCopy, 'Click', q~GUICodeBox($param->$tSource, 'Copy');~, $this);
+		GUILink($EditorContextMenuPaste, 'Click', q~GUICodeBox($param->$tSource, 'Paste');~, $this);
+		GUILink($EditorContextMenuSelectAll, 'Click', q~GUICodeBox($param->$tSource, 'SelectAll');~, $this);
+		GUILink($EditorContextMenuUndo, 'Click', q~GUICodeBox($param->$tSource, 'Undo');~, $this);
+		GUILink($EditorContextMenuRedo, 'Click', q~GUICodeBox($param->$tSource, 'Redo');~, $this);		
+		GUILink($EditorContextMenuFind, 'Click', q~GUICodeBox($param->$tSource, 'ShowFind');~, $this);
+		GUILink($EditorContextMenuReplace, 'Click', q~GUICodeBox($param->$tSource, 'ShowReplace');~, $this);
+		GUILink($EditorContextMenuAutoIndent, 'Click', q~GUICodeBox($param->$tSource, 'AutoIndent');~, $this);
+		GUILink($EditorContextMenuComment, 'Click', q~GUICodeBox($param->$tSource, 'Comment');~, $this);
+		GUILink($EditorContextMenuUncomment, 'Click', q~GUICodeBox($param->$tSource, 'Uncomment');~, $this);
+		GUILink($EditorContextMenuClone, 'Click', q~GUICodeBox($param->$tSource, 'CloneLines');~, $this);
+		GUILink($EditorContextMenuCloneComment, 'Click', q~GUICodeBox($param->$tSource, 'CloneLinesComment');~, $this);
+		GUILink($EditorContextUppercase, 'Click', q~GUICodeBox($param->$tSource, 'Uppercase');~, $this);
+		GUILink($EditorContextLowercase, 'Click', q~GUICodeBox($param->$tSource, 'Lowercase');~, $this);
+		
+		GUILink($tSource, 'KeyUp', '$param->OnKeyUp($arg);', $this);
+		if($useIndex)
+			GUILink($tSource, 'SelectionChanged', '$param->OnSelectionChanged();', $this);
+			
+		if($loadGUI)
+		{
+			ResizeIt(GUIGetProp($Window, 'Width'), GUIGetProp($Window, 'Height'));
+			GUILoad($Window);
+		}
+		
+		Refresh();
+		
+		GUIWndProc($Window, '$param->DesignWndProc($hwnd, $lparam, $wparam, $msg);', $this);
+		if($doEvents)
+			While ( GUIStatus( $Window ) ) DoEvents( );
+	}
+	
+	[Args("false")]
+	Function __Destruct()
+	{
+		$Disposed = true;
+		unset($Window);
+		unset($cInt);
+		unset($cIndex);
+		unset($tSource);
+		unset($bStatus);
+	}
+	
+	[Args("false")]
+	Function __IsSet()
+	{
+		return $Disposed;
+	}
+	
+	[Args("false")]
+	Function Dispose()
+	{
+		// Save Settings
+		my $X = GUIGetProp($Window, "Left");
+		my $Y = GUIGetProp($Window, "Top");
+		my $W = GUIGetProp($Window, "Width");
+		my $H = GUIGetProp($Window, "Height");
+		my $SaveData = Pack('iiii', $X, $Y, $W, $H);
+		BinarySave($SaveData, "./Settings/SourceEditor_$Name.dat");
+		// Try save it
+		if($UseSourceRef)
+			*$SourceRef = GUICodeBox($tSource, 'Text');
+		// Now dispose is ok
+		unset($this);
+	}
+	
+	[Args("false")]
+	Function DesignWndProc($hwnd, $lparam, $wparam, $msg)
+	{
+		switch($MSG)
+		{
+			case 0x0046: # WM_WINDOWPOSCHANGING
+				ResizeIt(GUIGetProp($Window, 'Width'), GUIGetProp($Window, 'Height'));
+				break;
+		}
+		return 0;
+	}
+	
+	[Args("false")]
+	Function ResizeIt($cx, $cy)
+	{
+		GUISetProp($tSource, 'Width', $cx - 15);
+		GUISetProp($tSource, 'Height', ($cy - GUIGetProp($bStatus, 'Height')) - 60);
+		GUISetProp($cIndex, 'Width', $cx / 2);
+		GUISetProp($cInt, 'Left', GUIGetProp($cIndex, 'Width') + 4);
+		GUISetProp($cInt, 'Width', ($cx / 2) - 30);
+	}
+	
+	[Args("false")]
+	Function Focus()
+	{
+		GUICodeBox($tSource, 'Focus');
+	}
+	
+	[Args("false")]
+	Function Refresh()
+	{
+		if($UseSourceRef)
+		{
+			my $Sel = GUICodeBox($tSource, 'Selection');
+			GUISetProp($tSource, 'Text', *$SourceRef);
+			GUICodeBox($tSource, 'Selection', $Sel);
+			GUICodeBox($tSource, 'Focus');
+		}
+	}
+	
+	[Args("false")]
+	Function MoveToFunction($FuncName)
+	{
+		my $Line = GUICodeBox($tSource, 'FindLine', m/^\s*Function[\s\n\r]+$FuncName/im);
+		if($Line)
+		{
+			my $Pos = GUICodeBox($tSource, 'PlaceToPosition', 0, $Line);
+			GUICodeBox($tSource, 'GotoLine', $Line);
+		}
+	}
+	
+	[Args("false")]
+	Function OnKeyUp($arg)
+	{
+		my List( $Key, $Code, $Data, $Value, $Modifiers, $Alt, $Shift, $Control ) = $arg;
+		switch($Code)
+		{
+			case 16:
+			case 17:
+			case 18:
+			case 113:
+			case 114:
+			case 37:
+			case 38:
+			case 39:
+			case 40:
+				return;
+			case 115: # F4
+				CheckSyntax();
+				return;
+			case 116: # F5
+				if(!$UseSourceRef)
+					RunScript();
+				return;
+			case 120: # F9
+				if(!$UseSourceRef)
+					CompileScript();
+				return;
+			default:
+				if($SaveName !== null)
+				{
+					my $Name = GetFileName ($SaveName);
+					SetTitle('*' . $Name);
+				}
+				break;
+		}
+		
+		if($UseSourceRef)
+			*$SourceRef = GUICodeBox($tSource, 'Text');
+	}
+	
+	[Args("false")]
+	Function SetTitle($Input)
+	{
+		GUISetProp($Window, 'Text', "Source Editor -- $Input");
+	}	
+	
+	[Args("false")]
+	Function SaveFile()
+	{
+		if($SaveName == null)
+		{
+			SaveFileAs();
+			return;
+		}
+		my $Text = GUICodeBox($tSource, 'Text');
+		FileSave($SaveName, $Text);
+		my $Name = GetFileName ($SaveName);
+		SetTitle($Name);
+	}
+	
+	[Args("false")]
+	Function SaveFileAs()
+	{
+		my $var = FileSaveDialog( "Choose a name.", @CurDir, "Scripts|*.spk", 8 + 4);
+		
+		If (!$var)
+			return;
+			
+		$SaveName = $var;
+		my $Text = GUICodeBox($tSource, 'Text');
+		FileSave($SaveName, $Text);
+		my $Name = GetFileName ($SaveName);
+		SetTitle($Name);
+	}
+	
+	[Args("false")]
+	Function LoadFile()
+	{
+		my $var = FileOpenDialog($message, @CurDir, "Scripts|*.spk", 1 );
+		 
+		If (!$var)
+			return;
+			
+		$SaveName = $var[0];
+		my $Name = GetFileName ($SaveName);
+		SetTitle($Name);
+		GUICodeBox($tSource, 'Text', FileLoad($SaveName));
+	}
+	
+	[Args("false")]
+	Function CheckSyntax($ReturnResult = false)
+	{
+		my $Eval = EvalSyntax(GUICodeBox($tSource, 'Text'));
+		if($ReturnResult)
+			return $Eval;
+		if($Eval !== null)
+			MsgBox "Syntax error found:\r\n\r\n$Eval", $Title, 48;
+		else
+			MsgBox 'Syntax is good.', $Title, 64;
+	}
+	
+	[Args("false")]
+	Function RunScript()
+	{
+		Cls();
+		my $Syn = CheckSyntax(true);
+		if($Syn !== null)
+		{
+			MsgBox "Syntax error found:\r\n\r\n$Syn", $Title, 48;
+			return;
+		}
+		my $Path = CombinePath(@TEMPDIR, "TMP.spk");
+		FileSave($Path, GUICodeBox($tSource, 'Text'));
+		Run(CombinePath(@ExeDir, @ExeName), $Path);
+		/*
+		Try
+		{
+			Cls();
+			my $EvalSpk = EvalCreate();
+			Eval(GUICodeBox($tSource, 'Text'), $EvalSpk);
+			unset($EvalSpk);
+		}
+		Catch ( Exception $e )
+		{
+			println("An exception occurred while running the code:");
+			println("Message: " . $e->getMessage()); // Gets the default or new message
+		}*/
+	}
+	
+	[Args("false")]
+	Function CompileScript($Windows)
+	{
+		Cls();
+		my $Syn = CheckSyntax(true);
+		if($Syn !== null)
+		{
+			MsgBox "Syntax error found:\r\n\r\n$Syn", $Title, 48;
+			return;
+		}
+		Global $Exe = FileSaveDialog('New program name', @CurDir, 'Applications|*.exe', 8 + 4);
+		if($Exe === null)
+			return;
+		if(IsEmptyOrNull($Exe))
+		{
+			msgbox('You must enter a valid name', $Title, 48);
+			return;
+		}
+		my $Extra = '';
+		if($Windows)
+			$Extra = 'ConsoleHide();SetWindowsFlag();';
+		my $Compiler = new Compiler();
+		my $Ret = $Compiler->BeginCompile($Extra . GUICodeBox($tSource, 'Text'), $Exe);
+		unset($Compiler);
+		gc(true);
+		if($Ret)
+			msgbox('Compile complete', $Title, 64);
+		else
+			msgbox('Failed to create new executable', $Title, 48);
+		Cls();
+	}
+	
+	[Args("false")]
+	Function onMouseEnterIndex()
+	{
+		$DontUpdateIndex = true;
+		my $Text = GUIGetProp($cIndex, 'Text');
+		GUIComboBox($cIndex, 'Clear');
+		GUIComboBox($cIndex, 'AddItem', '(General)');
+		GUIComboBox($cIndex, 'AddItem', 'Form');
+		GUIComboBox($cIndex, 'AddItems', $Windows[$Name]->GetControlNameArray());
+		GUISetProp($cIndex, 'Text', $Text);
+		my $Control = GetControl($Text);
+		if($Control)
+		{
+			my $OldInt = GUIGetProp($cInt, 'Text');
+			PopulateInt($Control);
+			GUISetProp($cInt, 'Text', $OldInt);
+		}
+		$DontUpdateIndex = false;
+	}
+	
+	[Args("false")]
+	Function GetControl($Text)
+	{
+		if($Text == 'Form' || $Text == $Name)
+			return $Windows[$Name];
+		else
+		{
+			my $Control = $Windows[$Name]->GetControl($Text);
+			return $Control;
+		}
+	}
+	
+	[Args("false")]
+	Function onChangeIndex()
+	{
+		if($DontUpdateIndex)
+			return;
+		my $Text = GUIGetProp($cIndex, 'Text');
+		if(IsEmptyOrNull($Text))
+			return;
+		if($Text == '(General)')
+		{
+			GoToGeneral();
+			my $Line = GUICodeBox($tSource, 'GetLine', 0);
+			if($Line =~ m/^\s*Function[\s\n\r]+[\w_\d]+/i)
+			{
+				GUICodeBox($tSource, 'SelectionStart', 0);
+				GUICodeBox($tSource, 'SelectionEnd', 0);
+				GUICodeBox($tSource, 'Insert', "\r\n" x 3);
+			}
+			GUICodeBox($tSource, 'SelectionStart', 0);
+			GUICodeBox($tSource, 'SelectionEnd', 0);
+			GUICodeBox($tSource, 'DoCaretVisible');
+			Focus();
+			return;
+		}
+		else
+		{
+			my $SelLine = GUICodeBox($tSource, 'SelectionStartLine');
+			my $FindText = "$Text\_";
+			my $Line = GUICodeBox($tSource, 'FindLine', m/^\s*Function[\s\n\r]+$FindText/im);
+			if($Line)
+			{
+				GUICodeBox($tSource, 'GotoLine', $Line);
+				Focus();
+			}
+			else
+			{
+				my $Control = GetControl($Text);
+				if($Control)
+				{
+					if($Control->GetType() == ObjectType->$Window)
+					{
+						$Windows[$Name]->OpenEditorOnLink('Load', $Control);
+						PopulateInt($Control);
+						GUISetProp($cInt, 'Text', 'Load');
+					}
+					else
+					{
+						my $Link = '';
+						my List( $LinkName, $LinkType ) = Object::$Events[$Control->GetType()][0];
+						if(!IsEmptyOrNull($LinkName))
+							$Link = $LinkName;
+						else
+							$Link = 'Click';
+						$Windows[$Name]->OpenEditorOnLink($Link, $Control);
+						PopulateInt($Control);
+						GUISetProp($cInt, 'Text', $Link);
+					}
+				}
+				else
+					msgbox("Could not find control named '$Text'", $Title, 48);
+			}
+		}
+	}
+	
+	[Args("false")]
+	Function PopulateInt($Control)
+	{
+		GUIComboBox($cInt, 'Clear');
+		my $Events = Object::$Events[$Control->GetType()];
+		foreach($Events as my $EventName => my $EventType)
+			GUIComboBox($cInt, 'AddItem', $EventName);
+	}
+	
+	[Args("false")]
+	Function onChangeInt()
+	{
+		if($DontUpdateIndex)
+			return;
+		my $TextIndex = GUIGetProp($cIndex, 'Text');
+		my $Text = GUIGetProp($cInt, 'Text');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $Control = GetControl($TextIndex);
+		if($Control)
+			$Windows[$Name]->OpenEditorOnLink($Text, $Control);
+		else
+			msgbox("Could not find control named '$Text'", $Title, 48);	
+	}
+	
+	[Args("false")]
+	Function GoToGeneral()
+	{
+		$DontUpdateIndex = true;
+		GUISetProp($cIndex, 'Text', '(General)');
+		GUIComboBox($cInt, 'Clear');
+		$DontUpdateIndex = false;
+	}
+	
+	[Args("false")]
+	Function FindCurrentFunction()
+	{
+		my $SelLine = GUICodeBox($tSource, 'SelectionStartLine');
+		my $FuncLine = -1;
+		my $LineTmp;
+		for(my $i = $SelLine; $i >= 0; $i--)
+		{
+			my $Line = GUICodeBox($tSource, 'GetLine', $i);
+			if($Line =~ m/^\s*Function[\s\n\r]+[\w_\d]+_[\w_\d]+/i)
+			{
+				$FuncLine = $i;
+				$LineTmp = $Line;
+				break;
+			}
+		}
+		if($FuncLine == -1)
+		{
+			GoToGeneral();
+			return;
+		}
+		my $FuncOtherLine = -1;
+		for(my $i = $SelLine; $i >= 0; $i--)
+		{
+			my $Line = GUICodeBox($tSource, 'GetLine', $i);
+			if($Line =~ m/^\s*Function[\s\n\r]+[\w_\d]+[^\w_\d]/i)
+			{
+				$FuncOtherLine = $i;
+				break;
+			}
+		}
+		if($FuncOtherLine != -1)
+		{
+			if($FuncLine < $FuncOtherLine)
+			{
+				GoToGeneral();
+				return;
+			}
+		}
+		if($LineTmp =~ m/^\s*Function[\s\n\r]+([\w_\d]+)_([\w_\d]+)/im)
+		{
+			my $FuncName = $1;
+			my $FuncLink = $2;
+			if($SelLine > $FuncLine)
+			{
+				my $Find = "$FuncName\_$FuncLink";
+				for(my $i = $FuncLine > 0 ? $FuncLine - 1 : 0; $i < $SelLine; $i++)
+				{
+					my $L = GUICodeBox($tSource, 'GetLine', $i);
+					if($L =~ m/} # $Find/)
+					{
+						GoToGeneral();
+						return;
+					}
+				}
+			}
+			$DontUpdateIndex = true;
+			GUISetProp($cIndex, 'Text', $FuncName);
+			if(!InArray(GUIComboBox($cInt, 'GetItems'), $FuncLink));
+			{
+				my $Control = GetControl($FuncName);
+				if($Control)
+				{
+					my $OldInt = GUIGetProp($cInt, 'Text');
+					PopulateInt($Control);
+				}
+			}		
+			GUISetProp($cInt, 'Text', $FuncLink);
+			$DontUpdateIndex = false;
+		}
+		else
+		{
+			GoToGeneral();
+			return;
+		}
+	}
+	
+	[Args("false")]
+	Function OnSelectionChanged()
+	{
+		FindCurrentFunction();
+	}
+};

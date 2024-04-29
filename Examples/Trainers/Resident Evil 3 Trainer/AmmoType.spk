@@ -1,0 +1,33 @@
+﻿Function GetAmmoType( $ID )
+{
+	foreach($AmmoType as $i)
+	{
+		if($i[0] == $ID)
+			return $i[1];
+	}
+	return $AmmoType[0][1];
+}
+Function GetAmmoID( $Name )
+{
+	foreach($AmmoType as $i)
+	{
+		if($i[1] == $Name)
+			return $i[0];
+	}
+	return $AmmoType[0][0];
+}
+Global $AmmoType = array(
+array(0, "None"),
+array(1, "Green Ammo"),
+array(2, "Green %"),
+array(3, "Green Infinate"),
+array(5, "Red Ammo"),
+array(22, "Red %"),
+array(7, "Red Infinate"),
+array(9, "Yellow Ammo"),
+array(10, "Yellow %"),
+array(11, "Yellow Infinate"),
+array(13, "Blue Ammo"),
+array(14, "Blue %"),
+array(15, "Blue Infinate")
+);

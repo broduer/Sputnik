@@ -1,0 +1,11 @@
+Function GetTimeOnly()
+{
+	my List ($MSec, $Sec, $Min, $Hour, $WDay, $MDay, $Mon, $YDay, $Year, $Ticks) = @TIME;
+	if ($Sec < 10)  { $Sec = "0$sec";   }
+	if ($Min < 10)  { $Min = "0$min";   }
+	if ($Hour < 10) { $Hour = "0$hour"; }
+	if ($MDay < 10) { $MDay = "0$mday"; }
+	if ($Mon < 10)  { $Mon = "0$Mon";  }
+	my $Date = "$Hour:$Min";
+	return $Date;
+}

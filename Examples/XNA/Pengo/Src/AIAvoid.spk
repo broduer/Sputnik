@@ -1,0 +1,17 @@
+Class AIAvoid extends AI
+{
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		return false;
+	}
+};

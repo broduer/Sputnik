@@ -1,0 +1,70 @@
+Class AIGhost extends AI
+{
+	my $VelocityValue;
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+		$VelocityValue = $E->$VelocityValue;
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		// Find a player to go kill
+		my $Player = $Entity->FindClosestPlayer();
+		if($Player == null)
+		@{
+			// No players found so lets definately set a respawn
+			// So we can try again soon!
+			$Entity->$Game->$Map->SpawnDelayed($Entity->$ID, 10, 30);
+			$Entity->Dispose();
+			return false;
+		}
+		my List($DX, $DY) = $Entity->$DrawPosition;
+		my List($PDX, $PDY) = $Player->$DrawPosition;
+		my List($X, $Y) = $Entity->GetPosition();
+		my List($PX, $PY) = $Player->GetPosition();
+		
+		// Turn to face player
+		if($X > $PX)
+			$Entity->$Facing = Facing->$Left;
+		if($X < $PX)
+			$Entity->$Facing = Facing->$Right;
+		
+		// Can can move to player along X and Y at same time?
+		my $CanMoveX = $DX != $PDX && ($DX > $PDX || $DX < $PDX);
+		my $CanMoveY = $DY != $PDY && ($DY > $PDY || $DY < $PDY);
+		
+		// Make sure to normalize the movement
+		// or else the Ghost will go faster on diagnals
+		my $TempVelocity = $CanMoveX && $CanMoveY ? $VelocityValue / 2 : $VelocityValue;
+		
+		// Stored if we moved
+		my $Moved = false;
+		
+		// Move to player along X
+		if($DX != $PDX)
+		@{
+			$Moved = true;
+			if($DX > $PDX)
+				$Entity->$DrawPosition[0] -= $TempVelocity;
+			if($DX < $PDX)
+				$Entity->$DrawPosition[0] += $TempVelocity;
+		}
+		
+		// Move to player along Y
+		if($DY != $PDY)
+		@{
+			$Moved = true;
+			if($DY > $PDY)
+				$Entity->$DrawPosition[1] -= $TempVelocity;
+			if($DY < $PDY)
+				$Entity->$DrawPosition[1] += $TempVelocity;
+		}
+		return $Moved;
+	}
+};

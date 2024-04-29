@@ -1,0 +1,41 @@
+#include-once
+#require-once
+Require('Parsing/TextParser.spk', true);
+Global $SUCCESS = 0;
+Global $FAIL = 0;
+println("[TextParserTest] Begins");
+TestParserTest();
+println("[TextParserTest] Total success '$SUCCESS' fails '$FAIL'");
+Function TestParserTest()
+{
+	println("TextParser Test 1");
+	if(_TestParserTest() == qw(The quick brown fox jumps over the lazy dog))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function _TestParserTest()
+{
+	my $arr = array();
+	my $Parser = new TextParser('The quick brown fox jumps over the lazy dog');
+	while (!$parser->EndOfText())
+	{
+		while (!$parser->EndOfText() && !isAlphanumeric($parser->Peek()))
+			$parser->MoveAhead();
+
+		my $start = $parser->$Position;
+
+		while (isAlphanumeric($parser->Peek()))
+			$parser->MoveAhead();
+
+		if ($parser->$Position > $start)
+			push($arr, $parser->Extract($start, $parser->$Position));
+	}
+	return $arr;
+}

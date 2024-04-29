@@ -1,0 +1,262 @@
+﻿$LoadCommands['home'] = array('CmdHome', 0, 2);
+Class extends ServerManager
+{
+	Function CmdHome($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Teleport to or set location of your home';
+		if ($args === 'help')
+			return array(
+							'To set a home location type ''/home set''',
+							'To travel back there type ''/home'' by itself',
+							'However there may cost some cash to do these actions',
+							'You can also use ''/home of playerName'' to travel to your friends base'
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowHome') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $homeFileData = $utils->getHomeFile();
+		my $OurSteamId = $commandUser->$SteamId;
+		if ($argCount == 0)
+		{
+			if (!HomeLocationExists($OurSteamId))
+			{
+				SayToUser($commandUser, "You must first set a home location using '/home set' before you can teleport to it");
+				return;
+			}
+			foreach($homeFileData as my $homeData)
+			{
+				my List($SteamId, $X, $Y, $Z) = $homeData;
+				if ($SteamId eqi $OurSteamId)
+				{
+					my $tpCost = GetConfig('HomeCost');
+					if ($tpCost > 0)
+					{
+						SayToUser($commandUser, "Teleporting you home costs '$tpCost' cash");
+						my $userCash = GetUserCash($commandUser);
+						if ($userCash < $tpCost)
+						{
+							SayToUser($commandUser, "You cannot afford to teleport you have '$userCash' cash and need '$tpCost'");
+							return;
+						}
+						DelUserCash($commandUser, $tpCost);
+						$userCash = GetUserCash($commandUser);
+						SayToUser($commandUser, "You arrive back at home at a cost of '$tpCost' cash you now have '$userCash' cash left");
+					}
+					else
+						SayToUser($commandUser, "You arrive back at home");
+					TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+					return;
+				}
+			}
+			SayToUser($commandUser, "Could not find your home location!");
+		}
+		else if ($argCount == 1)
+		{
+			my $cType = $args[0];
+			if ($cType eqi "set")
+			{
+				my List($outOfBounds, $almostOutOfBounds) = IsPlayerOutOfBounds($commandUser);
+				if ($outOfBounds || $almostOutOfBounds)
+				{
+					SayToUser($commandUser, "You cannot set your home at this location since it is out of bounds");
+					return;
+				}
+				my List($x, $y, $z) = $commandUser->$pos;
+				my $homeDist = GetConfig('HomeDist');
+				if ($homeDist > 0)
+				{
+					foreach($homeFileData as my $homeData)
+					{
+						my List($otherSteamId, $otherX, $otherY, $otherZ) = $homeData;
+						if ($otherSteamId eqi $OurSteamId)
+							continue;
+						my List($found, $isOnline) = FindOnlineOrOfflinePlayer($otherSteamId);
+						if ($found != null && AreBothFriends($commandUser, $found))
+							continue;
+						my $dist = Distance3D($x, $y, $z, $otherX, $otherY, $otherZ);
+						if ($dist <= $homeDist)
+						{
+							SayToUser($commandUser, "You cannot set your home at this location since it is too close to another players home");
+							return;
+						}
+					}
+				}
+				my $homePlrDist = GetConfig('HomePlrDist');
+				if ($homePlrDist > 0)
+				{
+					foreach($currentPlayers->$players as my $player)
+					{
+						my List($otherX, $otherY, $otherZ) = $player->$pos;
+						if ($player->$SteamId eqi $OurSteamId)
+							continue;
+						if (AreBothFriends($commandUser, $player))
+							continue;
+						my $dist = Distance3D($x, $y, $z, $otherX, $otherY, $otherZ);
+						if ($dist <= $homeDist)
+						{
+							SayToUser($commandUser, "You cannot set your home at this location since it is too close to another player");
+							return;
+						}
+					}
+				}
+				my $tpCost = GetConfig('HomeSetCost');
+				if ($tpCost > 0)
+				{
+					SayToUser($commandUser, "Setting your home location costs '$tpCost' cash");
+					my $userCash = GetUserCash($commandUser);
+					if ($userCash < $tpCost)
+					{
+						SayToUser($commandUser, "You cannot afford to set your home location you have '$userCash' cash and need '$tpCost'");
+						return;
+					}
+					DelUserCash($commandUser, $tpCost);
+					$userCash = GetUserCash($commandUser);
+					HomeSetLocation($OurSteamId, $x, $y, $z);
+					SayToUser($commandUser, "Your home location has been set to X:$x, Y:$y, Z:$z at a cost of '$tpCost' cash you now have '$userCash' cash left");
+				}
+				else
+				{
+					HomeSetLocation($OurSteamId, $x, $y, $z);
+					SayToUser($commandUser, "Your home location has been set to X:$x, Y:$y, Z:$z");
+				}
+			}
+			else
+				SayToUser($commandUser, "Home action type '$cType' is invalid");
+		}
+		else if ($argCount == 2)
+		{
+			my $cType = $args[0];
+			switch ($cType)
+			{
+				case 'of':
+				{
+					my $toName = $args[1];
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($toName);
+					if ($found == null)
+					{
+						SayToUser($commandUser, "Could not find a player with the name/id of '$toName'");
+						return;
+					}
+					my $foundName = $found->$Name;
+					my $foundSteamId = $found->$SteamId;
+					if (GetConfig('HomeFriendsOnly') && !AreBothFriends($commandUser, $found))
+					{
+						if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+						{
+							SayToUser($commandUser, "You may only teleport to your friends to add a friend see '/help fa'");
+							return;
+						}
+					}
+					if (!HomeLocationExists($foundSteamId))
+					{
+						SayToUser($commandUser, "$foundName has not yet have a home");
+						return;
+					}
+					foreach($homeFileData as my $homeData)
+					{
+						my List($SteamId, $X, $Y, $Z) = $homeData;
+						if ($SteamId eqi $foundSteamId)
+						{
+							SayToUser($commandUser, "You arrive at the home of $foundName");
+							TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+							return;
+						}
+					}
+				}
+				break;
+				default:
+				{
+					SayToUser($commandUser, "Home action type '$cType' is invalid");
+					return;
+				}
+				break;
+			}
+		}
+		
+	}
+	Function HomeSetLocation($SteamId, $X, $Y, $Z)
+	{
+		HomeDeleteLocation($SteamId);
+		my $homeFileData = $utils->getHomeFile();
+		$homeFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		$utils->setHomeFile($homeFileData);
+	}
+	Function HomeDeleteLocation($toFind)
+	{
+		my $homeFileData = $utils->getHomeFile();
+		my $newHomeFileData = array();
+		for (my $i = 0; $i < count($homeFileData); $i++)
+		{
+			my List($SteamId, $X, $Y, $Z) = $homeFileData[$i];
+			if ($SteamId eqi $toFind)
+				continue;
+			$newHomeFileData[] = $homeFileData[$i];
+		}
+		$utils->setHomeFile($newHomeFileData);
+	}
+	Function HomeLocationExists($toFind)
+	{
+		my $homeFileData = $utils->getHomeFile();
+		foreach($homeFileData as my $homeData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $homeData;
+			if ($SteamId eqi $toFind)
+				return true;
+		}
+		return false;
+	}
+}
+Class extends Utils
+{
+	Function getHomeFile()
+	{
+		my $homeFileData = array();
+		if (!FileExists('./Variables/Homes.txt'))
+			return $homeFileData;
+		my $homeFile = FileReadLines('./Variables/Homes.txt');
+		foreach($homeFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 4)
+				continue;
+			my List($SteamId, $X, $Y, $Z) = $split;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			if (IsEmptyOrNull($X))
+				$X = 0;
+			if (IsEmptyOrNull($Y))
+				$Y = 0;
+			if (IsEmptyOrNull($Z))
+				$Z = 0;
+			$homeFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		}
+		return $homeFileData;
+	}
+	Function setHomeFile($homeFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId|X|Y|Z");
+		foreach($homeFileData as my $homeData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $homeData;
+			sbAppendLine($sb, "$SteamId|$X|$Y|$Z");
+		}
+		FileSave('./Variables/Homes.txt', sbToString($sb));
+		unset($sb);
+	}
+}

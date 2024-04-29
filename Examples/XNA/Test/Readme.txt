@@ -1,0 +1,1 @@
+This is a barebones example of how to get started with making 2D games in Sputnik using the XNA library.

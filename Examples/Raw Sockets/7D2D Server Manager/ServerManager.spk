@@ -1,0 +1,205 @@
+PluginLoad(array('SputnikSound', 'Sputnik.%Name, SputnikSound, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'));
+
+// config
+Include('Config.spk', true);
+
+// commands
+Global $LoadCommands = array();
+
+// callbacks
+Global $onServerInit = array();
+Global $onServerProcess = array();
+Global $onPlayerListChange = array();
+Global $onPlayerListChangeFinished = array();
+Global $onPlayerJoined = array();
+Global $onPlayerCommandRecv = array();
+Global $onProcessTelnetLine = array();
+Global $onLandProtectionDbUpated = array();
+Global $onPlayerSlayed = array();
+Global $onPlayerTeleported = array();
+
+// includes
+Include('Console.spk', true);
+Include('String.spk', true);
+
+Include("./Source/Utils.spk", true);
+foreach(GetFiles('./Source') as my $file)
+{
+	if ($file == 'Utils.spk')
+		continue;
+	Include("./Source/$file", true);
+}
+foreach(GetFiles('./Source/Commands') as my $file)
+	Include("./Source/Commands/$file", true);
+	
+// variables
+if (!DirExists('./Variables'))
+{
+	MkDir('./Variables');
+	FileSave('./Variables/BookItems.txt', "#ItemName\n");
+	FileSave('./Variables/BuyItems.txt', "#First make [Category] then under that make ItemName|Amount|Cost");
+	FileSave('./Variables/GimmeItems.txt', "#ItemName|Amount\n");
+	FileSave('./Variables/News.txt', "Put your server news in here\n");
+	FileSave('./Variables/ServerInfo.txt', "Put your server info in here\n");
+	FileSave('./Variables/Rules.txt', "Put your server rules in here\n");
+	FileSave('./Variables/RandomAnnouncements.txt', "Random announcements go in here (one per line)\n");
+	FileSave('./Variables/TimedAnnouncements.txt', "#Day|Time|Message\n#One per line\n");
+}
+
+// run the server manager
+Global $serverManager = new ServerManager();
+$serverManager->Begin();
+
+Class ServerManager
+{
+	my $appName;
+	my $appVersion;
+	my $telnet;
+	my $processCounter;
+	my $utils;
+	Function __Construct()
+	{
+		$appVersion = '0.07 pre-alpha';
+		$utils = new Utils();
+		$processCounter = 1;
+		$appName = "UberSoft 7 Days To Die Server Manager";
+		foreach($onServerInit as my $func)
+			Call(array($this, $func));
+	}
+	Function Process()
+	{
+		if (!$loggedIn)
+			return;
+		$processCounter--;
+		if ($processCounter > 0)
+			return;
+		$processCounter = 1000;
+		foreach($onServerProcess as my $func)
+			Call(array($this, $func));
+	}
+	Function GetConfig($key)
+	{
+		return $Config[$key];
+	}
+	Function KickUser($user, $reason = 'N/A')
+	{
+		my $Id = $user->$Id;
+		my $Name = $user->$Name;
+		SayToAll("§120Kicking '$Name' reason: $reason");
+		SendToServer("kick $Id \"AutoKick: $reason\"");
+	}
+	Function SayToAll($Text)
+	{
+		$Text = TextFmt($Text);
+		SendToServer("say \"$Text\"");
+	}
+	Function SayToUserByName($userName, $Text)
+	{
+		my $found = $currentPlayers->FindByName($userName);
+		if ($found == null)
+			return;
+		SayToUser($found, $Text);
+	}
+	Function SayToUser($user, $Text)
+	{
+		my $id = $user->$Id;
+		$Text = TextFmt($Text);
+		SendToServer("sayplayer $id \"$Text\"");
+	}
+	Function TextFmt($Text)
+	{
+		if (GetConfig('UseDefaultChatColour') && strlen($Text) > 0 && $Text[0] != '§')
+		{
+			my $col = GetConfig('DefaultChatColour');
+			if (isdigit($Text[0]))
+				return _F('[' . HTMLColourFromCode($col) . ']' . $Text, true);
+			else
+				return _F("§$col" . $Text);
+		}
+		$Text = _F($Text);
+		return $Text;
+	}
+	Function GiveItemToUserByName($userName, $ItemName, $Count, $Quality = -1)
+	{
+		my $found = $currentPlayers->FindByName($userName);
+		if ($found == null)
+			return;
+		GiveItemToUser($found, $ItemName, $Count, $Quality);
+	}
+	Function GiveItemToUser($user, $ItemName, $Count, $Quality = -1)
+	{
+		my $id = $user->$Id;
+		if ($Quality != -1)
+			SendToServer("give $id $ItemName $Count $Quality");
+		else
+			SendToServer("give $id $ItemName $Count");
+	}
+	Function TeleportUserToXYZByName($userName, $x, $y, $z)
+	{
+		my $found = $currentPlayers->FindByName($userName);
+		if ($found == null)
+			return;
+		TeleportUserToXYZ($found, $x, $y, $z);
+	}
+	Function TeleportUserToXYZ($user, $x, $y, $z)
+	{
+		my List($px, $py, $pz) = $user->$Pos;
+		my $id = $user->$Id;
+		$x = (int)$x;
+		$y = (int)$y;
+		$z = (int)$z;
+		SendToServer("tele $id $x $y $z");
+		foreach($onPlayerTeleported as my $func)
+			Call(array($this, $func), $user, $x, $y, $z);
+	}
+	Function KillUserByName($userName)
+	{
+		my $found = $currentPlayers->FindByName($userName);
+		if ($found == null)
+			return;
+		KillUser($found);
+	}
+	Function KillUser($user)
+	{
+		my $id = $user->$Id;
+		SendToServer("kill $id");
+	}
+	Function KillUsersLandClaims($user)
+	{
+		my $steamId = $user->$SteamId;
+		SendToServer("rlp $steamId");
+	}
+	Function KillLandClaim($x, $y, $z)
+	{
+		$x = (int)$x;
+		$y = (int)$y;
+		$z = (int)$z;
+		SendToServer("rlp $x $y $z");
+	}
+	Function SpawnEntityAtUser($user, $entityType)
+	{
+		my $id = $user->$Id;
+		SendToServer("se $id $entityType");
+	}
+	Function SaveWorld()
+	{
+		SendToServer("sa");
+	}
+	Function IsUserOnline($user)
+	{
+		my $steamId = $user->$SteamId;
+		return $currentPlayers->FindBySteamId($steamId) != null;
+	}
+	Function IsUserAdmin($user)
+	{
+		return InArray(GetConfig('Administrators'), $user->$SteamId);
+	}
+	Function IsUserModerator($user)
+	{
+		return InArray(GetConfig('Moderators'), $user->$SteamId);
+	}
+	Function DebugMsg($message)
+	{
+		AppendLine($message);
+	}
+}

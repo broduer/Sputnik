@@ -1,0 +1,88 @@
+﻿$LoadCommands['help'] = array('CmdHelp', 0, 1);
+Class extends ServerManager
+{
+	Function CmdHelp($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'What do you think?';
+		if ($args === 'help')
+			return array('Seriously??!!?');
+		if ($commandUser == null)
+			return;
+		if ($argCount == 0)
+		{
+			SayToUser($commandUser, "Here is the list of commands categories on the server");
+			my $e = Enumerate('CommandCategories');
+			foreach($e as my $Name => my $Id )
+				SayToUser($commandUser, UCFirst($Name));
+			SayToUser($commandUser, "To view all the commands in a category type:");
+			SayToUser($commandUser, "/help <categoryName>");
+		}
+		if ($argCount == 1)
+		{
+			my $action = lc(trim($args[0]));
+			if (IsEmptyOrNull($action))
+			{
+				SayToUser($commandUser, "You must enter a category or command to learn about");
+				return;
+			}
+			if (StartsWith($action, '--'))
+			{
+				my $commandName = substr($action, 2);
+				if (IsEmptyOrNull($commandName))
+				{
+					SayToUser($commandUser, "You must enter a command name");
+					return;
+				}
+				my $userRank = GetUserRank($commandUser);
+				my $userRankRank = RankToName($userRank);
+				foreach($LoadCommands as my $key => my $value)
+				{
+					if ($key eqi $commandName)
+					{
+						SayToUser($commandUser, "Information on the '$key' command");
+						my $infoLines = Call(array($this, $value[0]), 'help');
+						my $cmdCat = Call(array($this, $value[0]), 'category');
+						my $cmdRank = Call(array($this, $value[0]), 'rank');
+						foreach($infoLines as my $line)
+							SayToUser($commandUser, $line);
+						my $cmdRankName = RankToName($cmdRank);
+						SayToUser($commandUser, "Rank required: $cmdRankName");
+						return;
+					}
+				}
+				SayToUser($commandUser, "Command '$commandName' cannot be found");
+				return;
+			}
+			my $e = Enumerate('CommandCategories');
+			if (IsKeySet($e, $action))
+			{
+				my $useCat = $e[$action];
+				SayToUser($commandUser, "Here is the list of '$action' commands you may use on the server");
+				my $found = 0;
+				foreach($LoadCommands as my $key => my $value)
+				{
+					my $cmdCat = Call(array($this, $value[0]), 'category');
+					if ($cmdCat != $useCat)
+						continue;
+					my $cmdInfo = Call(array($this, $value[0]), 'helpDesc');
+					SayToUser($commandUser, "/$key -- $cmdInfo");
+					$found++;
+				}
+				if ($found <= 0)
+					SayToUser($commandUser, "Sorry I could not find any '$action' commands");
+				else
+				{
+					SayToUser($commandUser, "To learn more about a given command type");
+					SayToUser($commandUser, "/help --<commandName> (where the <commandName> is the command you wish more information on)");
+				}
+			}
+			else
+				SayToUser($commandUser, "Invalid category '$action' see '/help' (without quotes) and try again");
+		}
+	}
+}

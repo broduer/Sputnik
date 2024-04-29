@@ -1,0 +1,7 @@
+#include-once
+#require-once
+include('TestCases/String/Find.spk', true);
+include('TestCases/String/GSub.spk', true);
+include('TestCases/String/Sub.spk', true);
+include('TestCases/String/Match.spk', true);
+include('TestCases/String/IntToFromRoman.spk', true);

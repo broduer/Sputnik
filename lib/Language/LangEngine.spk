@@ -1,0 +1,99 @@
+#include-once
+#require-once
+include('String/IsEmptyOrNull.spk', true);
+/*
+This class is just something to make it easy to make multi-language scripts
+since you can create an ini file of the appropiate tag, values in multiple
+languages then use the correct one that the user is using.
+It provides a customized Printf() and Sprintf() named LPrintf() and SPrintf().
+These can be used for example if the TAG is "cat" you would do:
+LPrintf("The value of Cat in your language is: %[cat]");
+*/
+// Requires a lang.ini file containing the following text
+// you can add/remove words,phrases
+/*
+[eng]
+cat = "Cat"
+dog = "Dog"
+
+[jap]
+cat = "some letters"
+dog = "food"
+*/
+[Args("true")]
+Function lprintf($s)
+{
+    if(LangEngine::$inst == null)
+        LangEngine::$inst = new LangEngine();
+    echo (LangEngine::$inst->lParse(@args));
+}
+[Args("true")]
+Function lsprintf($s)
+{
+    if(LangEngine::$inst == null)
+        LangEngine::$inst = new LangEngine();
+    return LangEngine::$inst->lParse(@args);
+}
+
+class LangEngine
+{
+    static $lang;
+    static $inst;
+    function __construct()
+    {
+        if(self::$lang == null)
+        {
+            my List ($Name, $DisplayName, $EnglishName, $TwoLetterISO, $ThreeLetterISO, $LCID) = @Lang;
+            LoadLang($ThreeLetterISO);
+        }
+    }
+    function lParse($args)
+    {
+        my $subject = shift($args);
+        $subject =~ s/%\[(\w+)\]/GetValue($1)/ge;
+        my $ret = vsprintf($subject, $args);
+        if(@Error)
+        @{
+            if(@ErrorCode == 0)
+                die "The developer of this program/script has used the Language Engine incorrectly.";
+            return null;
+        }
+        return $ret;
+    }
+    function GetValue($index)
+    {
+        my $value = self::$lang[lc($index)];
+        my $count = StrLen($value);
+        if($count >= 2 && $value[0] == '"')
+            return ResolveStr(substr($value, 1, $count - 2));
+        else if($count >= 2 && $value[0] == "'")
+            return substr($value, 1, $count - 2);
+        return $value;
+    }
+    Function LoadLang($Tag)
+    {
+        my $File = FileOpen('Lang.ini', 'r');
+        If($File ~~ file)
+        @{
+            my $Found = false;
+            Foreach (FileReadLines($File) as $Line)
+            @{
+                my $subject =~ s/#.*|(("[^'#]*(?:#.[^'#]*)*"|'[^#]*(?:#.[^'#]*)*'))/$1/g;
+                if($found)
+                @{
+                    if($Line =~ m/^\s*\[\w+\]/) break;
+                    $Line = trim($Line);
+                    if(isemptyornull($Line)) continue;
+                    if($Line =~ m/^\s*(\w+)\s*=\s*((".*")|('.*'))/)
+                    @{
+                        my $key = lc($1);
+                        my $value = $2;
+                        self::$lang[$key] = $value;
+                    }
+                }
+                if($Line =~ m/^\s*\[$tag\]/i) $found = true;
+            }
+            FileClose( $File );
+        }
+    }
+}

@@ -1,0 +1,24 @@
+﻿$LoadCommands['uberfox'] = array('CmdUberFoX', 0, 0);
+Class extends ServerManager
+{
+	Function CmdUberFoX($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'About UberFoX!';
+		if ($args === 'help')
+			return array('Learn a bit about UberFoX');
+		if ($commandUser == null)
+			return;
+		SayToUser($commandUser, 'UberFoX is the Creator of this 7D2D Server Manager as well as:');
+		SayToUser($commandUser, 'The programming language Sputnik');
+		SayToUser($commandUser, 'Pitbull Client/Server/Tracker (Hotline Revival)');
+		SayToUser($commandUser, 'UberBlox, Habitus, UBlox');
+		SayToUser($commandUser, 'UberSoft Pengo');
+		SayToUser($commandUser, 'Various game mods');
+		SayToUser($commandUser, 'Thousands of applications');
+	}
+}

@@ -1,0 +1,80 @@
+﻿// Load the old GUI system
+// Since this an old GUI example
+PluginLoad('SputnikOldGUI.dll');
+
+// Create a new GUI
+Global $GUI = GUICreate("Window", "GUI", 640, 480);
+GUILoad( $GUI );
+ 
+// Create the GUI objects
+Global $obj_textbox = GUICreate("TextBoxEx", $GUI, "", 5, 15, 610,  370);
+Global $obj_RealSend = GUICreate("Button", $GUI, "Send", 505, 410);
+Global $obj_CMD = GUICreate("TextBoxEx", $GUI, "", 10, 405, 485,  25);
+ 
+// Add a few links
+GUILink($obj_RealSend, "Click", 'Send();');
+GUILink($obj_CMD, "KeyPress", 'KeyPress($arg);');
+ 
+// Allow the user to enter a name to use on the server
+Global $Name = InputBox("Sputnik Client", "Enter a name to use on the chat", "MyName");
+ 
+// Create a TCP/IP socket.
+Global $Socket = SocketCreate("Stream", "TCP");
+println("Size: " . SocketOpt($Socket, "SendBufferSize") );
+SocketOpt($Socket, "SendBufferSize", 777);
+println("Size: " . SocketOpt($Socket, "SendBufferSize") );
+// Print the socket info to console
+Println("Socket:" . $Socket);
+
+// Connect the socket to the remote endpoint. Catch any errors.
+SocketConnect($Socket, "127.0.0.1", 1100);
+
+// Send our name to the server
+my $bytesSent = SocketSend($Socket, Pack("z1", $Name));
+
+// Receive a welcome from server
+my $Data = SocketReceive($Socket, 1024);
+AddText(Unpack("z1", $Data[1], 2));
+
+//SocketSendFile($Socket, "Sputnik.exe");
+ 
+// Loop while GUI is active
+While ( GUIStatus( $GUI ) )
+{ 
+	DoEvents(); // DoEvents to keep the GUI working fine
+	if(SocketAvailable($Socket))
+	{
+		my $Data = SocketReceive($Socket, 1024);
+		AddText(Unpack("z1", $Data[1], 2));
+	}
+}
+ 
+// When a key is presed on chat send box
+Function KeyPress( $arg )
+{
+	if($arg == @LF || $arg == @CR) // Make sure its a valid enter key
+		Send(); // Send the message
+}
+ 
+// Function to add text to output display
+Function AddText($str)
+{
+	$Text = GUIGetProp($obj_textbox, "Text"); // Read the current "Text"
+	$Text = $str . @CRLF . $Text; // Add new text to top
+	GUISetProp($obj_textbox, "Text", $Text); // Set the "Text"
+}
+ 
+// Send a message to server
+Function Send()
+{
+	my $Text = GUIGetProp($obj_CMD, "Text"); // Read current text to send
+	GUISetProp($obj_CMD, "Text", ""); // Clear the send box
+	my $bytesSent = SocketSend($Socket, Pack("z1", Trim($Text)));
+	say "Sent '$bytesSent' bytes";
+}
+
+// Terminate the socket and free its resoruces
+println("Client Terminated");
+SocketShutdown($Socket);
+SocketClose($Socket);
+unset($Socket);

@@ -1,0 +1,79 @@
+﻿/*
+$onServerInit[] = 'InventoryLoggerInit';
+$onServerProcess[] = 'InventoryLoggerProcess';
+$onProcessTelnetLine[] = 'InventoryLoggerOnProcessTelnetLine';
+Class extends ServerManager
+{
+	my $donePPP;
+	Function InventoryLoggerInit()
+	{
+		$donePPP = false;
+	}
+	Function InventoryLoggerProcess()
+	{
+		if ($donePPP)
+			return;
+		foreach($currentPlayers->$players as my $player)
+		{
+			$donePPP = true;
+			SendToServer('si ' . $player->$Id);
+		}
+	}
+	Function InventoryLoggerOnProcessTelnetLine($lineTrim, $line)
+	{
+	}
+}
+*/
+
+
+/*
+Belt of player UberFoX:
+    Slot 0: 001 * gunAK47 - quality: 600
+             - partsAK47_stock - quality: 600
+             - partsAK47_receiver - quality: 600
+             - partsAK47_parts - quality: 600
+             - partsAK47_barrel - quality: 600
+    Slot 1: 001 * pickaxeSteel - quality: 600
+    Slot 2: 001 * fireaxeSteel - quality: 600
+    Slot 3: 001 * shovelSteel - quality: 600
+    Slot 4: 001 * nailgun
+    Slot 5: 001 * gunPumpShotgun - quality: 600
+             - partsPumpShotgun_stock - quality: 600
+             - partsPumpShotgun_receiver - quality: 600
+             - partsPumpShotgun_parts - quality: 600
+             - partsPumpShotgun_barrel - quality: 600
+    Slot 6: 001 * machete - quality: 600
+    Slot 7: 001 * gunSniperRifle - quality: 600
+             - partsSniperRifle_stock - quality: 600
+             - partsSniperRifle_receiver - quality: 600
+             - partsSniperRifle_parts - quality: 600
+             - partsSniperRifle_barrel - quality: 600
+
+Bagpack of player UberFoX:
+    Slot 18: 077 * repairKit
+    Slot 19: 562 * militaryFiber
+    Slot 20: 550 * cloth
+    Slot 21: 1088 * forgedIron
+    Slot 22: 838 * leather
+    Slot 23: 837 * forgedSteel
+    Slot 24: 001 * miningHelmet - quality: 600
+    Slot 25: 034 * painkillers
+    Slot 26: 017 * antibiotics
+    Slot 27: 036 * firstAidBandage
+    Slot 28: 020 * firstAidKit
+    Slot 29: 686 * 762mmBullet
+    Slot 30: 581 * shotgunShell
+    Slot 31: 211 * uberPill
+
+Equipment of player UberFoX:
+    Slot head: swatHelmet - quality: 600
+    Slot eyes: goggles - quality: 600
+    Slot face: bandana - quality: 600
+    Slot armor: militaryVest - quality: 600
+    Slot jacket: leatherDuster - quality: 600
+    Slot shirt: hazmatShirt - quality: 600
+    Slot legarmor: ironLegArmor - quality: 600
+    Slot pants: hazmatPants - quality: 600
+    Slot boots: ironBoots - quality: 600
+    Slot gloves: ironGloves - quality: 600
+*/

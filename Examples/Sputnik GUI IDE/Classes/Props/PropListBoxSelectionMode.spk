@@ -1,0 +1,54 @@
+#<?
+Class PropListBoxSelectionMode extends Prop
+{
+	my $SelectionMode;
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+		$SelectionMode = 'One';
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return $SelectionMode;
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Arr = array(
+							'None' => ('None' == $SelectionMode),
+							'One' => ('One' == $SelectionMode),
+							'MultiSimple' => ('MultiSimple' == $SelectionMode),
+							'MultiExtended' => ('MultiExtended' == $SelectionMode)
+						);
+		my $Ret = ChoiceBox('SelectionMode', 
+							'Please select a SelectionMode type from the options below', 
+							$Arr
+							);
+		if($Ret === null)
+			return null;
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick a style!', $Title, 48);
+			return null;
+		}
+		$SelectionMode = $Ret;
+		return $Ret;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		$SelectionMode = $Value;
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)$SelectionMode;
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		$Code .= "GUIListBox(\$$ObjName, 'SelectionMode', '$SelectionMode');\r\n";
+		return $Code;
+	}
+};

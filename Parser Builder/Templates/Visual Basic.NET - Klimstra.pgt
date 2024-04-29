@@ -1,0 +1,67 @@
+##TEMPLATE-NAME 'Visual Basic.NET - Klimstra'
+##LANGUAGE 'Visual Basic.NET'
+##ENGINE-NAME 'Modified C#.NET Engine by Marcus Klimstra'
+##AUTHOR 'Adrian Moore' 
+##FILE-EXTENSION 'vb'
+##NOTES
+Providers a working sample parser for the grammar.  Derives from Visual Basic.NET - Parser Template.
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+
+Option Explicit
+
+Imports System.IO
+Imports System.Text
+Imports System.Collections.Specialized
+Imports GoldParser
+
+Namespace Parser
+
+Class SampleParser
+    Inherits TemplateParser
+
+    Private Class BaseContext
+        Inherits Reduction
+
+        Protected Shared Variables As New NameValueCollection
+        'TODO: add any other properties common to all derived classes
+
+        Sub New()
+            MyBase.new()
+        End Sub
+    End Class
+
+    Private Interface IContextMethod
+        Function Execute() As Object
+    End Interface
+
+    Friend Interface IContextValue
+        Property Value() As Object
+    End Interface
+
+    Sub New(ByVal GrammarFilename As String)
+        MyBase.New(GrammarFilename)
+    End Sub
+
+##RULES
+    'Implements %Description%      
+     Protected Overrides Function Create%ID%(ByVal Tokens As ArrayList) As Reduction
+	Dim result As New BaseContext
+	Debug.WriteLine("Create%ID%")
+	'TODO: set properties using Tokens(?).Data
+	return result
+     End Function
+
+##END-RULES                   
+
+     Public Function Execute() As Object
+        If Not CurrentReduction Is Nothing Then
+            CType(CurrentReduction, IContextMethod).Execute()
+        End If
+     End Function
+End Class
+
+End Namespace

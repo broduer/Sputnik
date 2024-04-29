@@ -1,0 +1,35 @@
+﻿$onServerInit[] = 'PlayerListHandlerInit';
+$onServerProcess[] = 'PlayerListHandlerProcess';
+Class extends ServerManager
+{
+	my $playerListHandlerProcessForce;
+	my $playerListHandlerProcessCounter;
+	my $playerListHandlerProcessCounterMax;
+	my $findingUsers;
+	my $currentPlayers;
+	my $foundPlayers;
+	Function PlayerListHandlerInit()
+	{
+		$playerListHandlerProcessForce = true;
+		$playerListHandlerProcessCounter = 0;
+		$playerListHandlerProcessCounterMax = 5;
+		$findingUsers = false;
+		$currentPlayers = new PlayerList();
+		$foundPlayers = new PlayerList();
+	}
+	Function PlayerListHandlerProcess()
+	{
+		if ($playerListHandlerProcessForce)
+		{
+			$playerListHandlerProcessForce = false;
+			$playerListHandlerProcessCounter = $playerListHandlerProcessCounterMax;
+		}
+		$playerListHandlerProcessCounter++;
+		if ($playerListHandlerProcessCounter < $playerListHandlerProcessCounterMax)
+			return;
+		$playerListHandlerProcessCounter = 0;
+		$findingUsers = true;
+		$foundPlayers->ClearPlayers();
+		SendToServer('lp');
+	}
+}

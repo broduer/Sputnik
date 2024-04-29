@@ -1,0 +1,27 @@
+###############################################
+# Valid Commnds (case insensitive)            #
+###############################################
+
+###############################################
+# User Accounts                               #
+# Each user must have a username and password #
+# the access list will set to 0 (no access)   #
+# if it is not found                          #
+###############################################
+username: uberfox
+password: example
+access: ALL_COMMANDS
+
+username: andrew
+password: strong
+access: ALL_COMMANDS
+
+username: valerie
+password: kitty
+access: ALL_COMMANDS
+
+username: server_manager
+password: servman777
+passonly: true
+commandlimit: lp 30
+access: ALL_COMMANDS

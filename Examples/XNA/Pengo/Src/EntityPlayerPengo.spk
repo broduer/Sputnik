@@ -1,0 +1,38 @@
+Class EntityPlayerPengo extends EntityPlayer
+{
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityPlayer::__construct($Engine, $EName);
+		$ID = EntityType->$Player; // All players are considered the same entity type
+		$ParentID = EntityType->$Player;
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Pengo/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Pengo/Left.png'));
+		SetTexture(Facing->$LeftAttack, XNAPng('./Images/Entities/Pengo/LeftAttack.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Pengo/Right.png'));
+		SetTexture(Facing->$RightAttack, XNAPng('./Images/Entities/Pengo/RightAttack.png'));
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit1.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit2.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit3.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit4.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit5.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit6.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit7.png');
+		$HitTextures[] = XNAPng('./Images/Entities/Pengo/Hit8.png');
+		$HitFrameMax = Count($HitTextures);
+		$KeyControls[ControlType->$MoveUp] = @KeyUp;
+		$KeyControls[ControlType->$MoveDown] = @KeyDown;
+		$KeyControls[ControlType->$MoveLeft] = @KeyLeft;
+		$KeyControls[ControlType->$MoveRight] = @KeyRight;
+		$KeyControls[ControlType->$Attack] = @KeyControlKey;
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+};

@@ -1,0 +1,19 @@
+﻿// Load the old GUI system
+// Since this an old GUI example
+PluginLoad('SputnikOldGUI.dll');
+
+// Create the GUI
+Global $GUI = GUICreate("Window", "My Title", 200, 200);
+// Create a button -- This button will simply display a message
+Global $Button = GUICreate("Button", $GUI, "Press Me!", 8, 8);
+// Add a link to the button
+GUILink($Button, "Click", 'myFunction();'); // Call function
+// Show the GUI
+GUILoad( $GUI );
+// Keep the GUI running as long as long as the window is open
+While ( GUIStatus( $GUI ) ) DoEvents( );
+ 
+Function myFunction()
+{
+	MsgBox("Hello from the button");
+} 

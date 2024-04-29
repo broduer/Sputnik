@@ -1,0 +1,54 @@
+﻿$LoadCommands['cash'] = array('CmdCash', 0, 1);
+Class extends ServerManager
+{
+	Function CmdCash($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Economy;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Find out how much cash you have in your bank (or view another players)';
+		if ($args === 'help')
+			return array(
+							'Shows how much cash you have in your bank',
+							"Cash can be earned by killing Zombies (if the server allows that) or by donating",
+							"or you can earn a certain amount of cash every so often just for being on the server (if the server allows that)",
+							"or by donating or maybe the admin will give you some cash for being a good player",
+							"You can use the cash to buy items using the '/buy' command if it is allowed on the server",
+							"or you can trade with other players using the cash",
+							"or you can simply give your cash to other players for free using the '/give' command",
+							"To view another players cash simple type:",
+							"'/cash playerName' where the playerName is their name or part of it"
+			);
+		if ($commandUser == null)
+			return;
+		switch ($argCount)
+		{
+			case 0:
+				my $cash = GetUserCash($commandUser);
+				SayToUser($commandUser, "You have '$cash' cash");
+				break;
+			case 1:
+				my $who = $args[0];
+				if (IsEmptyOrNull($who))
+				{
+					SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+					return;
+				}
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+				if ($found == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+					return;
+				}
+				my $cash = GetUserCash($found);
+				my $name = $found->$Name;
+				SayToUser($commandUser, "$name has '$cash' cash");
+				break;
+			default:
+				SayToUser($commandUser, "You entered an invalid number of arguments");
+				break;
+		}
+	}
+}

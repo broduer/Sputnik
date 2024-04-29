@@ -1,0 +1,23 @@
+##TEMPLATE-NAME 'Ada - Constants Only'
+##LANGUAGE 'Ada'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'ada'
+##NOTES
+This template creates to set of Ada enumerated constants for the grammar's symbols and rules.
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+package SymbolConstants is
+##SYMBOLS
+   %ID.Padded% : constant := %Value.Padded%; -- %Description%
+##END-SYMBOLS
+end SymbolConstants;
+
+package RuleConstants is
+##RULES
+   %ID.Padded% : constant := %Value.Padded%; -- %Description%
+##END-RULES
+end RuleConstants;

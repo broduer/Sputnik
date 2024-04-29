@@ -1,0 +1,423 @@
+﻿// Load the old GUI system
+// Since this an old GUI example
+PluginLoad('SputnikOldGUI.dll');
+
+// Load the item list for the game
+Include("Items.spk", true);
+// Find the game window and get its process ID
+Global $P = new SpkProc("DarkEarth", null);
+
+# Make a folder for saves if it does not already exist
+unless( -d "./Saves" )
+	MKDir("./Saves");
+
+// Trainer Name
+Global $TrainerName = "Dark Earth Trainer";
+// Create the GUI
+Global $GUI = GUICreate("Window", $TrainerName . ' by UberFoX (uberfox@hotmail.com)', 433, 530, - 1, - 1, 1);
+// Create GUI objects
+Global $GUIInventoryList = GUICreate("ListBox", $GUI, 8, 8, 300, 400);
+Global $GUIFindItems = GUICreate("Button", $GUI, "Find Items", 310, 8, 110, 20);
+Global $GUINewItem = GUICreate("Button", $GUI, "Add New Item", 310, 30, 110, 20);
+Global $GUIDeleteTopItem = GUICreate("Button", $GUI, "Del Top Item", 310, 52, 110, 20);
+Global $GUIDeleteCurrentItem = GUICreate("Button", $GUI, "Del Current Item", 310, 74, 110, 20);
+Global $GUIDeleteBottomItem = GUICreate("Button", $GUI, "Del Bottom Item", 310, 96, 110, 20);
+Global $GUIFullHealth = GUICreate("Button", $GUI, "Full Health", 310, 152, 110, 20);
+Global $GUIRemoveDarkness = GUICreate("Button", $GUI, "Remove Darkness", 310, 174, 110, 20);
+Global $GUIIncreaseDarkness = GUICreate("Button", $GUI, "Increase Darkness", 310, 196, 110, 20);
+Global $GUIDarknessAmount = GUICreate("TextBox", $GUI, "", 310, 218, 110, 20);
+Global $GUILabelObjectPicker = GUICreate("Label", $GUI, "Object :", 8, 410, 110, 20);
+Global $GUIObjectPicker = GUICreate("ComboBox", $GUI, 8, 430, 300);
+Global $GUILabelAmount = GUICreate("Label", $GUI, "Amount (0-9999) :", 8, 455, 110, 20);
+Global $GUIAmount = GUICreate("TextBox", $GUI, "", 8, 475, 300);
+Global $GUISaveInventory = GUICreate("Button", $GUI, "Save Inventory", 310, 262, 110, 20);
+Global $GUILoadInventory = GUICreate("Button", $GUI, "Load Inventory", 310, 284, 110, 20);
+Global $GUIDeleteSaveInventory = GUICreate("Button", $GUI, "Delete Save", 310, 306, 110, 20);
+Global $GUIAboutTrainer = GUICreate("Button", $GUI, "About Trainer", 310, 475, 110, 20);
+Global $GUIInventorySaves = GUICreate("ListBox", $GUI, 310, 328, 110, 70);
+GUIComboBox( $GUIObjectPicker, "DropDownStyle", "dropdownlist");
+SetItemCombo($GUIObjectPicker);
+// Create GUI Links
+GUILink($GUIAmount, "TextChanged", 'onAMOUNTChange($arg);');
+GUILink($GUIDarknessAmount, "TextChanged", 'onDARKNESSAMOUNTChange($arg);');
+GUILink($GUIFullHealth, "Click", "FullHealth();");
+GUILink($GUIRemoveDarkness, "Click", "RemoveDarkness();");
+GUILink($GUIIncreaseDarkness, "Click", "IncreaseDarkness();");
+GUILink($GUIFindItems, "Click", "FindItems();");
+GUILink($GUINewItem, "Click", "AddItem();");
+GUILink($GUIDeleteTopItem, "Click", "DeleteTopItem();");
+GUILink($GUIDeleteBottomItem, "Click", "DeleteBottomItem();");
+GUILink($GUIDeleteCurrentItem, "Click", "DeleteCurrentItem();");
+GUILink($GUIInventoryList, "SelectedIndexChanged", 'onChangeInventoryList($arg);');
+GUILink($GUIObjectPicker, "SelectedIndexChanged", 'onChangeObjectPicker($arg);');
+GUILink($GUISaveInventory, "Click", "SaveInventory();");
+GUILink($GUILoadInventory, "Click", "LoadInventory();");
+GUILink($GUIDeleteSaveInventory, "Click", "DeleteInventorySave();");
+GUILink($GUIAboutTrainer, "Click", "AboutTrainer();");
+// Show the GUI
+GUILoad( $GUI );
+
+// Make the timer
+Global $Timer = GUICreate("Timer", $GUI, 1000);
+GUILink($Timer, "Tick", 'TimerTicky($me);');
+GUITimer($Timer, "Start");
+
+// Make Hotkeys
+HotKeySet("^h", "FullHealth();");
+HotKeySet("^d", "RemoveDarkness();");
+HotKeySet("^+d", "IncreaseDarkness();");
+
+// Find initial items
+FindItems();
+GUIListBox( $GUIInventoryList, "SelectedIndex", 0 );
+
+// Load saves
+LoadInventorySaves();
+
+// Keep the GUI running as long as long as the window is open
+While ( GUIStatus( $GUI ) ) DoEvents( );
+
+Function TimerTicky ( $obj )
+{
+	my $Value = $P->ReadMem(0x4B6F70, @rInt16);
+	my $Text = (int)GUIGetProp($GUIDarknessAmount, "Text");
+	if($Value != $Text)
+	{
+		GUISetProp($GUIDarknessAmount, "Text", $Value);
+	}
+}
+
+Function AboutTrainer()
+{
+	my $Text = 
+			qq~
+				$TrainerName
+				(For game version 1.1)
+				Created by UberFoX (uberfox\@hotmail.com)
+				---
+				Made using Sputnik scripting language
+				http://ubersoft.org
+				---
+				Hotkeys for this game:
+				* Control + H = Full Health
+				* Control + D = Remove Darkness
+				* Control + Shift + D = Increase Darkness by 100
+			~;
+	$Text =~ s/^\s*//mg;
+	MsgBox(Trim($Text), $TrainerName);
+}
+
+Function SaveInventory()
+{
+	my $Selected = GUIListBox( $GUIInventorySaves, "SelectedText" );
+	my $Name = InputBox($TrainerName, "Enter a name for the save", $Selected);
+	if(IsEmptyOrNull($Name)) return;
+	if(!IsAlphaNumeric(Replace($Name, " ", "")))
+	{
+		MsgBox("Invalid name must contain only alpha-numeric", $TrainerName);
+		return;
+	}
+	my $Text = JsonEncode($ItemList, @JSON_PRETTY_PRINT);
+	FileSave("./Saves/$Name", $Text);
+	LoadInventorySaves();
+	MsgBox("Saved", $TrainerName);
+}
+
+Function LoadInventory()
+{
+	my $FileName = GUIListBox( $GUIInventorySaves, "SelectedText" );
+	if(IsEmptyOrNull($FileName))
+	{
+		MsgBox("You must select a file to load", $TrainerName);
+		return;
+	}
+	unless( -e "./Saves/$FileName" )
+	{
+		MsgBox("Could not find file '$FileName'", $TrainerName);
+		return;
+	}
+	my $Text = FileLoad("./Saves/$FileName");
+	my $TempItemList = JsonDecode($Text);
+	FindItems(false);
+	# Delete all items first
+	foreach($ItemList as $Item)
+	{
+		my List ($ItemAddress, $ItemCountAddress, $ItemID, $ItemCount) = $Item;
+		$P->WriteMem($ItemAddress - 4, (int32)0);
+		$P->WriteMem($ItemCountAddress, (ushort)0);
+	}
+	# Insert all items from saved data
+	foreach($TempItemList as $Item)
+	{
+		my List ($ItemAddress, $ItemCountAddress, $ItemID, $ItemCount) = $Item;
+		my $ID = StrLen($ItemID) == 1 ? "0" . $ItemID : $ItemID;
+		if(Count($ItemList))
+		{
+			my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[0];
+			my $Addy = $ItemAddress - 30;
+			my $ItemHex = Pack("z0", "OB" . $ID);
+			$P->WriteMem($Addy, $ItemHex);
+			$P->WriteMem($Addy + 20, (ushort)$ItemCount);
+		}
+		else
+		{
+			my $Addy = 0x4B42D4;
+			my $ItemHex = Pack("z0", "OB" . $ID);
+			$P->WriteMem($Addy, $ItemHex);
+			$P->WriteMem($Addy + 20, (ushort)$ItemCount);
+		}
+		FindItems(false);
+	}
+	FindItems();
+}
+
+Function DeleteInventorySave()
+{
+	my $FileName = GUIListBox( $GUIInventorySaves, "SelectedText" );
+	if(IsEmptyOrNull($FileName))
+	{
+		MsgBox("You must select a file to load", $TrainerName);
+		return;
+	}
+	unless( -e "./Saves/$FileName" )
+	{
+		MsgBox("Could not find file '$FileName'", $TrainerName);
+		return;
+	}
+	$Result = MsgBox("Are you sure you wish to delete the inventory save '$FileName'?", $TrainerName, 48 | 4);
+	If ( $Result == 7 ) // No
+		return;
+	FileDelete("./Saves/$FileName");
+	LoadInventorySaves();
+}
+
+Function LoadInventorySaves()
+{
+	GUIListBox($GUIInventorySaves, "Clear");
+	foreach(Glob("./Saves/*") as my $file)
+	{
+		my $file = GetFileName($file);
+		GUIListBox( $GUIInventorySaves, "AddItem", $file );
+	}
+}
+
+Function SetItemCombo( $Obj )
+{
+	foreach( Enumerate("ItemType") as $Name => $ID )
+	{
+		$Name = UCFirst(LC($Name));
+		GUIComboBox( $Obj, "AddItem", "### $Name ###" );
+		foreach($Items as my $Item)
+		{
+			if($Item[0] == $ID )
+				GUIComboBox( $Obj, "AddItem", $Item[1] );
+		}
+	}
+}
+
+Function FindItems($allowEditList = true)
+{
+	if($allowEditList)
+		GUIListBox($GUIInventoryList, "Clear");
+	$ItemList = array();
+	my $ItemAddr = 0x4B3DC0;
+	for(my $i = 0; $i <= 1330; $i++)
+	{
+		my $Check = $P->ReadMem($ItemAddr + $i, @rAscii, 2);
+		if($Check eq "OB")
+		{
+			my $ItemID = TrimLeft($P->ReadMem($ItemAddr + $i + 2, @rAscii, 2), "0");
+			if(IsEmpty($ItemID))
+				$ItemID = 0;
+			my $ItemName = ItemName($ItemID);
+			my $ItemType = ItemType($ItemID);
+			my $ItemCount = $P->ReadMem($ItemAddr + $i + 20, @rUInt16);
+			if($allowEditList)
+				GUIListBox( $GUIInventoryList, "AddItem", "[$ItemCount] $ItemName" );
+			my $ItemAddress = $ItemAddr + $i + 2;
+			my $ItemCountAddress = $ItemAddr + $i + 20;
+			push($ItemList, array($ItemAddress, $ItemCountAddress, $ItemID, $ItemCount));
+		}
+	}
+}
+
+Function onChangeInventoryList($arg)
+{
+	my $Index = $arg[0];
+	my $Text = $arg[1];
+	$Text =~ s/\[.*\]\s+//;
+	my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[$Index];
+	GUIComboBox( $GUIObjectPicker, "SelectedItem", $Text );
+	my $ItemCount = $P->ReadMem($ItemCountAddress, @rUInt16);
+	GUISetProp( $GUIAmount, "Text", $ItemCount );
+}
+
+Function onChangeObjectPicker($arg)
+{
+	my $Index = $arg[0];
+	my $Text = $arg[1];
+	my $OldIndex = GUIListBox( $GUIInventoryList, "SelectedIndex" );
+	my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[$OldIndex];
+	my $FoundItem = 0;
+	my $FoundItemCode = 0;
+	my $i = 0;
+	foreach($Items as my $Item)
+	{
+		if($Item[1] eq $Text)
+		{
+			$FoundItem = 1;
+			$FoundItemCode = $i;
+			break;
+		}
+		$i++;
+	}
+	if($FoundItem)
+	{
+		if(StrLen($FoundItemCode) == 1)
+			$FoundItemCode ..= "0";
+		my $ItemHex = Pack("z0", $FoundItemCode);
+		$P->WriteMem($ItemAddress, $ItemHex);
+		FindItems();
+		GUIListBox( $GUIInventoryList, "SelectedIndex", $OldIndex );
+	}
+}
+
+Function onAMOUNTChange($arg)
+{
+	my $Index = $arg[0];
+	my $Text = GUIListBox( $GUIInventoryList, "SelectedItem" );
+	$Text =~ s/\[.*\]\s+//;
+	my $OldIndex = GUIListBox( $GUIInventoryList, "SelectedIndex" );
+	my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[$OldIndex];
+	my $FoundItem = 0;
+	my $FoundItemCode = 0;
+	my $i = 0;
+	foreach($Items as my $Item)
+	{
+		if($Item[1] eq $Text)
+		{
+			$FoundItem = 1;
+			$FoundItemCode = $i;
+			break;
+		}
+		$i++;
+	}
+	if($FoundItem)
+	{
+		my $Text = (ushort)GUIGetProp($GUIAmount, "Text");
+		if($Text > 9999)
+			$Text = 9999;
+		if($Text < 0)
+			$Text = 0;
+		$P->WriteMem($ItemCountAddress, (ushort)$Text);
+		FindItems();
+		GUIListBox( $GUIInventoryList, "SelectedIndex", $OldIndex );
+	}
+}
+
+Function AddItem()
+{
+	FindItems(false); # To make sure nothing gets overwritten
+	if(Count($ItemList))
+	{
+		my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[0];
+		my $Addy = $ItemAddress - 30;
+		my $ItemHex = Pack("z0", "OB00");
+		$P->WriteMem($Addy, $ItemHex);
+	}
+	else
+	{
+		my $Addy = 0x4B42D4;
+		my $ItemHex = Pack("z0", "OB00");
+		$P->WriteMem($Addy, $ItemHex);
+	}
+	FindItems();
+	GUIListBox( $GUIInventoryList, "SelectedIndex", 0 );
+}
+
+Function DeleteTopItem()
+{
+	if(Count($ItemList))
+	{
+		my List( $ItemAddress, $ItemCountAddress  ) = $ItemList[0];
+		$P->WriteMem($ItemAddress - 4, (int32)0);
+		$P->WriteMem($ItemCountAddress, (ushort)0);
+	}
+	FindItems();
+}
+
+Function DeleteBottomItem()
+{
+	if(Count($ItemList) > 1)
+	{
+		my List( $ItemAddress1, $ItemCountAddress1, $ItemID1, $ItemCount1  ) = $ItemList[0];
+		my List( $ItemAddress2, $ItemCountAddress2, $ItemID2, $ItemCount2  ) = $ItemList[Count($ItemList) - 1];
+		$P->WriteMem($ItemAddress1 - 4, (int32)0);
+		$P->WriteMem($ItemCountAddress1, (ushort)0);
+		$P->WriteMem($ItemCountAddress2, (ushort)$ItemCount1);
+		if(StrLen($ItemID1) == 1)
+			$ItemID1 ..= "0";
+		my $ItemHex = Pack("z0", $ItemID1);
+		$P->WriteMem($ItemAddress2, $ItemHex);
+	}
+	FindItems();
+}
+
+Function DeleteCurrentItem()
+{
+	if(Count($ItemList) > 0)
+	{
+		my $Text = GUIListBox( $GUIInventoryList, "SelectedItem" );
+		$Text =~ s/\[.*\]\s+//;
+		my $OldIndex = GUIListBox( $GUIInventoryList, "SelectedIndex" );
+		my List( $ItemAddress1, $ItemCountAddress1, $ItemID1, $ItemCount1 ) = $ItemList[$OldIndex];
+		my $FoundItem = 0;
+		my $FoundItemCode = 0;
+		my $i = 0;
+		foreach($Items as my $Item)
+		{
+			if($Item[1] eq $Text)
+			{
+				$FoundItem = 1;
+				$FoundItemCode = $i;
+				break;
+			}
+			$i++;
+		}
+		if($FoundItem)
+		{
+			my List( $ItemAddress2, $ItemCountAddress2, $ItemID2, $ItemCount2  ) = $ItemList[Count($ItemList) - 1];
+			$P->WriteMem($ItemAddress1 - 4, (int32)0);
+			$P->WriteMem($ItemCountAddress1, (ushort)0);
+			$P->WriteMem($ItemCountAddress2, (ushort)$ItemCount2);
+			if(StrLen($ItemID2) == 1)
+				$ItemID2 ..= "0";
+			my $ItemHex = Pack("z0", $ItemID2);
+			$P->WriteMem($ItemAddress2, $ItemHex);
+		}	
+	}
+	FindItems();
+}
+
+Function onDARKNESSAMOUNTChange()
+{
+	my $Text = GUIGetProp($GUIDarknessAmount, "Text");
+	$P->WriteMem(0x4B6F70, (short)$Text);
+}
+
+Function FullHealth()
+{
+	$P->WriteMem(0x4ECDD4, (short)1023);
+}
+
+Function RemoveDarkness()
+{
+	$P->WriteMem(0x4B6F70, (short)0);
+}
+
+Function IncreaseDarkness()
+{
+	my $Value = $P->ReadMem(0x4B6F70, @rUInt16);
+	$Value += 100;
+	$P->WriteMem(0x4B6F70, (short)$Value);
+}

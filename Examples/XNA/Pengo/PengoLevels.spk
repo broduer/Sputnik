@@ -1,0 +1,66 @@
+﻿say 'Building new Levels.spk';
+my $Source = '';
+my $LevelLoadingSource = '';
+my $LevelLoadingSourceArray = 'Global $LevelLoadingTextures = array();' . "\n";
+my $LevelLoadingSourceArray .= '' . "\n";
+my $LevelLoadingSourceArray .= 'Global $InitLevelLoadingTexturesDone = false;' . "\n";
+my $LevelLoadingSourceArray .= '' . "\n";
+my $LevelLoadingSourceArray .= 'Function InitLevelLoadingTextures()' . "\n";
+my $LevelLoadingSourceArray .= '{' . "\n";
+my $LevelLoadingSourceArray .= "\tif(!\$InitLevelLoadingTexturesDone)" . "\n";
+my $LevelLoadingSourceArray .= "\t\t\$InitLevelLoadingTexturesDone = true;" . "\n";
+my $LevelLoadingSourceArray .= "\telse" . "\n";
+my $LevelLoadingSourceArray .= "\t\treturn;" . "\n";
+$Source .= 'Global $Levels = array' . "\n";
+$Source .= '(' . "\n";
+my $Levels = GetFiles('./Levels');
+my $Max = 0;
+my $i = 0;
+foreach($Levels as $lvl)
+{
+	if($lvl =~ m/Level(\d+)/)
+		$Max++;
+}
+say "Found '$Max level(s)";
+foreach($Levels as $lvl)
+{
+	if($lvl =~ m/Level(\d+)\.lvl/)
+	{
+		my $Val = $1;
+		my $l = (int)$Val;
+		say "Adding level '$l'";
+		$Source .= '// level ' . $l . "\n";
+		$Source .= "'" . FileLoad('./Levels/' . $lvl) . "'" . "\n";
+		if($i + 1 < $Max)
+			$Source .= ',' . "\n";
+		my $SlideNumber = 1;
+		my $AddedSlideArray = false;
+		while( true )
+		{
+			my $SlideName = "Level$Val\|S$SlideNumber";
+			my $SlideFile = "./Levels/$SlideName.png";
+			say "Found slide: $SlideFile";
+			my $lNum = $l - 1;
+			if(-e $SlideFile)
+			{
+				if(!$AddedSlideArray)
+				{
+					$AddedSlideArray = true;
+					$LevelLoadingSourceArray .= "\t\$LevelLoadingTextures[$lNum] = array();" . "\n";
+				}
+				$LevelLoadingSourceArray .= "\t\$LevelLoadingTextures[$lNum][] = XNAPng('$SlideFile');" . "\n";
+			}
+			else
+				break;
+			$SlideNumber++;
+		}
+	}
+	$i++;
+}
+my $LevelLoadingSourceArray .= '}' . "\n";
+$Source .= ');' . "\n";
+$Source ..= $LevelLoadingSourceArray . "\n";
+say 'Saving to Levels.spk';
+FileSave('./Src/Levels.spk', $Source);
+say 'Done!';
+say $LevelLoadingSource;

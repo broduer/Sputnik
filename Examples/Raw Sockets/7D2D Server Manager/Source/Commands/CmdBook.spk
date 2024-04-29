@@ -1,0 +1,85 @@
+﻿$LoadCommands['book'] = array('CmdBook', 0, 0);
+Class extends ServerManager
+{
+	Function CmdBook($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Gambling;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Buy a random book/schematic/magazine';
+		if ($args === 'help')
+			return array("Buy a random book/schematic/magazine");
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowBook') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $bookItemsData = $utils->getBookItemsFile();
+		if ($bookItemsData == null || count($bookItemsData) <= 0)
+		{
+			SayToUser($commandUser, "Sorry there is no books you can buy at this time");
+			return;
+		}
+		my $SteamId = $commandUser->$SteamId;
+		my $toGive = null;
+		while (true)
+		{
+			my $rand = Random(0, count($bookItemsData), 0);
+			if (!IsSet($bookItemsData[$rand]))
+				continue;
+			$toGive = $bookItemsData[$rand];
+			break;
+		}
+		if ($toGive == null)
+		{
+			SayToUser($commandUser, "There was an error with this command please try again");
+			return;
+		}
+		my $ourName = $commandUser->$Name;
+		GiveItemToUser($commandUser, $toGive, 1);
+		my $Cost = GetConfig('BookCost');
+		if ($Cost > 0)
+		{
+			SayToUser($commandUser, "You wish to buy a random book for cost of $Cost");
+			my $userCash = GetUserCash($commandUser);
+			if ($userCash < $Cost)
+			{
+				SayToUser($commandUser, "You cannot afford to buy a book you have '$userCash' cash and need '$Cost'");
+				return;
+			}
+			DelUserCash($commandUser, $Cost);
+			$userCash = GetUserCash($commandUser);
+			SayToUser($commandUser, "You have bought the book for '$Cost' cash you now have '$userCash' cash left");
+		}
+		SayToUser($commandUser, "The book has been given you may pick it up now (it should be at your feet!");
+		SayToAll("$ourName spins the wheel and gets... $toGive");
+	}
+}
+Class extends Utils
+{
+	Function getBookItemsFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/BookItems.txt'))
+			return $fileInfo;
+		my $itemFile = FileReadLines('./Variables/BookItems.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $ItemName = $lineTrim;
+			if (IsEmptyOrNull($ItemName))
+				continue;
+			$fileInfo[] = $ItemName;
+		}
+		return $fileInfo;
+	}
+}

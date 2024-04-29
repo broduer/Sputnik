@@ -1,0 +1,206 @@
+﻿// Include what we need for this script to work
+Include('Console.spk', true);
+Include('String.spk', true);
+
+// We will use #include here since if we try use the normal include it
+// wont get parsed until the code runs and that is a big problem since
+// our client extends another class and the one to extend wont be found
+// So by doing it like this we ensure it will be found
+#Include "TelnetBase.spk"
+
+// Create the Server instance
+Global $server = new Server('Server Example');
+$server->Listen('127.0.0.1', 1100); // start listening for connections
+$server->Go(); // begin main loop and start processing
+
+Class Client
+{
+	my $Socket;
+	my $LoggedIn;
+	my $Name;
+	Function __Construct($clientSocket)
+	{
+		$Socket = $clientSocket;
+		$LoggedIn = false;
+		$Name = null;
+	}
+	Function __Destruct()
+	{
+		// Make sure to kill the socket
+		unset($Socket);
+	}
+}
+
+Class Server extends TelnetBase
+{
+	my $Clients;
+	Function __Construct($myAppName, $myName)
+	{
+		// Store our app name
+		$appName = $myAppName;
+		// Set us as the server
+		$isServer = true;
+		// Make a variable to store client information
+		$Clients = array();
+		// Init the Telnet base
+		Init();
+	}
+	// Connect to the server
+	Function Listen($ip, $port)
+	{
+		// Bind the socket to the local endpoint and 
+		// listen for incoming connections.
+		SocketBind($Socket, $ip, $port);
+		SocketListen($Socket, 10);
+		// Inform what we are doing
+		AppendLine("Server is listening on IP '$ip' and Port '$port'");
+		// Create the network processing thread
+		// we need it on a separate thread since
+		// it will prevent console input if we dont
+		ThreadCreate('netProcessing', '$arg->ReadNetwork();', $this);
+		// Create a thread to accept clients
+		ThreadCreate("acceptThread", '$arg->AcceptClients();', $this);
+	}
+	// Handle the accepting of clients
+	Function AcceptClients()
+	{
+		while (true)
+		{
+			// Print what we are doing
+			AppendLine('Waiting for a connection...');
+			// Accept a client
+			my $Client = SocketAccept($Socket);
+			// Send a welcome to client
+			SocketSend($Client, "Welcome to my server\n");
+			// Ask the client to provide a name
+			SocketSend($Client, "Please enter your name now\n");
+			// Add client to client list
+			// Make sure only 1 thread uses the list at once
+			ThreadLock( "ClientList" )
+			{
+				$Clients[] = new Client($Client);
+			}
+		}
+	}
+	// Read all network packets
+	Function ReadNetwork()
+	{
+		// Loop forever
+		while (true)
+		{
+			ThreadLock( "ClientList" )
+			{
+				// This will get a list of clients to remove from the server
+				my $DeadClients = array();
+				// Loop through all clients and find text they typed
+				foreach($Clients as my $cli)
+				{
+					// Get client Variables
+					my $cName = $cli->$Name;
+					my $cSocket = $cli->$Socket;
+					my $LoggedIn = $cli->$LoggedIn;
+					// Is the client no longer connected?
+					if (!SocketConnected($cSocket))
+					{
+						// Add this client to the *to remove* list
+						push($DeadClients, $cli);
+					}
+					// Anything to get?
+					if (!SocketAvailable($cSocket))
+						continue;
+					// Obtain a line of text from the server
+					my $line = SocketReadLine($cSocket);
+					// Trim whats left
+					my $lineTrim = trim($line);
+					// Got something to process?
+					if (!IsEmptyOrNull($lineTrim))
+					{
+						// Is the client logged in?
+						if (!$LoggedIn)
+						{
+							// Accept this line as the client name
+							$cli->$Name = $lineTrim;
+							$cName = $cli->$Name;
+							// Inform of user joined
+							AppendLine("Client '$cName' connected");
+							MsgAll("<\@Server> '$cName' has connected\n");
+							SocketSend($cSocket, "Thanks '$cName' for logging in\n");
+							// Finally set the logged in flag so it can get chat messages
+							$cli->$LoggedIn = true;
+							continue;
+						}
+						// Make sure to lock the array
+						ThreadLock("ToProcess")
+						{
+							// Add the line to processing array to
+							// be processed later by the main thread
+							push($toProcess, array($cName, $lineTrim));
+						}
+					}
+				}
+				// Remove any clients that are no longer connected
+				foreach($DeadClients as my $DeadClient)
+				{
+					// Get the clients name
+					my $cName = $DeadClient->$Name;
+					// Remove the client
+					RemoveValue($Clients, $DeadClient);
+					// Dispose of the client
+					unset($DeadClient);
+					// Inform
+					AppendLine("Client '$cName' disconnected");
+					MsgAll("<\@Server> '$cName' has disconnected\n");
+				}
+			}
+			sleep(1);
+		}
+	}
+	// Process all network packets
+	Function ProcessNetwork()
+	{
+		// if there is nothing to do just return
+		if (count($toProcess) <= 0)
+			return;
+		// get the first element so we can process it
+		my List($cName, $line) = shift($toProcess);
+		// make sure the array stays in order
+		order($toProcess);
+		// print the line
+		OnProcess($cName, $line);
+	}
+	// Handle the user typing in the console and send it as chat
+	Function UserTyped($Text)
+	{
+		// Print to console
+		AppendLine("<\@Server> $Text");
+		// Send what we typed all to clients
+		MsgAll("<\@Server> $Text\n");
+	}
+	// Triggered when we got a message to process from the client
+	Function OnProcess($sName, $sLine)
+	{
+		// Print to console
+		AppendLine("<$sName> $sLine");
+		// Send what they typed to all clients
+		MsgAll("<$sName> $sLine\n");
+	}
+	// Send a message to all clients on server
+	Function MsgAll($Message)
+	{
+		ThreadLock( "ClientList" )
+		{
+			foreach($Clients as my $cli)
+			{
+				// Get client Variables
+				my $cName = $cli->$Name;
+				my $cSocket = $cli->$Socket;
+				my $LoggedIn = $cli->$LoggedIn;
+				// Dont send messages if not logged in
+				if (!$LoggedIn)
+					continue;
+				// Send the message
+				SocketSend($cSocket, $Message);
+			}
+		}
+	}
+}

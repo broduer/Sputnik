@@ -1,0 +1,93 @@
+#include-once
+#require-once
+Class StringBuilder
+{
+	my $sb;
+	my $Length
+	{
+		get { return SbGetLength($sb); }
+		set { SbSetLength($sb, $value); }
+	}
+	my $Capacity
+	{
+		get { return SbGetCapacity($sb); }
+		set { SbSetCapacity($sb, $value); }
+	}
+	my $MaxCapacity
+	{
+		get { return SbGetMaxCapacity($sb); }
+	}
+	Function __Construct($capacity = 4096)
+	{
+		$sb = SbNew($capacity);
+	}
+	Function __Destruct()
+	{
+		unset($sb);
+	}
+	Function Append($value)
+	{
+		return SbAppend($sb, $value);
+	}
+	Function AppendLine($value)
+	{
+		return SbAppendLine($sb, $value);
+	}
+	Function AppendRear($value)
+	{
+		return SbInsert($sb, 0, $value);
+	}
+	Function AppendRearLine($value)
+	{
+		my $count = SbInsert($sb, 0, $value);
+		return SbInsert($sb, $count, @N);
+	}
+	Function Insert($pos, $value)
+	{
+		return SbInsert($sb, $pos, $value);
+	}
+	Function InsertLine($pos, $value)
+	{
+		my $count = SbInsert($sb, $pos, $value);
+		return SbInsert($sb, $pos + $count, @N);
+	}
+	Function Remove($start, $length)
+	{
+		return SbRemove($sb, $start, $length);
+	}
+	Function Clear()
+	{
+		unset($sb);
+		$sb = sbNew(); 
+		return true;
+	}
+	Function __Set($index, $value) 
+	{
+		return SbSetIndex($sb, $index, $value);
+	}
+	Function __Get($index)
+	{
+		return SbGetIndex($sb, $index);
+	}
+	Function ToString()
+	{
+		return SbToString($sb);
+	}
+	Operator "string"
+	{
+		return SbToString($sb);
+	}
+	Operator "=" ($x)
+	{
+		Clear();
+		Append((string)$x);
+	}
+	Operator ".=" ($x)
+	{
+		Append((string)$x);
+	}
+	Operator "..=" ($x)
+	{
+		Append((string)$x);
+	}
+};

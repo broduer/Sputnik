@@ -1,0 +1,51 @@
+﻿$onServerInit[] = 'VarStoreInit';
+$onServerProcess[] = 'VarStoreProcess';
+Class extends ServerManager
+{
+	my $varStore;
+	my $varStoreCounter;
+	Function VarStoreInit()
+	{
+		$varStoreCounter = 0;
+		LoadVarStore();
+	}
+	Function VarStoreProcess()
+	{
+		$varStoreCounter++;
+		if ($varStoreCounter < 5)
+			return;
+		SaveVarStore();
+	}
+	Function VarExists($Key)
+	{
+		return IsKeySet($varStore, $Key);
+	}
+	Function VarGet($Key)
+	{
+		return $varStore[$Key];
+	}
+	Function VarSet($Key, $Value)
+	{
+		$varStore[$Key] = $Value;
+	}
+	Function VarDel($Key, $Value)
+	{
+		unset($varStore[$Key]);
+	}
+	Function SaveVarStore()
+	{
+		my $serialized = serialize($varStore);
+		FileSave('./Variables/VarStore.db', $serialized);
+	}
+	Function LoadVarStore()
+	{
+		$varStore = array();
+		if (!FileExists('./Variables/VarStore.db'))
+			return;
+		my $varStoreDb = FileLoad('./Variables/VarStore.db');
+		my $unserialized = unserialize($varStoreDb);
+		if (!(IsVarArray($unserialized)))
+			return;
+		$varStore = $unserialized;
+	}
+}

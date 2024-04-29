@@ -1,0 +1,5 @@
+#include-once
+#require-once
+// This will include all Net scripts in the library
+include('Net/FileDownloader.spk', true);
+include('Net/HTTP.spk', true);

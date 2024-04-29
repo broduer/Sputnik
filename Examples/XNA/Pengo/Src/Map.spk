@@ -1,0 +1,1616 @@
+Enum TileType
+{
+	$Blank, // Must never change from being at top
+	$Ice,
+	$Ruby,
+	$Gold,
+	$Obsidian,
+	$RedGem,
+	$YellowGem,
+	$GreenGem,
+	$BlueGem,
+	$InvisBlock // Must never change from being at bottom
+};
+
+Class Map
+{
+	my $Game;
+	my $TileTextures;
+    my $Level;
+    my $LevelPositions;
+	my $MapTileSize;
+    my $MapWidth;
+    my $MapHeight;
+	my $MapOffsetX;
+	my $MapOffsetY;
+	my $EditTileType;
+	my $EditBrushSize;
+	my $AllowEditor;
+	my $EditorLog;
+	my $EntityManager;
+	my $LevelNumber;
+	my $CountTextures;
+	my $LevelsFolder;
+	my $GhostCounter;
+	my $PengoSpawnPoint;
+	my $PenguinaSpawnPoint;
+	my $MovingLevel;
+	my $MovingLevelData;
+	my $MovingLevelCount;
+	my $MovingLevelTickCount;
+	my $MovingLevelTickInterval;
+	my $LevelsFolder;
+	my $AllowNextLevelCheck;
+	my $RubyWin;
+	my $RainbowTriggered;
+	my $GemCount;
+	my $LevelLoadingTextureCurrent;
+	my $LevelLoadingDisplay;
+	my $LevelLoadingDisplayShown;
+	my $StartMenuOnLoad;
+	my $PathFinder;
+	my $MobSpawnPoints;
+	my $ShowMobSpawnPoints;
+	my $DaksuTimer;
+	Function __Construct(EngineMain $Engine)
+	{
+		$Game = $Engine;
+		$RubyWin = false;
+		$RainbowTriggered = false;
+		$GemCount = 0;
+		$AllowNextLevelCheck = true;
+		$LevelsFolder = CombinePath(@CurDir, 'Levels');
+		$EntityManager = new Entities($Game);
+		$AllowEditor = true;
+		XNAOpt('MouseVisible', $AllowEditor); // No point showing unless editor is on
+		$EditTileType = TileType->$Ice;
+		$EditBrushSize = 0;
+		$PengoSpawnPoint = array();
+		$PenguinaSpawnPoint = array();
+		$MobSpawnPoints = array();
+		$ShowMobSpawnPoints = false;
+		$LevelLoadingDisplayShown = 0;
+		$LevelLoadingTextureCurrent = 0;
+		$LevelLoadingDisplay = false;
+		InitLevelLoadingTextures();
+		$CountTextures = array();
+		$CountTextures[] = XNAPng('./Images/Map/Count0.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count1.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count2.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count3.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count4.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count5.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count6.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count7.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count8.png');
+		$CountTextures[] = XNAPng('./Images/Map/Count9.png');
+        $Level = array();
+		$TileTextures = array();
+		$TileTextures[TileType->$Blank] = XNAPng('./Images/Map/Blank.png');
+		$TileTextures[TileType->$InvisBlock] = $TileTextures[TileType->$Blank]; // Shared
+		$TileTextures[TileType->$Ice] = XNAPng('./Images/Map/Ice.png');
+		$TileTextures[TileType->$Ruby] = XNAPng('./Images/Map/Ruby.png');
+		$TileTextures[TileType->$Gold] = XNAPng('./Images/Map/Gold.png');
+		$TileTextures[TileType->$Obsidian] = XNAPng('./Images/Map/Obsidian.png');
+		$TileTextures[TileType->$RedGem] = XNAPng('./Images/Map/RedGem.png');
+		$TileTextures[TileType->$YellowGem] = XNAPng('./Images/Map/YellowGem.png');
+		$TileTextures[TileType->$GreenGem] = XNAPng('./Images/Map/GreenGem.png');
+		$TileTextures[TileType->$BlueGem] = XNAPng('./Images/Map/BlueGem.png');
+		$StartMenuOnLoad = false;
+		$LevelsFolder = CombinePath(@CurDir, 'Levels');
+		$MapTileSize = 32;
+        $MapWidth = 16;
+        $MapHeight =  16;
+		$MapOffsetX = 64;
+		$MapOffsetY = 0;
+		$LevelNumber = 1;
+		$LevelPositions = array();
+		// Populate the $LevelPositions array
+        For(my $i = 0;$i < $MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $MapHeight * 2; $j++) // Account for moving map size
+            @{
+				$LevelPositions[$i][$j] = array($MapOffsetX + ($i * $MapTileSize), $MapOffsetY + ($j * $MapTileSize));
+            }
+        }
+		// Moving Level properties
+		$MovingLevel = false;
+		$MovingLevelData = array();
+		$MovingLevelCount = 0;
+		$MovingLevelTickCount = 0;
+		$MovingLevelTickInterval = 6;
+		// A* Path Finding for the AI
+		$PathFinder = new Pathfinder();
+		$PathFinder->SetMap($MapWidth, $MapHeight);
+		$DaksuTimer = Time() + 5;
+	}
+	Function RandomLevel()
+	{
+		// Clear buffer
+		$MovingLevelData = array();
+		// Move to random map
+		my $Files = GetFiles("./Levels");
+		my $LevelNumber = (int)Random(1, count($Levels) - 1);
+		LoadSerialized($Levels[$LevelNumber - 1]);
+		BeginLevelInit(true);
+		return;
+	}
+	Function BeginLevel()
+    {
+		// Load the map
+		LoadSerialized($Levels[$LevelNumber - 1]);
+		BeginLevelInit();
+	}
+	Function BeginLevelInit($forceInit = false)
+    {
+		// Make sure there is no moving
+		$MovingLevel = false;
+		$MovingLevelData = array();
+		$MovingLevelCount = 0;
+		// Make sure we load the correct frame
+		$LevelLoadingTextureCurrent = 0;
+		// Make sure no instant Ruby win!
+		$RubyWin = false;
+		// Reset the map so it has not had a rainbow yet
+		$RainbowTriggered = false;
+		// Reset Gem counter
+		$GemCount = 0;
+		// Delete all non-player entities
+		$EntityManager->ClearEntities();
+		// Reset Ghost counter
+		$GhostCounter = (int)Random(120, 240); # Could spawn fast but might not
+		// If there is no slides to show just boot the level instantly
+		// also instant boot if we are on force
+		if($forceInit)
+		@{
+			$LevelLoadingDisplayShown = $LevelNumber;
+			BeginLevelInitPlay();
+			return;
+		}
+		if($LevelLoadingDisplayShown == $LevelNumber || !isset($LevelLoadingTextures[$LevelNumber - 1]))
+			BeginLevelInitPlay();
+		else  // Show the slides
+		@{
+			$LevelLoadingDisplay = true;
+			$LevelLoadingTextureCurrent = 0;
+			$LevelLoadingDisplayShown = $LevelNumber;
+		}
+	}
+	Function BeginLevelInitPlay()
+    {
+		// Remove level loading slides
+		$LevelLoadingDisplay = false;
+		// Set positions of Pengo and Penguina
+		if($Game->$Pengo != null)
+		@{
+			$Game->$Pengo->$DrawPosition = $PengoSpawnPoint;
+			$Game->$Pengo->$MoveDirection = Direction->$Zero;
+			$Game->$Pengo->$Facing = Facing->$Center;
+			$Game->$Pengo->AllStop();
+			$Game->$Pengo->Debuff();
+			$Game->$Pengo->StopAttack();
+		}
+		if($Game->$Penguina != null)
+		@{
+			$Game->$Penguina->$DrawPosition = $PenguinaSpawnPoint;
+			$Game->$Penguina->$MoveDirection = Direction->$Zero;
+			$Game->$Penguina->$Facing = Facing->$Center;
+			$Game->$Penguina->AllStop();
+			$Game->$Penguina->Debuff();
+			$Game->$Penguina->StopAttack();
+		}
+		// Create monsters
+		foreach($MobSpawnPoints as my $s)
+		@{
+			my List ( $Type, $X, $Y ) = $s;
+			switch($Type)
+			{
+				case EntityType->$Creeper:
+					SpawnCreeperCloseTo($X, $Y);
+					break;
+				case EntityType->$Inky:
+					SpawnInkyCloseTo($X, $Y);
+					break;
+				case EntityType->$Pinky:
+					SpawnPinkyCloseTo($X, $Y);
+					break;
+				case EntityType->$Slime:
+					SpawnSlimeCloseTo($X, $Y);
+					break;
+				case EntityType->$Blaze:
+					SpawnBlazeCloseTo($X, $Y);
+					break;
+				case EntityType->$Ghost:
+					SpawnGhostCloseTo($X, $Y);
+					break;
+			}
+		}
+		if($StartMenuOnLoad)
+		@{
+			$StartMenuOnLoad = false;
+			$Game->PlayInGameMusic();
+		}
+	}
+	Function Wipe()
+    {
+		// Wipe spawn points
+		$PengoSpawnPoint = array();
+		$PenguinaSpawnPoint = array();
+		$MobSpawnPoints = array();
+		$AllowNextLevelCheck = false;
+		// Wipe entities
+		$EntityManager->ClearEntities();
+		// Wipe map
+		$Level = array();
+		// Create blank map
+        For(my $i = 0;$i < $MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $MapHeight; $j++)
+				SetTile($i, $j, TileType->$Blank);
+        }
+		// Add the barriers
+		MakeBarriers();
+		// Reload all players
+		$Game->ReloadPlayers();
+		
+	}
+	Function MakeBarriers()
+    {
+        For(my $i = 0;$i < $MapWidth; $i++)
+        @{
+			SetTile($i, 0, TileType->$Ice);
+			SetTile($i, $MapHeight - 1, TileType->$Ice);
+        }
+		For(my $j = 0;$j < $MapHeight; $j++)
+		@{
+			SetTile(0, $j, TileType->$Ice);
+			SetTile($MapWidth - 1, $j, TileType->$Ice);
+		}
+    }
+	Function SetTile($X, $Y, $T)
+    {
+		$Level[$X][$Y] = $T;
+		$PathFinder->SetTile($X, $Y, !IsTileSolid($T));
+	}
+	Function GetTile($X, $Y)
+    {
+		return $Level[$X][$Y];
+	}
+	Function IsTileSolid($Tile, $Entity = null)
+	{
+		if($Tile === null)
+			return true;
+		switch($Tile)
+		{
+			case TileType->$Blank:
+				return false;
+			case TileType->$RedGem:
+			case TileType->$YellowGem:
+			case TileType->$GreenGem:
+			case TileType->$BlueGem:
+				if($Entity !== null && $Entity->$IsPlayer)
+					return false;
+				return true;
+			default:
+				if($Entity !== null && $Entity->$NoClip)
+					return false;
+				return true;
+		}
+	}
+	Function IsTileProtected($X, $Y)
+	{
+		if(!isset($Level[$X][$Y]))
+			return true;
+		// Top Barrier
+		if($X >= 0 && $X <= $MapWidth && $Y == 0)
+			return true;
+		// Bottom Barrier
+		if($X >= 0 && $X <= $MapWidth && $Y == $MapHeight - 1)
+			return true;
+		// Left Barrier
+		if($Y >= 0 && $Y <= $MapHeight && $X == 0)
+			return true;
+		// Right Barrier
+		if($Y >= 0 && $Y <= $MapHeight && $X == $MapWidth - 1)
+			return true;
+		return false;
+	}
+	Function IsPathXBlocked($Y, $X1, $X2)
+    {
+		if($X1 < $X2)
+		@{
+			my $TX = $X1;
+			while($TX != $X2)
+			@{
+				if(IsXYBlocked($TX, $Y))
+					return true;
+				$TX++;
+			}
+			if($TX == $X2)
+				return false;
+		}
+		if($X1 > $X2)
+		@{
+			my $TX = $X1;
+			while($TX != $X2)
+			@{
+				if(IsXYBlocked($TX, $Y))
+					return true;
+				$TX--;
+			}
+			if($TX == $X2)
+				return false;
+		}
+		return true;
+	}
+	Function IsPathYBlocked($X, $Y1, $Y2)
+    {
+		if($Y1 < $Y2)
+		@{
+			my $TY = $Y1;
+			while($TY != $Y2)
+			@{
+				if(IsXYBlocked($X, $TY))
+					return true;
+				$TY++;
+			}
+			if($TY == $Y2)
+				return false;
+		}
+		if($Y1 > $Y2)
+		@{
+			my $TY = $Y1;
+			while($TY != $Y2)
+			@{
+				if(IsXYBlocked($X, $TY))
+					return true;
+				$TY--;
+			}
+			if($TY == $Y2)
+				return false;
+		}
+		return true;
+	}
+	Function IsXYBlocked( $X, $Y, $AccountForMovingBlocks )
+	{
+		// Physicall blocked?
+		if($Level[$X][$Y] != TileType->$Blank)
+			return true;
+		// Blocked by a moving block?
+		if($AccountForMovingBlocks)
+		{
+			foreach($EntityManager->$Entities[EntityType->$MovingBlock] as my $K => my $V)
+			@{
+				my List($MX, $MY) = $V->GetPosition();
+				if($MX == $X && $MY == $Y)
+					return true;
+			}
+		}
+		return false;
+	}
+	Function FindEmptyCoordinate()
+    {
+		while(true)
+		{
+			my $CX = (int)Random(1, $MapWidth - 1);
+			my $CY = (int)Random(1, $MapHeight - 1);
+			if($Level[$CX][$CY] == TileType->$Blank)
+				return array($CX, $CY);
+		}
+		return null;
+	}
+	Function FindEmptyCoordinateCloseTo($X, $Y)
+    {
+		my $CurDist = 5000000;
+		my $FoundPos = null;
+		
+        For(my $i = 0;$i < $MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $MapHeight; $j++)
+                if($Level[$i][$j] == TileType->$Blank)
+				{
+					my $Dist = Utils::Distance2D($i, $j, $X, $Y);
+					if($Dist < $CurDist)
+					@{
+						$CurDist = $Dist;
+						$FoundPos = array($i, $j);
+					}
+				}
+        }
+		return $FoundPos;
+	}
+	Function MapCoordinateToVisual($X, $Y)
+    {
+		my $Pos = IsArray($X) ? $LevelPositions[$X[0]][$X[1]] : $LevelPositions[$X][$Y];
+		if($Pos)
+			return $Pos;
+		else
+			return null;
+	}
+	Function PlayerAt($X, $Y)
+    {
+		if(IsArray($X))
+		@{
+			$Y = $X[1];
+			$X = $X[0];
+		}
+		if($Game->$Pengo)
+		@{
+			my List($MX, $MY) = $Game->$Pengo->GetPosition();
+			if($MX == $X && $MY == $Y)
+				return $Game->$Pengo;
+		}
+		if($Game->$Penguina)
+		@{
+			my List($MX, $MY) = $Game->$Penguina->GetPosition();
+			if($MX == $X && $MY == $Y)
+				return $Game->$Penguina;
+		}
+		return null;
+	}
+	Function Players()
+    {
+		my $arr = array();
+		foreach($EntityManager->$Entities[EntityType->$Player] as my $K => my $V)
+			$arr[] = $V;
+		return $arr;
+	}
+	Function SpawnDelayed($EType, $Min = 20, $Max = 60)
+    {
+		$EntityManager->$RespawnEntities[] = array($EType, (int)Random($Min, $Max));
+	}
+	Function SpawnCreeperCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $CreeperName = 'EntityMobCreeper' . EntityMobCreeper::$UniqueID++;
+		my $newEntity = new EntityMobCreeper($Game, $CreeperName);
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$Respawn = true;
+    }
+	Function SpawnBlazeCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);		
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $BlazeName = 'EntityMobBlaze' . EntityMobBlaze::$UniqueID++;
+		my $newEntity = new EntityMobBlaze($Game, $BlazeName);
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$Respawn = true;
+    }
+	Function SpawnSlimeCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);		
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $SlimeName = 'EntityMobSlime' . EntityMobSlime::$UniqueID++;
+		my $newEntity = new EntityMobSlime($Game, $SlimeName);
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$Respawn = true;
+    }
+	Function SpawnInkyCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);		
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $InkyName = 'EntityMobInky' . EntityMobInky::$UniqueID++;
+		my $newEntity = new EntityMobInky($Game, $InkyName);
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$Respawn = true;
+    }
+	Function SpawnPinkyCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $PinkyName = 'EntityMobPinky' . EntityMobPinky::$UniqueID++;
+		my $newEntity = new EntityMobPinky($Game, $PinkyName);
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$Respawn = true;
+    }
+	Function SpawnGhostCloseTo($DoX, $DoY)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $FoundPos = FindEmptyCoordinateCloseTo($DoX, $DoY);
+		my $Found = IsArray($FoundPos);		
+		my List ($X, $Y) = $LevelPositions[$Found ? $FoundPos[0] : $DoX][$Found ? $FoundPos[1] : $DoY];
+		
+		my $GhostName = 'EntityMobGhost' . EntityMobGhost::$UniqueID++;
+		my $newEntity = new EntityMobGhost($Game, $GhostName);
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName]->$Facing = Facing->$Right;
+		$GhostCounter = 60; // Next Ghost spawns in about a minute
+    }
+	Function SpawnGhost($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+		{
+			$CX = (int)Random(1, $MapWidth - 1);
+			$CY = (int)Random(1, $MapHeight - 1);
+		}
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $GhostName = 'EntityMobGhost' . EntityMobGhost::$UniqueID++;
+		my $newEntity = new EntityMobGhost($Game, $GhostName);
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$GhostName]->$Facing = Facing->$Right;
+		$GhostCounter = 60; // Next Ghost spawns in about a minute
+    }
+	Function SpawnCreeper($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+			List ($CX, $CY) = FindEmptyCoordinate();
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $CreeperName = 'EntityMobCreeper' . EntityMobCreeper::$UniqueID++;
+		my $newEntity = new EntityMobCreeper($Game, $CreeperName);
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$CreeperName]->$Respawn = true;
+    }
+	Function SpawnSlime($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+			List ($CX, $CY) = FindEmptyCoordinate();
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $SlimeName = 'EntityMobSlime' . EntityMobSlime::$UniqueID++;
+		my $newEntity = new EntityMobSlime($Game, $SlimeName);
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$SlimeName]->$Respawn = true;
+    }
+	Function SpawnInky($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+			List ($CX, $CY) = FindEmptyCoordinate();
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $InkyName = 'EntityMobInky' . EntityMobInky::$UniqueID++;
+		my $newEntity = new EntityMobInky($Game, $InkyName);
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$InkyName]->$Respawn = true;
+    }
+	Function SpawnPinky($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+			List ($CX, $CY) = FindEmptyCoordinate();
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $PinkyName = 'EntityMobPinky' . EntityMobPinky::$UniqueID++;
+		my $newEntity = new EntityMobPinky($Game, $PinkyName);
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$PinkyName]->$Respawn = true;
+    }
+	Function SpawnBlaze($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+			List ($CX, $CY) = FindEmptyCoordinate();
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my List ($X, $Y) = $LevelPositions[$CX][$CY];
+		
+		my $BlazeName = 'EntityMobBlaze' . EntityMobBlaze::$UniqueID++;
+		my $newEntity = new EntityMobBlaze($Game, $BlazeName);
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName] = $newEntity;
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$DrawPosition = array($X, $Y);
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$Facing = Facing->$Right;
+		$EntityManager->$Entities[$newEntity->$ID][$BlazeName]->$Respawn = true;
+    }
+	Function SpawnRainbow($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $RainbowName = 'EntityRewardRainbow' . EntityRewardRainbow::$UniqueID++;
+		my $newEntity = new EntityRewardRainbow($Game, $RainbowName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$RainbowName] = $newEntity;
+    }
+	Function SpawnYinYang($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $YinYangName = 'EntityRewardYinYang' . EntityRewardYinYang::$UniqueID++;
+		my $newEntity = new EntityRewardYinYang($Game, $YinYangName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$YinYangName] = $newEntity;
+    }
+    Function SpawnCandy($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CandyName = 'EntityRewardCandy' . EntityRewardCandy::$UniqueID++;
+		my $newEntity = new EntityRewardCandy($Game, $CandyName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$CandyName] = $newEntity;
+    }
+    Function SpawnPizza($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $PizzaName = 'EntityRewardPizza' . EntityRewardPizza::$UniqueID++;
+		my $newEntity = new EntityRewardPizza($Game, $PizzaName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$PizzaName] = $newEntity;
+    }
+    Function SpawnHourGlass($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $HourGlassName = 'EntityRewardHourGlass' . EntityRewardHourGlass::$UniqueID++;
+		my $newEntity = new EntityRewardHourGlass($Game, $HourGlassName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$HourGlassName] = $newEntity;
+    }
+    Function SpawnBoost($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $BoostName = 'EntityRewardBoost' . EntityRewardBoost::$UniqueID++;
+		my $newEntity = new EntityRewardBoost($Game, $BoostName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$BoostName] = $newEntity;
+    }
+    Function SpawnDiamond($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $DiamondName = 'EntityRewardDiamond' . EntityRewardDiamond::$UniqueID++;
+		my $newEntity = new EntityRewardDiamond($Game, $DiamondName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$DiamondName] = $newEntity;
+    }
+    Function SpawnRedRing($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $RedRingName = 'EntityRewardRedRing' . EntityRewardRedRing::$UniqueID++;
+		my $newEntity = new EntityRewardRedRing($Game, $RedRingName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$RedRingName] = $newEntity;
+    }
+    Function SpawnGreenRing($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $GreenRingName = 'EntityRewardGreenRing' . EntityRewardGreenRing::$UniqueID++;
+		my $newEntity = new EntityRewardGreenRing($Game, $GreenRingName, 0, 0);
+		$EntityManager->$Entities[$newEntity->$ID][$GreenRingName] = $newEntity;
+    }
+	Function SpawnMagic($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+		{
+			$CX = (int)Random(1, $MapWidth - 1);
+			$CY = (int)Random(1, $MapHeight - 1);
+		}
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my $MagicName = 'EntityRewardMagic' . EntityRewardMagic::$UniqueID++;
+		my $newEntity = new EntityRewardMagic($Game, $MagicName, $CX, $CY);
+		$EntityManager->$Entities[$newEntity->$ID][$MagicName] = $newEntity;
+    }
+	Function SpawnFruit($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+		{
+			$CX = (int)Random(1, $MapWidth - 1);
+			$CY = (int)Random(1, $MapHeight - 1);
+		}
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my $FruitName = 'EntityRewardFruit' . EntityRewardFruit::$UniqueID++;
+		my $newEntity = new EntityRewardFruit($Game, $FruitName, $CX, $CY);
+		$EntityManager->$Entities[$newEntity->$ID][$FruitName] = $newEntity;
+    }
+	Function SpawnOneUp($DoX = null, $DoY = null)
+    {
+		if(IsArray($DoX))
+		@{
+			$DoX = $DoX[1];
+			$DoY = $DoX[0];
+		}
+		my $CX = 0;
+		my $CY = 0;
+		
+		if($DoX == null && $DoY == null)
+		{
+			$CX = (int)Random(1, $MapWidth - 1);
+			$CY = (int)Random(1, $MapHeight - 1);
+		}
+		else
+		{
+			$CX = $DoX;
+			$CY = $DoY;
+		}
+		
+		my $OneUpName = 'EntityRewardOneUp' . EntityRewardOneUp::$UniqueID++;
+		my $newEntity = new EntityRewardOneUp($Game, $OneUpName, $CX, $CY);
+		$EntityManager->$Entities[$newEntity->$ID][$OneUpName] = $newEntity;
+    }
+	Function Save($FileName)
+	{
+		my $LevelData = array(
+									$Level,
+									$PengoSpawnPoint,
+									$PenguinaSpawnPoint,
+									$MobSpawnPoints
+								);
+		FileSave($FileName, Serialize($LevelData));
+	}
+	Function Load($FileName)
+	{
+		LoadSerialized(FileLoad($FileName));
+	}
+	Function LoadSerialized($Text)
+	{
+		my $LevelData = Unserialize($Text);
+		$Level = $LevelData[0];
+		$PengoSpawnPoint = $LevelData[1];
+		$PenguinaSpawnPoint = $LevelData[2];
+		$MobSpawnPoints = $LevelData[3];
+		for (my $x = 0; $x < $MapWidth; $x++)
+			for (my $y = 0; $y < $MapHeight; $y++)
+				$PathFinder->SetTile($x, $y, !IsTileSolid($Level[$x][$y]));
+		// Always make sure barriers exist
+		MakeBarriers();
+	}
+	Function MouseToXY($X = null, $Y = null)
+	{
+		my $iX = $X;
+		my $iY = $Y;
+		if($X === null && $Y === null)
+		@{
+			my List ($iiX, $iiY, $iScroll, $iLeft, $iRight, $iMiddle, $iExtra1, $iExtra2) = XNAMouseState();
+			$iX = $iiX;
+			$iY = $iiY;
+		}
+		For(my $i = 0;$i < $MapWidth; $i++)
+		@{
+			For(my $j = 0;$j < $MapHeight; $j++)
+			@{
+				if($iX >= $MapOffsetX + ($i * $MapTileSize) && $iX <= $MapOffsetX + ($i * $MapTileSize) + $MapTileSize && $iY >= $MapOffsetY + ($j * $MapTileSize) && $iY <= $MapOffsetY + ($j * $MapTileSize) + $MapTileSize)
+					return array($i, $j);
+			}
+		}
+		return null;
+	}
+	Function MousePress( $X, $Y, $Scroll, $Left, $Right, $Middle, $Extra1, $Extra2 )
+    {
+		if(!$AllowEditor)
+			return;
+		if($Game->$CurrentState != GameState->$Playing)
+			return;
+		if($MovingLevel)
+			return;
+		if($LevelLoadingDisplay)
+			return;
+		if(XNAMouseStatePressed($Left) || XNAMouseStatePressed($Right) || XNAMouseStatePressed($Middle))
+		{
+			my $CurEditTileType = $EditTileType;
+			if(XNAMouseStatePressed($Right))
+				$CurEditTileType = TileType->$Blank;
+			my $Pos = MouseToXY($X, $Y);
+			if($Pos)
+			@{
+				my List ($i, $j) = $Pos;
+				if(XNAMouseStatePressed($Middle))
+					$EditTileType = $Level[$i][$j];
+				else
+				@{
+					if($EditBrushSize == 0)
+					@{
+						if(!IsTileProtected($i, $j))
+							SetTile($i, $j,$CurEditTileType);
+					}
+					else
+					@{
+						for(my $k = $i - $EditBrushSize; $k < $i + $EditBrushSize; $k++)
+						@{
+							for(my $l = $j - $EditBrushSize; $l < $j + $EditBrushSize; $l++)
+							@{
+								if(!IsTileProtected($k, $l))
+									SetTile($k, $l,$CurEditTileType);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+    Function KeyDown( $Key, $Char, $Control, $Shift, $Alt, $CapsLock )
+    {
+		if($Game->$CurrentState != GameState->$Playing)
+			return;
+		if($MovingLevel)
+			return;
+		if($LevelLoadingDisplay)
+		{
+			switch($Key)
+			{
+				case @KeyEnter:
+					$LevelLoadingTextureCurrent++;
+					if($LevelLoadingTextureCurrent == count($LevelLoadingTextures[$LevelNumber - 1]))
+						BeginLevelInitPlay();
+					break;
+			}
+			return;
+		}
+        switch($Key)
+        {
+            case @KeyEscape: // Quit to menu
+				$Game->$CurrentState = GameState->$Title;
+				$Game->PlayTitleMusic();
+				break;
+		}
+		if(!$AllowEditor)
+		{
+			my $Code = 'fiddlelevel';
+			if(StrLen($EditorLog) > 30)
+				$EditorLog = '';
+			$EditorLog .= lc($Char);
+			if(EndsWith($EditorLog, $Code))
+			{
+				$AllowEditor = true;
+				XNAOpt('MouseVisible', true);
+				$EditorLog = '';
+			}
+			return;
+		}
+        switch($Key)
+        {
+            case @KeyHome: // Set Monster spawn point
+				my $Pos = MouseToXY();
+				if($Pos)
+				@{
+				
+					my List ($i, $j) = $Pos;
+					my $AlreadyExists = false;
+					for(my $k = 0; $k < count($MobSpawnPoints); $k++)
+					@{
+						my $s = $MobSpawnPoints[$k];
+						my List ( $Type, $X, $Y ) = $s;
+						if($X == $i && $Y == $j)
+						@{
+							$AlreadyExists = true;
+							break;
+						}
+					}
+					if(!$AlreadyExists && $Level[$i][$j] == TileType->$Blank)
+					{
+						my $Ret = ChoiceBox('Monster spawn point', 
+											'Please select a monster type from the options below', 
+											array('Creeper', 'Inky', 'Pinky', 'Slime', 'Blaze', 'Ghost')
+											);
+						if(!IsEmptyOrNull($Ret))
+						@{
+							switch($Ret)
+							{
+								case 'Creeper':
+									$MobSpawnPoints[] = array( EntityType->$Creeper, $i, $j);
+									break;
+								case 'Inky':
+									$MobSpawnPoints[] = array( EntityType->$Inky, $i, $j);
+									break;
+								case 'Pinky':
+									$MobSpawnPoints[] = array( EntityType->$Pinky, $i, $j);
+									break;
+								case 'Slime':
+									$MobSpawnPoints[] = array( EntityType->$Slime, $i, $j);
+									break;
+								case 'Blaze':
+									$MobSpawnPoints[] = array( EntityType->$Blaze, $i, $j);
+									break;
+								case 'Ghost':
+									$MobSpawnPoints[] = array( EntityType->$Ghost, $i, $j);
+									break;
+							}
+						}
+					}
+				}
+                break;
+            case @KeyDelete: // Delete a Monster spawn point
+				my $Pos = MouseToXY();
+				if($Pos)
+				@{
+					my List ($i, $j) = $Pos;
+					for(my $k = 0; $k < count($MobSpawnPoints); $k++)
+					@{
+						my $s = $MobSpawnPoints[$k];
+						my List ( $Type, $X, $Y ) = $s;
+						if($X == $i && $Y == $j)
+						@{
+							Unset($MobSpawnPoints[$k]);
+							Order($MobSpawnPoints); // Fix index
+							break;
+						}
+					}
+				}
+                break;
+            case @KeyEnd: // Toggle showing of Mob spawn points
+				$ShowMobSpawnPoints = !$ShowMobSpawnPoints;
+                break;
+            case @KeyD0: // Toggle AI
+				AI::$AIEnabled = !AI::$AIEnabled;
+                break;
+            case @KeyZ: // Toggle level moving
+				$AllowNextLevelCheck = !$AllowNextLevelCheck;
+                break;
+            case @KeyT: // Teleport Penguina to mouse position
+				if($Game->$Penguina != null)
+				@{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						my List ($X, $Y) = $LevelPositions[$i][$j];
+						if($Game->$Penguina->Stopped())
+							$Game->$Penguina->$DrawPosition = array($X, $Y);
+					}
+				}
+                break;
+            case @KeyY: // Teleport Pengo to mouse position
+				if($Game->$Pengo != null)
+				@{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						my List ($X, $Y) = $LevelPositions[$i][$j];
+						if($Game->$Pengo->Stopped())
+							$Game->$Pengo->$DrawPosition = array($X, $Y);
+					}
+				}
+                break;
+            case @KeyP: // Set Pengo spawn point
+				if($Game->$Pengo != null)
+					$PengoSpawnPoint = $Game->$Pengo->$DrawPosition;
+                break;
+            case @KeyO: // Set Penguina spawn point
+				if($Game->$Penguina != null)
+					$PenguinaSpawnPoint = $Game->$Penguina->$DrawPosition;
+                break;
+            case @KeyK: // Kill All Monsters
+				foreach( $EntityManager->$EntityValues as my $EV )
+				@{
+					foreach($EntityManager->$Entities[$EV] as my $K => my $V)
+					@{
+						if($V->$Disposed)
+							continue;
+						// Find rewards to drag with us
+						if($V->$ParentID == EntityType->$Mob)
+						@{
+							if($V->$Disposed)
+								continue;
+							$V->$Respawn = false;
+							$V->Dispose();
+						}
+					}
+				}
+				// Make sure nothing respawns
+				$EntityManager->ClearRespawnEntities();
+                break;
+            case @KeyA: // Spawn YinYang
+				SpawnYinYang();
+                break;
+            case @KeyD: // Spawn Candy
+				SpawnCandy();
+                break;
+            case @KeyX: // Spawn Pizza
+				SpawnPizza();
+                break;
+            case @KeyC: // Spawn HourGlass
+				SpawnHourGlass();
+                break;
+            case @KeyD7: // Spawn Boost
+				SpawnBoost();
+                break;
+            case @KeyG: // Spawn Diamond
+				SpawnDiamond();
+                break;
+            case @KeyH: // Spawn RedRing
+				SpawnRedRing();
+                break;
+            case @KeyJ: // Spawn GreenRing
+				SpawnGreenRing();
+                break;
+            case @KeyQ: // Spawn Rainbow
+				SpawnRainbow();
+                break;
+            case @KeyD8: // Spawn Magic
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnMagic($i, $j);
+					}
+					else
+						SpawnMagic();
+				}
+				else
+					SpawnMagic();
+                break;
+            case @KeyW: // Spawn Fruit
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnFruit($i, $j);
+					}
+					else
+						SpawnFruit();
+				}
+				else
+					SpawnFruit();
+                break;
+            case @KeyE: // Spawn OneUp
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnOneUp($i, $j);
+					}
+					else
+						SpawnOneUp();
+				}
+				else
+					SpawnOneUp();
+                break;
+            case @KeyD1: // Spawn Creeper
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnCreeper($i, $j);
+					}
+					else
+						SpawnCreeper();
+				}
+				else
+					SpawnCreeper();
+                break;
+            case @KeyD2: // Spawn Inky
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnInky($i, $j);
+					}
+					else
+						SpawnInky();
+				}
+				else
+					SpawnInky();
+                break;
+            case @KeyD3: // Spawn Slime
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnSlime($i, $j);
+					}
+					else
+						SpawnSlime();
+				}
+				else
+					SpawnSlime();
+                break;
+            case @KeyD4: // Spawn Pinky
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnPinky($i, $j);
+					}
+					else
+						SpawnPinky();
+				}
+				else
+					SpawnPinky();
+                break;
+            case @KeyD5: // Spawn Blaze
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnBlaze($i, $j);
+					}
+					else
+						SpawnBlaze();
+				}
+				else
+					SpawnBlaze();
+                break;
+            case @KeyD6: // Spawn Ghost
+				if($Shift)
+				{
+					my $Pos = MouseToXY();
+					if($Pos)
+					@{
+						my List ($i, $j) = $Pos;
+						SpawnGhost($i, $j);
+					}
+					else
+						SpawnGhost();
+				}
+				else
+					SpawnGhost();
+                break;
+            case @KeyI: // Toggle Pengo
+				if($Game->$Pengo == null)
+					$Game->AddPengo();
+				else
+					$Game->RemovePengo();
+                break;
+            case @KeyU: // Toggle Penguina
+				if($Game->$Penguina == null)
+					$Game->AddPenguina();
+				else
+					$Game->RemovePenguina();
+                break;
+            case @KeyR: // Reset map (as if you just started the map)
+				BeginLevel();
+                break;
+            case @KeyN: // Wipe map
+				Wipe();
+                break;
+            case @KeyS: // Save
+				my $fName = FileSaveDialog( "Choose a name.", $LevelsFolder, "Levels|*.lvl", 8 + 4);
+				if($fName)
+					Save($fName);
+                break;
+            case @KeyL: // Load
+				my $var = FileOpenDialog( "Select the Level.", $LevelsFolder, "Levels|*.lvl", 1 );
+				If ($var)
+				{
+					Load($var[0]);
+					BeginLevelInit(true);
+					if($var[0] =~ m/Level(\d+)/)
+					{
+						$LevelNumber = (int)$1;
+					}
+					else
+					{
+						$LevelNumber = 1;
+						$AllowNextLevelCheck = false;
+					}
+				}
+                break;
+            case @KeyB: // Toggle Edit Brush Type
+				if($Shift)
+				{
+					if($EditTileType == TileType->$Blank)
+						$EditTileType = TileType->$InvisBlock - 1;
+					else
+						$EditTileType--;
+				}
+				else
+				{
+					if($EditTileType == TileType->$InvisBlock - 1)
+						$EditTileType = TileType->$Blank;
+					else
+						$EditTileType++;
+				}
+                break;
+            case @KeyV: // Toggle Edit Brush Size
+				switch($EditBrushSize)
+				{
+					case 0:
+						$EditBrushSize = 1;
+						break;
+					default:
+						$EditBrushSize = 0;
+						break;
+				}
+                break;
+                
+        }
+	}
+	Function GemCount( )
+	{
+		$GemCount = 0;
+        For(my $i = 0;$i < $MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $MapHeight; $j++)
+            @{
+				switch($Level[$i][$j])
+				{
+					case TileType->$RedGem:
+					case TileType->$YellowGem:
+					case TileType->$GreenGem:
+					case TileType->$BlueGem:
+						$GemCount++;
+						break;
+				}
+            }
+        }
+	}
+	Function GoNextLevel()
+	{
+		if(isset($Levels[$LevelNumber]))
+		{
+			// Set moving flag
+			$MovingLevel = true;
+			// Delete all non-player entities
+			$EntityManager->ClearEntities();
+			// Get data for next level
+			my $Temp = Unserialize($Levels[$LevelNumber])[0];			
+			// Begin making big map
+			$MovingLevelData = array();
+			// Copying next map and current map to moving scroll map
+			For(my $i = 0;$i < $MapWidth; $i++)
+			@{
+				For(my $j = 1;$j < $MapHeight - 1; $j++)
+				@{
+					$MovingLevelData[$i][$j] = $Temp[$i][$j];
+					$MovingLevelData[$i][($MapHeight - 2) + $j] = $Level[$i][$j];
+				}
+			}
+			// Clear buffer
+			unset($Temp);			
+			// Set counter to 0 so we start from top
+			$MovingLevelCount = 0;			
+			// Start ticky
+			$MovingLevelTickCount = TickCount();
+			// Remove Ruby wins just incase
+			$RubyWin = false;
+			// Remove slide settings
+			$LevelLoadingDisplayShown = false;
+		}
+		else
+		{
+			// No new level exists... end the game
+			$Game->GameOver();
+		}
+	}
+	Function CheckWinConditions()
+	{
+		if(!$AllowNextLevelCheck)
+			return;
+		if(($RainbowTriggered && !$GemCount) || $RubyWin || $EntityManager->NonPlayerEntityCount() == 0)
+			GoNextLevel();
+	}
+	Function Update()
+	{
+		if($LevelLoadingDisplay)
+			return;
+		if($MovingLevel)
+		@{
+			my $NewMovingLevelTickCount = TickCount($MovingLevelTickCount);
+			if($NewMovingLevelTickCount > $MovingLevelTickInterval)
+			@{
+				$MovingLevelTickCount = TickCount() + $MovingLevelTickInterval;
+				if($MovingLevelCount >= ($MapHeight - 2) * $MapTileSize)
+				@{
+					// Finished moving
+					$MovingLevel = false;
+					// Clear buffer
+					$MovingLevelData = array();
+					// Increase level counter
+					$LevelNumber++;
+					// Begin the level
+					BeginLevel();
+				}
+				else
+					$MovingLevelCount += 4;
+			}
+			return;
+		}
+		else
+		@{
+			$EntityManager->DoUpdate();
+			CheckWinConditions();
+		}
+	}
+	Function Draw()
+	{
+		if($LevelLoadingDisplay)
+		@{
+			my $Tex = $LevelLoadingTextures[$LevelNumber - 1][$LevelLoadingTextureCurrent];
+			XNADraw($Tex, 0, 0, $ColWhite, $Game->$GameWidth, $Game->$GameHeight);
+			return;
+		}
+		
+		// Make sure we SHOULD draw the map
+		my $CurState = $Game->$CurrentState;
+		if( // Any other mode means we should not draw
+			$CurState != GameState->$Playing && 
+			$CurState != GameState->$Paused && 
+			$CurState != GameState->$GameOver
+			)
+			return;
+			
+		// Draw the actual map
+		if($MovingLevel)
+		@{
+			// Draw the moving map
+			For(my $i = 0; $i < $MapWidth; $i++)
+			@{
+				For(my $j = 0; $j < ($MapHeight * 2) - 2; $j++)
+				@{
+					my $cType = $MovingLevelData[$i][$j];
+					my List ($X, $Y) = $LevelPositions[$i][$j];
+					$Y -= ($MapHeight - 2) * $MapTileSize;
+					$Y += $MovingLevelCount;
+					// Make sure it draws within the Map only
+					if($Y >= -$MapTileSize && $Y < ($MapHeight - 1) * $MapTileSize)
+						XNADraw($TileTextures[$cType], $X, $Y, $ColWhite, $MapTileSize, $MapTileSize);
+				}
+			}
+			// Redraw the barrier since we dont include barriers when scrolling
+			// Just the same as original Pengo this style is just for sake of
+			// the original only
+			For(my $i = 0; $i < $MapWidth; $i++)
+			@{
+				my List ($X, $Y) = $LevelPositions[$i][0];
+				my List ($X1, $Y1) = $LevelPositions[$i][$MapHeight - 1];
+				XNADraw($TileTextures[TileType->$Ice], $X, $Y, $ColWhite, $MapTileSize, $MapTileSize);
+				XNADraw($TileTextures[TileType->$Ice], $X1, $Y1, $ColWhite, $MapTileSize, $MapTileSize);
+			}
+			For(my $j = 0; $j < $MapHeight; $j++)
+			@{
+				my List ($X, $Y) = $LevelPositions[0][$j];
+				my List ($X1, $Y1) = $LevelPositions[$MapWidth - 1][$j];
+				XNADraw($TileTextures[TileType->$Ice], $X, $Y, $ColWhite, $MapTileSize, $MapTileSize);
+				XNADraw($TileTextures[TileType->$Ice], $X1, $Y1, $ColWhite, $MapTileSize, $MapTileSize);
+			}
+		}
+		else
+		@{
+			For(my $i = 0; $i < $MapWidth; $i++)
+			@{
+				For(my $j = 0; $j < $MapHeight; $j++)
+				@{
+					my $cType = $Level[$i][$j];
+					my List ($X, $Y) = $LevelPositions[$i][$j];
+					XNADraw($TileTextures[$cType], $X, $Y, $ColWhite, $MapTileSize, $MapTileSize);
+				}
+			}
+		}
+		
+		// Draw level number
+		my $LevelPadded = DecPad($LevelNumber, 2);
+		my List ($CX1, $CY1) = $LevelPositions[7][0];
+		my List ($CX2, $CY2) = $LevelPositions[8][0];
+		XNADraw($CountTextures[$LevelPadded[0]], $CX1, $CY1, $ColWhite, $MapTileSize, $MapTileSize);
+		XNADraw($CountTextures[$LevelPadded[1]], $CX2, $CY2, $ColWhite, $MapTileSize, $MapTileSize);
+		
+        // Map editor info
+		if($AllowEditor)
+		{
+			XNADrawString($Game->$FontArial, 'Brush type: ' . EnumKey('TileType', $EditTileType) .  " Brush size: $EditBrushSize", 70, 485, $ColRed);
+			if(!$AllowNextLevelCheck)
+				XNADrawString($Game->$FontArial, 'Can''t Progress', 445, 485, $ColRed);
+			if(!$PengoSpawnPoint)
+				XNADrawString($Game->$FontArial, 'SetSP', 5, 50, $ColRed);
+			if(!$PenguinaSpawnPoint)
+			@{
+				my $PenguinaSideBarX = 64 + ($MapTileSize * $MapWidth);
+				XNADrawString($Game->$FontArial, 'SetSP', $PenguinaSideBarX + 5, 50, $ColRed);
+			}
+			if($ShowMobSpawnPoints)
+			@{
+				foreach($MobSpawnPoints as my $s)
+				@{
+					my List ( $Type, $X, $Y ) = $s;
+					my List ( $DX, $DY ) = $LevelPositions[$X][$Y];
+					switch($Type)
+					{
+						case EntityType->$Creeper:
+							XNADrawString($Game->$FontArial, '[C]', $DX + 3, $DY + 3, $ColRed);
+							break;
+						case EntityType->$Inky:
+							XNADrawString($Game->$FontArial, '[I]', $DX + 3, $DY + 3, $ColRed);
+							break;
+						case EntityType->$Pinky:
+							XNADrawString($Game->$FontArial, '[P]', $DX + 3, $DY + 3, $ColRed);
+							break;
+						case EntityType->$Slime:
+							XNADrawString($Game->$FontArial, '[S]', $DX + 3, $DY + 3, $ColRed);
+							break;
+						case EntityType->$Blaze:
+							XNADrawString($Game->$FontArial, '[B]', $DX + 3, $DY + 3, $ColRed);
+							break;
+						case EntityType->$Ghost:
+							XNADrawString($Game->$FontArial, '[G]', $DX + 3, $DY + 3, $ColRed);
+							break;
+					}
+				}
+			}
+		}
+	}
+};

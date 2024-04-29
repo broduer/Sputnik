@@ -1,0 +1,24 @@
+﻿$onServerInit[] = 'AutoSaveInit';
+$onServerProcess[] = 'AutoSaveProcess';
+Class extends ServerManager
+{
+	my $autoSaveCounter;
+	Function AutoSaveInit()
+	{
+		$autoSaveCounter = 0;
+	}
+	Function AutoSaveProcess()
+	{
+		if (GetConfig('UseAutoSave') == false)
+			return;
+		my $autoSaveSecs = (int)GetConfig('AutoSaveSeconds');
+		$autoSaveCounter++;
+		if ($autoSaveCounter < $autoSaveSecs)
+			return;
+		$autoSaveCounter = 0;
+		SayToAll("Autosaving... Chat/Game may freeze for a second...");
+		SaveWorld();
+		SayToAll("Autosave complete");
+		
+	}
+}

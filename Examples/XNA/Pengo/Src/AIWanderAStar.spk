@@ -1,0 +1,84 @@
+Class AIWanderAStar extends AI
+{
+	my $Path;
+	my $Fails;
+	my $PathFinder;
+	my $Map;
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+		// To handle random generation failing
+		$Fails = 0;
+		// Keep the path in class for ref access
+		$Path = array();
+		// Saves having to resolve a ton of ->
+		$PathFinder = $Entity->$Game->$Map->$PathFinder;
+		$Map = $Entity->$Game->$Map;
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		return ASTarWanderAround();
+	}
+	Function ASTarWanderAround( )
+	{
+		if($Entity->Stopped())
+		@{
+			my List($X, $Y) = $Entity->GetPosition();
+			// Generate a new path if needed
+			if(!$Path)
+				GenerateNewPath($X, $Y);
+			// Move to next part of the path
+			my $Cord = Shift($Path);
+			if($Cord)
+			@{
+				if($Cord ~~ Array && count($Cord) == 2)
+				@{
+					// Get the postion we must move to
+					my $MX = $Cord[0];
+					my $MY = $Cord[1];
+					if($Map->IsXYBlocked($MX, $MY, true))
+					@{
+						GenerateNewPath($X, $Y);
+						return false;
+					}
+					// Move to new postion
+					my $Moved = false;
+					if(!$Moved && $MX > $X)
+						$Moved = $Entity->TryMove(Direction->$Right);
+					if(!$Moved && $MX < $X)
+						$Moved = $Entity->TryMove(Direction->$Left);
+					if(!$Moved && $MY > $Y)
+						$Moved = $Entity->TryMove(Direction->$Down);
+					if(!$Moved && $MY < $Y)
+						$Moved = $Entity->TryMove(Direction->$Up);
+					if($Moved)
+					@{
+						$Fails = 0;
+						return true;
+					}
+					else
+						$Fails++;
+					if($Fails > 3)
+					@{
+						GenerateNewPath($X, $Y);
+						return false;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	Function GenerateNewPath($X, $Y)
+	{
+		$Path = array();
+		my $Pos = $Map->FindEmptyCoordinate();
+		if($Pos != null)
+			$PathFinder->FindPath($Path, $X, $Y, $Pos[0], $Pos[1]);
+	}
+};

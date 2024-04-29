@@ -1,0 +1,1 @@
+This example is a BASIC example of using Sputnik client/server socket stuff (meant to be easier to use than raw sockets)

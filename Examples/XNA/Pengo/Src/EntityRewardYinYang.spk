@@ -1,0 +1,65 @@
+Class EntityRewardYinYang extends EntityReward
+{
+	Static $UniqueID = 0;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$YinYang;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/YinYang/YinYang.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 0;
+		$NoClip = true;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			// Play Sound
+			PlayCollectionSound();
+			// Convert the map!
+			DoYinYang();
+			// Remove this YinYang entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+	Function DoYinYang( )
+	{
+        For(my $i = 0;$i < $Game->$Map->$MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $Game->$Map->$MapHeight; $j++)
+            @{
+				if(!$Game->$Map->IsTileProtected($i, $j))
+				{
+					switch($Game->$Map->$Level[$i][$j])
+					{
+						case TileType->$Blank:
+							$Game->$Map->SetTile($i, $j, TileType->$Ice);
+							break;
+						case TileType->$Ice:
+							$Game->$Map->SetTile($i, $j, TileType->$Blank);
+							break;
+					}
+				}
+            }
+        }
+	}
+};

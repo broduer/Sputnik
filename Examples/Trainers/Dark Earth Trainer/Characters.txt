@@ -1,0 +1,23 @@
+00 - Arkhan (bed)
+11 - Dhorkan
+12 - Kali (bed)
+13 - Kali (scavenger)
+14 - Leona
+15 - Lory
+16 - Provider Woman
+17 - Moar
+18 - The Sunseer in Rahall Room
+19 - Unknown Sunseer
+20 - Rylsadaar
+21 - Rylsadaar Infected
+22 - Rylsadaar Burned
+23 - Sordos
+24 - Thanandar
+25 - Thanandar (Monster)
+26 - Pheodoria
+27 - Zed
+28 - Zed (Infected)
+29 - Zed (Creature of Darkness)
+30 - Gork (No hammer)
+31 - Gork (With hamemr)
+33 - Kali (guardian)

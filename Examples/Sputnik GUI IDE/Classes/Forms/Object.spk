@@ -1,0 +1,350 @@
+﻿#<?
+enum ObjectType # Do not change order
+{
+	$Window,
+	$Button,
+	$TextBox,
+	$TextBoxEx,
+	$Label,
+	$GroupBox,
+	$ComboBox,
+	$ListBox,
+	$TabSheet,
+	$TabPage,
+	$RichTextBox,
+	$CheckBox,
+	$RadioButton,
+	$Timer,
+	$CodeBox,
+	$HotkeyBox,
+	$DataGrid,
+	$PictureBox,
+	$Hotkey,
+	$TreeView
+};
+enum EventType
+{
+	$Ignore,
+	$CustomLink,
+	$Link
+};
+enum ZorderType
+{
+	$AlwaysBottom = -100,
+	$AlwaysTop = -200
+};
+Class Object
+{
+    my $Name;
+    my $Type;
+    my $Object;
+    my $MoveData;
+    my $Container;
+    my $ContextMenu;
+    my $Parent;
+    my $ParentOffset;
+    my $Grid;
+    my $GridWidth;
+    my $GridHeight;
+    my $Zorder;
+    my $Changed;
+    my $MyProps;
+    Static $MDIAllowed = array();
+    Static $Events = array();
+    Static $Props = array();
+    Static $ReadonlyProps = array();
+    Static $HiddenProps = array();
+    Static $Names = array();
+    Static $MenuAdd = array();
+    Static $GenericEvents = array(
+                                'Click' => EventType->$Link,
+                                'DoubleClick' => EventType->$Link,
+                                'MouseUp' => EventType->$Link,
+                                'MouseDown' => EventType->$Link,
+                                'MouseMove' => EventType->$Link,
+                                'MouseClick' => EventType->$Link,
+                                'MouseDoubleClick' => EventType->$Link,
+                                'MouseWheel' => EventType->$Link,
+                                'MouseEnter' => EventType->$Link,
+                                'MouseLeave' => EventType->$Link,
+                                'MouseHover' => EventType->$Link,
+                                'KeyUp' => EventType->$Link,
+                                'KeyDown' => EventType->$Link,
+                                'KeyPress' => EventType->$Link,
+                                'GotFocus' => EventType->$Link,
+                                'LostFocus' => EventType->$Link,
+                                'Resize' => EventType->$Link,
+                                'Paint' => EventType->$Link,
+                                'Enter' => EventType->$Link,
+                                'Leave' => EventType->$Link
+                                );
+    Function __Construct()
+    {
+        $Changed = array();
+        $MyProps = array();
+        foreach(Object::$Props[GetType()] as my $Prop)
+            $MyProps[] = Clone($Prop);
+    }
+    Function __Destruct()
+    {
+        if(HasContainer())
+        {
+            my $Container = GetContainer();
+            unset($Container);
+        }
+        if(HasParent())
+        {
+            my $Parent = GetParent();
+            if($Parent->HasContainer())
+            {
+                my $Container = $Parent->GetContainer();
+                $Container->$Objects[$Name] = null; # Avoid infinite recursion
+                Unset($Container->$Objects[$Name]);
+                Unset($Container->$ObjectNames[$Name]);
+            }
+        }
+        unset($Object);
+    }
+    Function SetName( $t ) { $this->$Name = $t; }
+    Function SetObject( $t ) { $this->$Object = $t; }
+    Function SetObjectName( $t ) { GUISetProp($this->$Object, 'Name', GetName()); }
+    Function SetType( $t ) { $this->$Type = $t; }
+    Function SetContextMenu( $t ) { $this->$ContextMenu = $t; }
+    Function SetZorder( $t ) { $this->$Zorder = $t; }
+    Function GetName( ) { return $this->$Name; }
+    Function GetObject( ) { return $this->$Object; }
+    Function GetType( ) { return $this->$Type; }
+    Function GetContextMenu( ) { return $this->$ContextMenu; }
+    Function GetZorder( ) { return $this->$Zorder; }
+    // Special changed modify used only for a few things such as colour
+    Function SetChanged( $t, $v = true ) { $Changed[$t] = $v; }
+    Function IsChanged( $t ) { return isKeySet($Changed, $t) && $Changed[$t] == true; }
+    // Containers
+    Function CreateContainer( ) { $this->$Container = new Container($this); }
+    Function GetContainer( ) { return $this->$Container; }
+    Function HasContainer( ) { return $this->$Container Is Container; }
+    // Parent
+    Function CreateParent( Object $Parent ) { $this->$Parent = $Parent; }
+    Function GetParent( ) { return $this->$Parent; }
+    Function HasParent( ) { return isVarClass($this->$Parent); }
+    // Parent Offset
+    Function CreateParentOffset( $Top, $Left ) { $this->$ParentOffset = array($Top, $Left); }
+    Function GetParentOffset( ) { return $this->$ParentOffset; }
+    Function HasParentOffset( ) { return isVarArray($this->$ParentOffset); }
+    // Props
+    [Args("false")]
+    Function GetProp( $t )
+    {
+        foreach($MyProps as my $Prop)
+        {
+            if($Prop->$Name == $t)
+                return $Prop->GetProp($this);
+        }
+        return null;
+    }
+    [Args("false")]
+    Function SetProp( $t, $v )
+    {
+        foreach($MyProps as my $Prop)
+        {
+            if($Prop->$Name == $t)
+                return $Prop->SetProp($this, $v);
+        }
+        return null;
+    }
+    [Args("false")]
+    Function GetPropClass( $t )
+    {
+        foreach($MyProps as my $Prop)
+        {
+            if($Prop->$Name == $t)
+                return $Prop;
+        }
+        return null;
+    }
+    [Args("false")]
+    Function GetFinalParent()
+    {
+        my $myParent = GetParent();
+        if($myParent->HasParent())
+            return $myParent->GetFinalParent();
+        else
+            return $myParent;
+    }
+    [Args("false")]
+    Function CreateContextMenu( $Window = false )
+    {
+        // Setup the context menu for right clicking on objects
+        SetContextMenu(GUICreate('ContextMenu', $GUI));
+        my $MenuThis = GUICreate('MenuItem', GetContextMenu(), '[' . EnumKey('ObjectType', GetType()) . '] ' . GetName());
+        GUICreate('MenuItem', GetContextMenu(), "-");
+        my $MenuEdit = GUICreate('MenuItem', GetContextMenu(), 'Edit Source');
+        if(!$Window)
+            my $MenuDelete = GUICreate('MenuItem', GetContextMenu(), 'Delete Control: ' . GetName());
+        GUISetProp(GetObject(), 'ContextMenu', GetContextMenu());
+        GUISetProp($MenuThis, 'Enabled', false);
+        if(!$Window)
+            GUILink($MenuDelete, 'Click', '$param->onClickContextDelete($arg);', $this);
+        GUILink($MenuEdit, 'Click', '$param->onClickContextEditSource($arg);', $this);
+    }
+    [Args("false")]
+    Function SetGrid ( )
+    {
+        GUILink(GetObject(), 'Paint', '$param->DrawGrid();', $this);
+    }
+    [Args("false")]
+    Function SetLinks ( )
+    {
+        CreateContextMenu();
+        SetLinkMouseDown();
+        SetLinkMouseUp();
+        SetLinkMouseMove();
+        SetLinkKeyUp();
+    }
+    [Args("false")]
+    Function SetLinkDoubleClick ( )
+    {
+        GUILink($Object, 'DoubleClick', '$param->onDoubleClick();', $this);
+    }
+    [Args("false")]
+    Function SetLinkKeyUp ( )
+    {
+        GUILink($Object, 'KeyUp', '$param->onKeyUp($me, $arg);', $this);
+    }
+    [Args("false")]
+    Function SetLinkMouseDown ( )
+    {
+        GUILink($Object, 'MouseDown', '$param->onMouseDown($arg);', $this);
+    }
+    [Args("false")]
+    Function SetLinkMouseUp ( )
+    {
+        GUILink($Object, 'MouseUp', '$param->onMouseUp($arg);', $this);
+    }
+    [Args("false")]
+    Function SetLinkMouseMove ( )
+    {
+        GUILink($Object, 'MouseMove', '$param->onMouseMove($arg);', $this);
+    }
+    [Args("false")]
+    Function onClickContextDelete ( $arg )
+    {
+            UnAttachControl();
+            unset($this);
+    }
+    [Args("false")]
+    Function onClickContextEditSource ( $arg )
+    {
+        $Windows[$CurrentWindow]->OpenEditor();
+        GUISetProp($Windows[$CurrentWindow]->$Editor->$cIndex, 'Text', GetType() == ObjectType->$Window ?
+                                                                    'Form'
+                                                                    :
+                                                                    GetName());
+    }
+    [Args("false")]
+    Function onMouseMove ( $arg )
+    {
+        unless($MoveData) return;
+        unless (isVarArray($MoveData)) return;
+        
+        my List($OldX, $OldY,  $objX, $objY) =  $MoveData;  
+        
+        my $newX = $arg[0];
+        my $newY = $arg[1];
+        
+        my $Top = GUIGetProp($Object, 'Top');
+        my $Left = GUIGetProp($Object, 'Left');
+        my $Width = GUIGetProp($Object, 'Width');
+        my $Height = GUIGetProp($Object, 'Height');
+        
+        my $LastObjTop = Utils::SnapToGrid($Top + $newY - $OldY);
+        my $LastObjLeft = Utils::SnapToGrid($Left + $newX - $OldX);
+        
+        my $gui = $Windows[$CurrentWindow]->$Object;
+        
+        If($LastObjLeft > 0 && ($LastObjLeft + $Width) < GUIGetProp($gui, 'Width'))
+            GUISetProp($Object, 'Left', $LastObjLeft);
+        If($LastObjTop > 0 && ($LastObjTop + $Height) < GUIGetProp($gui, 'Height'))
+            GUISetProp($Object, 'Top', $LastObjTop);
+            
+        UnAttachControl();
+    }
+    [Args("false")]
+    Function onMouseUp ( $arg )
+    {
+        unset( $MoveData );
+        AttachControl($this);
+    }
+    [Args("false")]
+    Function onKeyUp ( $me, $arg )
+    {
+        my List($C, $Code, $Data, $Value, $Modifiers, $IsAlt, $IsShift, $IsControl) = $arg;
+        if($C eqi 'Delete')
+        {
+            my $obj = $Windows[$CurrentWindow]->$Gripper->$Object;
+            if($obj->GetType() == ObjectType->$Window)
+                return;
+            UnAttachControl();
+            unset($obj);
+            AttachControl($Windows[$CurrentWindow]);
+        }
+    }
+    [Args("false")]
+    Function onMouseDown ( $arg )
+    {
+        my $objX = GUIGetProp($Object, 'Left');
+        my $objY = GUIGetProp($Object, 'Top');
+        my $OldX = $arg[0];
+        my $OldY = $arg[1];
+        $this->$MoveData = array($OldX, $OldY,  $objX, $objY);
+        AttachControl($this);
+    }
+    [Args("false")]
+    Function onGripperAttach ( )
+    {
+        SetProperties();
+        SetEvents();
+    }
+    [Args("false")]
+    Function SetProperties ( )
+    {
+        GUIDataGrid($ProjectView->$Data, 'Clear');
+        GUIDataGrid($ProjectView->$Data, 'SetColumns', array('Key', 'Value'));
+        GUIDataGrid($ProjectView->$Data, 'AddRow', array('(Name)', GetName()));
+        foreach($MyProps as my $Prop)
+        {
+            if(InArray(Object::$HiddenProps[GetType()], $Prop->$Name))
+                continue;
+            GUIDataGrid($ProjectView->$Data, 'AddRow', array($Prop->$Name, $Prop->GetProp($this)));
+        }
+    }
+    [Args("false")]
+    Function SetEvents ( )
+    {
+        GUIDataGrid($ProjectView->$EventData, 'Clear');
+        GUIDataGrid($ProjectView->$EventData, 'SetColumns', array('Event', 'Code'));
+        foreach(Object::$Events[GetType()] as my $EName => my $EType)
+            GUIDataGrid($ProjectView->$EventData, 'AddRow', array($EName, "[EDIT]"));
+    }
+    [Args("false")]
+    Function DrawGrid( )
+    {
+        if(!$Object)
+            return;
+        if(GetType() == ObjectType->$Window && $MDI)
+            return;
+        my $Width = GUIGetProp(GetObject(), 'Width');
+        my $Height = GUIGetProp(GetObject(), 'Height');
+        if($GridHeight < $Height || $GridWidth < $Width)
+        {
+            my $Colour = Colour('Black');
+            $Grid = BitmapCreate($Width, $Height);
+            for(my $j = 0; $j < $Width; $j += Utils::$GridSpaces)
+                for(my $i = 0; $i < $Height; $i += Utils::$GridSpaces)
+                    BitmapSetPixel($Grid, $j, $i, $Colour);
+            $GridHeight = $Height;
+            $GridWidth = $Width;
+        }
+        PSet(GetObject(), 0, 0, $Grid);
+    }
+};

@@ -1,0 +1,4 @@
+#include-once
+#require-once
+include('TestCases/Sanity/Numbers.spk', true);
+include('TestCases/Sanity/Bitstrings.spk', true);

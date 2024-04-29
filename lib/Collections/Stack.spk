@@ -1,0 +1,76 @@
+#include-once
+#require-once
+Class Stack
+{
+	my $STACK;
+	Function __construct()
+	{
+		$STACK = array();
+	}
+	Function __destruct()
+	{
+		unset($STACK);
+	}
+	// Get the number of elements in stack
+	my $Count 
+	{
+		get
+		{
+			return $this->Size();
+		}
+	}
+	// Get the number of elements in stack
+	Function Size( )
+	{
+		return Count($STACK);
+	}
+	// Remove a specific element from the stack
+	Function Remove( $value )
+	{
+		RemoveValue($STACK, $value, true);
+	}
+	// Get the element in the stack at given index
+	Function Index( $i )
+	{
+		if($i >= 0 && Count($STACK) < $i)
+			return $STACK[$i];
+		else
+			return 0; // Return blank if theres nothing to get
+	}
+	// Get the first element in the stack
+	Function First( )
+	{
+		if(Count($STACK) > 0)
+			return $STACK[0];
+		else
+			return 0; // Return blank if theres nothing to get
+	}
+	// Get the last element in the stack
+	Function Last( )
+	{
+		if(Count($STACK) > 0)
+			return $STACK[Count($STACK)-1];
+		else
+			return 0; // Return blank if theres nothing to get
+	}
+	// adds an element to the end of the stack
+	Function Push( $value )
+	{
+		core::push($STACK, $value);
+	}
+	// removes the last element of the stack
+	Function Pop( )
+	{
+		return core::pop($STACK);
+	}
+	// adds an element to the beginning of the stack
+	Function Unshift( $value )
+	{
+		core::unshift($STACK, $value);
+	}
+	// removes the first element of the stack
+	Function Shift( )
+	{
+		return core::shift($STACK);
+	}
+}

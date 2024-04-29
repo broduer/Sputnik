@@ -1,0 +1,826 @@
+﻿#<?
+Global $ProjectView = new ProjectView();
+Class ProjectView
+{
+	my $Title;
+	my $Window;
+	my $Data;
+	my $EventData;
+	my $WindowList;
+	my $ClassList;
+	my $FunctionList;
+	my $EnumList;
+	my $GlobalList;
+	Function __construct()
+	{
+		$Title = 'Project Viewer';
+		// Create the window
+		my $Width = GUIGetProp($GUI, 'Width');
+		my $Height = GUIGetProp($GUI, 'Height');
+		$Height -= GUIGetProp($StatusBar, 'Height');
+		$this->$Window = GUICreate('Window', 'Project Viewer', 400, $Height - 64, $Width - 320, 0, 5);
+		GUIMDIParent($this->$Window, $GUI);
+		// Create the controls
+		my $Tab = GUICreate( 'TabSheet', $this->$Window, 8, 8, GUIGetProp($this->$Window, 'Width') - 20, $Height - 100 );
+		my $TabProperties = GUICreate('TabPage', $Tab, 'Properties');
+		my $TabEvents = GUICreate('TabPage', $Tab, 'Events');
+		my $TabWindows = GUICreate('TabPage', $Tab, 'Windows');
+		my $TabClasses = GUICreate('TabPage', $Tab, 'Classes');
+		my $TabFunctions = GUICreate('TabPage', $Tab, 'Functions');
+		my $TabEnums = GUICreate('TabPage', $Tab, 'Enums');
+		my $TabGlobals = GUICreate('TabPage', $Tab, 'Globals');
+		my $xWidth = GUIGetProp($this->$Window, 'Width');
+		my $xHeight = GUIGetProp($this->$Window, 'Height');
+		$this->$Data = GUICreate('DataGrid', $TabProperties, 0, 0, $xWidth - 28, $xHeight - 60);
+		$this->$EventData = GUICreate('DataGrid', $TabEvents, 0, 0, $xWidth - 28, $xHeight - 60);
+		
+		// Setup the properties DataGrids
+		GUISetProp($this->$Data, 'AllowUserToDeleteRows', 0);
+		GUISetProp($this->$Data, 'AllowUserToAddRows', 0);
+		GUISetProp($this->$Data, 'AllowUserToResizeRows', 0);
+		GUISetProp($this->$Data, 'AllowUserToResizeColumns', 1);
+		GUISetProp($this->$Data, 'AllowUserToOrderColumns', 0);			
+		GUISetProp($this->$EventData, 'AllowUserToDeleteRows', 0);
+		GUISetProp($this->$EventData, 'AllowUserToAddRows', 0);
+		GUISetProp($this->$EventData, 'AllowUserToResizeRows', 0);
+		GUISetProp($this->$EventData, 'AllowUserToResizeColumns', 1);
+		GUISetProp($this->$EventData, 'AllowUserToOrderColumns', 0);	
+		
+		// Setup Windows Tab
+		$this->$WindowList = GUICreate('ListBox', $TabWindows, 0, 0, $xWidth - 28, $xHeight - 60);
+		$WindowsContextMenu = GUICreate('ContextMenu', $Window);
+		$WindowsContextMenuAdd = GUICreate('MenuItem', $WindowsContextMenu, 'Add New Window');
+		$WindowsContextMenuAddMdi = GUICreate('MenuItem', $WindowsContextMenu, 'Add New MDI Window');
+		$WindowsContextMenuEdit = GUICreate('MenuItem', $WindowsContextMenu, 'Edit Selected Window');
+		$WindowsContextMenuEditSource = GUICreate('MenuItem', $WindowsContextMenu, 'Edit Selected Window Source');
+		$WindowsContextMenuDel = GUICreate('MenuItem', $WindowsContextMenu, 'Delete Selected Window');
+		GUICreate('MenuItem', $WindowsContextMenu, '-');
+		$WindowsContextMenuSetMain = GUICreate('MenuItem', $WindowsContextMenu, 'Set as Main window');
+		GUICreate('MenuItem', $WindowsContextMenu, '-');
+		my $WindowsContextMenuMoveUp = GUICreate('MenuItem', $WindowsContextMenu, 'Move Selected Window Up [Shift+Up]');
+		my $WindowsContextMenuMoveDown = GUICreate('MenuItem', $WindowsContextMenu, 'Move Selected Window Down [Shift+Down]');
+		my $WindowsContextMenuMoveTop = GUICreate('MenuItem', $WindowsContextMenu, 'Move Selected Window To Top [Shift+Control+Up]');
+		my $WindowsContextMenuMoveBottom = GUICreate('MenuItem', $WindowsContextMenu, 'Move Selected Window To Bottom [Shift+Control+Down]');
+		GUISetProp($WindowList, 'ContextMenu', $WindowsContextMenu);
+		GUILink($WindowList, 'MouseDoubleclick', '$param->onDoubleClickWindow();', $this);
+		GUILink($WindowList, 'KeyDown', '$param->onListKeyDown($arg, $param->$WindowList);', $this);
+		GUILink($WindowsContextMenuAdd, 'Click', '$param->onClickAddWindow();', $this);
+		GUILink($WindowsContextMenuAddMdi, 'Click', '$param->onClickAddWindow(true);', $this);
+		GUILink($WindowsContextMenuEdit, 'Click', '$param->onDoubleClickWindow();', $this);
+		GUILink($WindowsContextMenuEditSource, 'Click', '$param->onEditWindow();', $this);
+		GUILink($WindowsContextMenuDel, 'Click', '$param->onClickDelWindow();', $this);
+		GUILink($WindowsContextMenuSetMain, 'Click', '$param->onSetMainWindow();', $this);
+		GUILink($WindowsContextMenuMoveUp, 'Click', '$param->onClickMoveUp($param->$WindowList);', $this);
+		GUILink($WindowsContextMenuMoveDown, 'Click', '$param->onClickMoveDown($param->$WindowList);', $this);
+		GUILink($WindowsContextMenuMoveTop, 'Click', '$param->onClickMoveTop($param->$WindowList);', $this);
+		GUILink($WindowsContextMenuMoveBottom, 'Click', '$param->onClickMoveBottom($param->$WindowList);', $this);
+		
+		// Setup Classes Tab
+		$this->$ClassList = GUICreate('ListBox', $TabClasses, 0, 0, $xWidth - 28, $xHeight - 60);
+		$ClassContextMenu = GUICreate('ContextMenu', $Window);
+		$ClassContextMenuAdd = GUICreate('MenuItem', $ClassContextMenu, 'Add New Class');
+		$ClassContextMenuEdit = GUICreate('MenuItem', $ClassContextMenu, 'Edit Selected Class');
+		$ClassContextMenuDel = GUICreate('MenuItem', $ClassContextMenu, 'Delete Selected Class');
+		GUICreate('MenuItem', $ClassContextMenu, '-');
+		my $ClassContextMenuMoveUp = GUICreate('MenuItem', $ClassContextMenu, 'Move Selected Class Up [Shift+Up]');
+		my $ClassContextMenuMoveDown = GUICreate('MenuItem', $ClassContextMenu, 'Move Selected Class Down [Shift+Down]');
+		my $ClassContextMenuMoveTop = GUICreate('MenuItem', $ClassContextMenu, 'Move Selected Class To Top [Shift+Control+Up]');
+		my $ClassContextMenuMoveBottom = GUICreate('MenuItem', $ClassContextMenu, 'Move Selected Class To Bottom [Shift+Control+Down]');
+		GUISetProp($ClassList, 'ContextMenu', $ClassContextMenu);
+		GUILink($ClassList, 'MouseDoubleclick', '$param->onDoubleClickClass();', $this);
+		GUILink($ClassList, 'KeyDown', '$param->onListKeyDown($arg, $param->$ClassList);', $this);
+		GUILink($ClassContextMenuAdd, 'Click', '$param->onClickAddClass();', $this);
+		GUILink($ClassContextMenuEdit, 'Click', '$param->onDoubleClickClass();', $this);
+		GUILink($ClassContextMenuDel, 'Click', '$param->onClickDelClass();', $this);
+		GUILink($ClassContextMenuMoveUp, 'Click', '$param->onClickMoveUp($param->$ClassList);', $this);
+		GUILink($ClassContextMenuMoveDown, 'Click', '$param->onClickMoveDown($param->$ClassList);', $this);
+		GUILink($ClassContextMenuMoveTop, 'Click', '$param->onClickMoveTop($param->$ClassList);', $this);
+		GUILink($ClassContextMenuMoveBottom, 'Click', '$param->onClickMoveBottom($param->$ClassList);', $this);
+		
+		// Setup Functions Tab
+		$this->$FunctionList = GUICreate('ListBox', $TabFunctions, 0, 0, $xWidth - 28, $xHeight - 60);
+		$FunctionContextMenu = GUICreate('ContextMenu', $Window);
+		$FunctionContextMenuAdd = GUICreate('MenuItem', $FunctionContextMenu, 'Add New Function');
+		$FunctionContextMenuEdit = GUICreate('MenuItem', $FunctionContextMenu, 'Edit Selected Function');
+		$FunctionContextMenuDel = GUICreate('MenuItem', $FunctionContextMenu, 'Delete Selected Function');
+		GUICreate('MenuItem', $FunctionContextMenu, '-');
+		my $FunctionContextMenuMoveUp = GUICreate('MenuItem', $FunctionContextMenu, 'Move Selected Function Up [Shift+Up]');
+		my $FunctionContextMenuMoveDown = GUICreate('MenuItem', $FunctionContextMenu, 'Move Selected Function Down [Shift+Down]');
+		my $FunctionContextMenuMoveTop = GUICreate('MenuItem', $FunctionContextMenu, 'Move Selected Function To Top [Shift+Control+Up]');
+		my $FunctionContextMenuMoveBottom = GUICreate('MenuItem', $FunctionContextMenu, 'Move Selected Function To Bottom [Shift+Control+Down]');
+		GUISetProp($FunctionList, 'ContextMenu', $FunctionContextMenu);
+		GUILink($FunctionList, 'MouseDoubleclick', '$param->onDoubleClickFunction();', $this);
+		GUILink($FunctionList, 'KeyDown', '$param->onListKeyDown($arg, $param->$FunctionList);', $this);
+		GUILink($FunctionContextMenuAdd, 'Click', '$param->onClickAddFunction();', $this);
+		GUILink($FunctionContextMenuEdit, 'Click', '$param->onDoubleClickFunction();', $this);
+		GUILink($FunctionContextMenuDel, 'Click', '$param->onClickDelFunction();', $this);
+		GUILink($FunctionContextMenuMoveUp, 'Click', '$param->onClickMoveUp($param->$FunctionList);', $this);
+		GUILink($FunctionContextMenuMoveDown, 'Click', '$param->onClickMoveDown($param->$FunctionList);', $this);
+		GUILink($FunctionContextMenuMoveTop, 'Click', '$param->onClickMoveTop($param->$FunctionList);', $this);
+		GUILink($FunctionContextMenuMoveBottom, 'Click', '$param->onClickMoveBottom($param->$FunctionList);', $this);
+		
+		// Setup Enums Tab
+		$this->$EnumList = GUICreate('ListBox', $TabEnums, 0, 0, $xWidth - 28, $xHeight - 60);
+		$EnumContextMenu = GUICreate('ContextMenu', $Window);
+		$EnumContextMenuAdd = GUICreate('MenuItem', $EnumContextMenu, 'Add New Enum');
+		$EnumContextMenuEdit = GUICreate('MenuItem', $EnumContextMenu, 'Edit Selected Enum');
+		$EnumContextMenuDel = GUICreate('MenuItem', $EnumContextMenu, 'Delete Selected Enum');
+		GUICreate('MenuItem', $EnumContextMenu, '-');
+		my $EnumContextMenuMoveUp = GUICreate('MenuItem', $EnumContextMenu, 'Move Selected Enum Up [Shift+Up]');
+		my $EnumContextMenuMoveDown = GUICreate('MenuItem', $EnumContextMenu, 'Move Selected Enum Down [Shift+Down]');
+		my $EnumContextMenuMoveTop = GUICreate('MenuItem', $EnumContextMenu, 'Move Selected Class To Top [Shift+Control+Up]');
+		my $EnumContextMenuMoveBottom = GUICreate('MenuItem', $EnumContextMenu, 'Move Selected Class To Bottom [Shift+Control+Down]');
+		GUISetProp($EnumList, 'ContextMenu', $EnumContextMenu);
+		GUILink($EnumList, 'MouseDoubleclick', '$param->onDoubleClickEnum();', $this);
+		GUILink($EnumList, 'KeyDown', '$param->onListKeyDown($arg, $param->$EnumList);', $this);
+		GUILink($EnumContextMenuAdd, 'Click', '$param->onClickAddEnum();', $this);
+		GUILink($EnumContextMenuEdit, 'Click', '$param->onDoubleClickEnum();', $this);
+		GUILink($EnumContextMenuDel, 'Click', '$param->onClickDelEnum();', $this);
+		GUILink($EnumContextMenuMoveUp, 'Click', '$param->onClickMoveUp($param->$EnumList);', $this);
+		GUILink($EnumContextMenuMoveDown, 'Click', '$param->onClickMoveDown($param->$EnumList);', $this);
+		GUILink($EnumContextMenuMoveTop, 'Click', '$param->onClickMoveTop($param->$EnumList);', $this);
+		GUILink($EnumContextMenuMoveBottom, 'Click', '$param->onClickMoveBottom($param->$EnumList);', $this);
+		
+		// Setup Globals Tab
+		$this->$GlobalList = GUICreate('ListBox', $TabGlobals, 0, 0, $xWidth - 28, $xHeight - 60);
+		$GlobalContextMenu = GUICreate('ContextMenu', $Window);
+		$GlobalContextMenuAdd = GUICreate('MenuItem', $GlobalContextMenu, 'Add New Global');
+		$GlobalContextMenuEdit = GUICreate('MenuItem', $GlobalContextMenu, 'Edit Selected Global');
+		$GlobalContextMenuDel = GUICreate('MenuItem', $GlobalContextMenu, 'Delete Selected Global');
+		GUICreate('MenuItem', $GlobalContextMenu, '-');
+		my $GlobalContextMenuMoveUp = GUICreate('MenuItem', $GlobalContextMenu, 'Move Selected Global Up [Shift+Up]');
+		my $GlobalContextMenuMoveDown = GUICreate('MenuItem', $GlobalContextMenu, 'Move Selected Global Down [Shift+Down]');
+		my $GlobalContextMenuMoveTop = GUICreate('MenuItem', $GlobalContextMenu, 'Move Selected Global To Top [Shift+Control+Up]');
+		my $GlobalContextMenuMoveBottom = GUICreate('MenuItem', $GlobalContextMenu, 'Move Selected Global To Bottom [Shift+Control+Down]');
+		GUISetProp($GlobalList, 'ContextMenu', $GlobalContextMenu);
+		GUILink($GlobalList, 'MouseDoubleclick', '$param->onDoubleClickGlobal();', $this);
+		GUILink($GlobalList, 'KeyDown', '$param->onListKeyDown($arg, $param->$GlobalList);', $this);
+		GUILink($GlobalContextMenuAdd, 'Click', '$param->onClickAddGlobal();', $this);
+		GUILink($GlobalContextMenuEdit, 'Click', '$param->onDoubleClickGlobal();', $this);
+		GUILink($GlobalContextMenuDel, 'Click', '$param->onClickDelGlobal();', $this);
+		GUILink($GlobalContextMenuMoveUp, 'Click', '$param->onClickMoveUp($param->$GlobalList);', $this);
+		GUILink($GlobalContextMenuMoveDown, 'Click', '$param->onClickMoveDown($param->$GlobalList);', $this);
+		GUILink($GlobalContextMenuMoveTop, 'Click', '$param->onClickMoveTop($param->$GlobalList);', $this);
+		GUILink($GlobalContextMenuMoveBottom, 'Click', '$param->onClickMoveBottom($param->$GlobalList);', $this);
+		
+		// Links
+		GUILink($this->$Data, 'CellBeginEdit', '$param->PropCellBeginEdit($arg);', $this);
+		GUILink($this->$Data, 'CellEndEdit', '$param->PropCellEndEdit($arg);', $this);
+		GUILink($this->$EventData, 'CellBeginEdit', '$param->EventCellBeginEdit($arg);', $this);
+		
+		// For save/load stuff
+		GUIWndProc($Window, '$param->DesignWndProc($hwnd, $lparam, $wparam, $msg);', $this);
+	}
+	Function __destruct()
+	{
+		Dispose();
+	}
+	Function Hide()
+	{
+		GUIUnload($Window);
+	}
+	Function Show()
+	{
+		// Load Settings
+		if(FileExists("./Settings/PropView.dat"))
+		{
+			my $LoadData = BinaryLoad("./Settings/PropView.dat");
+			my $BData = Unpack('i/i', $LoadData);
+			GUISetProp($this->$Window, "Left", $BData[0]);
+			GUISetProp($this->$Window, "Top", $BData[1]);
+		}
+		GUILoad($Window);
+	}
+	Function DesignWndProc($hwnd, $lparam, $wparam, $msg)
+	{
+		switch($MSG)
+		{
+			case 0x0046: # WM_WINDOWPOSCHANGING
+				// Save Settings
+				my $X = GUIGetProp($this->$Window, "Left");
+				my $Y = GUIGetProp($this->$Window, "Top");
+				my $SaveData = Pack('ii', $X, $Y);
+				BinarySave($SaveData, "./Settings/PropView.dat");
+				break;
+		}
+		return 0;
+	}
+	Function SetCurrentWindow()
+	{
+		GUISetProp($Window, 'Text', $Title . " -- Current Window: $CurrentWindow");
+		SetObjectsAllowed();
+	}
+	Function SetObjectsAllowed()
+	{
+		if($Windows[$CurrentWindow] ~~ Window)
+		{
+			if($Windows[$CurrentWindow]->$MDI)
+			{
+				foreach( Enumerate("ObjectType") as my $Name => my $Type )
+				{
+					if(isset(Object::$MenuAdd[$Type]))
+					{
+						if(Object::$MDIAllowed[$Type])
+							GUISetProp(Object::$MenuAdd[$Type], 'Enabled', true);
+						else
+							GUISetProp(Object::$MenuAdd[$Type], 'Enabled', false);
+					}
+				}
+			}
+			else
+			{
+				foreach( Enumerate("ObjectType") as my $Name => my $Type )
+				{
+					if(isset(Object::$MenuAdd[$Type]))
+					{
+						GUISetProp(Object::$MenuAdd[$Type], 'Enabled', true);
+					}
+				}
+			}
+		}
+	}
+	Function onClickMoveTop($TheList)
+	{
+		my $Text = GUIListBox($TheList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $i = 0;
+		my $Index = -1;
+		my $ListItems = GUIListBox($TheList, 'GetItems');
+		foreach($ListItems as my $Name)
+		{
+			if($Name == $Text)
+			{
+				$Index = $i;
+				break;
+			}
+			$i++;
+		}
+		if($Index <= 0)
+			return;
+			
+		my $item = $ListItems[ $Index ];
+		$ListItems[ $Index ] = null;
+		unset($ListItems[ $Index ]);
+		$ListItems[]! = $item;
+		
+		my $SIndex = GUIListBox($TheList, 'SelectedIndex');
+		GUIListBox($TheList, 'Clear');
+		GUIListBox($TheList, 'SetItems', $ListItems);
+		GUIListBox($TheList, 'SelectedIndex', 0);
+	}
+	Function onClickMoveBottom($TheList)
+	{
+		my $Text = GUIListBox($TheList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $i = 0;
+		my $Index = -1;
+		my $ListItems = GUIListBox($TheList, 'GetItems');
+		foreach($ListItems as my $Name)
+		{
+			if($Name == $Text)
+			{
+				$Index = $i;
+				break;
+			}
+			$i++;
+		}
+		if($Index >= Count($ListItems) - 1 || $Index <= -1)
+			return;
+			
+		my $item = $ListItems[ $Index ];
+		$ListItems[ $Index ] = null;
+		unset($ListItems[ $Index ]);
+		$ListItems[] = $item;
+		
+		my $SIndex = GUIListBox($TheList, 'SelectedIndex');
+		GUIListBox($TheList, 'Clear');
+		GUIListBox($TheList, 'SetItems', $ListItems);
+		GUIListBox($TheList, 'SelectedIndex', Count($ListItems) - 1);
+	}
+	Function onClickMoveUp($TheList)
+	{
+		my $Text = GUIListBox($TheList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $i = 0;
+		my $Index = -1;
+		my $ListItems = GUIListBox($TheList, 'GetItems');
+		foreach($ListItems as my $Name)
+		{
+			if($Name == $Text)
+			{
+				$Index = $i;
+				break;
+			}
+			$i++;
+		}
+		if($Index <= 0)
+			return;
+			
+		my $item = $ListItems[ $Index ];
+		$ListItems[ $Index ] = $ListItems[ $Index - 1 ];
+		$ListItems[ $Index - 1 ] = $item;
+		
+		my $SIndex = GUIListBox($TheList, 'SelectedIndex');
+		GUIListBox($TheList, 'Clear');
+		GUIListBox($TheList, 'SetItems', $ListItems);
+		GUIListBox($TheList, 'SelectedIndex', --$SIndex);
+	}
+	Function onClickMoveDown($TheList)
+	{
+		my $Text = GUIListBox($TheList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $i = 0;
+		my $Index = -1;
+		my $ListItems = GUIListBox($TheList, 'GetItems');
+		foreach($ListItems as my $Name)
+		{
+			if($Name == $Text)
+			{
+				$Index = $i;
+				break;
+			}
+			$i++;
+		}
+		if($Index >= Count($ListItems) - 1 || $Index <= -1)
+			return;
+			
+		my $item = $ListItems[ $Index ];
+		$ListItems[ $Index ] = $ListItems[ $Index + 1 ];
+		$ListItems[ $Index + 1 ] = $item;
+		
+		my $SIndex = GUIListBox($TheList, 'SelectedIndex');
+		GUIListBox($TheList, 'Clear');
+		GUIListBox($TheList, 'SetItems', $ListItems);
+		GUIListBox($TheList, 'SelectedIndex', ++$SIndex);
+	}
+	Function onDoubleClickGlobal( )
+	{
+		my $Text = GUIListBox($GlobalList, 'SelectedText');
+		if(IsEmptyOrNull($Text) || $Text == $CurrentWindow)
+			return;
+		if(!IsSet($GlobalEditors[$Text]) || $GlobalEditors[$Text] !~ SourceEditor)
+			$GlobalEditors[$Text] = new SourceEditor(true, &$Globals[$Text], "Global $Text", $Text, false, true, false, $GUI);
+		GUIWindow($GlobalEditors[$Text]->$Window, 'Activate');
+		GUIWindow($GlobalEditors[$Text]->$Window, 'Focus');
+	}
+	Function onClickDelGlobal()
+	{
+		my $Text = GUIListBox($GlobalList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $Result = MsgBox("Are you sure you wish to delete the Global '$Text' ?", $Title, 64 | 4);
+		If ( $Result != 6 ) // No
+			return;
+		unset($Globals[$Text]);
+		unset($GlobalEditors[$Text]);
+		GUIListBox($GlobalList, 'DelItem', $Text);
+	}
+	Function onClickAddGlobal()
+	{
+		my $Name = InputBox($Title, "Enter the 'Name' for new Global", '');
+		if($Name === null)
+			return;
+		if(IsEmpty($Name))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(DoesNameExistInGlobals($Name))
+		{
+			msgbox("A Global named '$Name' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($Name))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		my $GlobalCode = "# ToDo -- Place the Global code in here such a global variables\r\n";
+		$GlobalCode   .= "# or anything you want to be at the top of the script\r\n";
+		GUIListBox($GlobalList, 'AddItem', $Name);
+		$Globals[$Name] = $GlobalCode;
+	}
+	Function onDoubleClickEnum( )
+	{
+		my $Text = GUIListBox($EnumList, 'SelectedText');
+		if(IsEmptyOrNull($Text) || $Text == $CurrentWindow)
+			return;
+		if(!IsSet($EnumEditors[$Text]) || $EnumEditors[$Text] !~ SourceEditor)
+			$EnumEditors[$Text] = new SourceEditor(true, &$Enums[$Text], "Enum $Text", $Text, false, true, false, $GUI);
+		GUIWindow($EnumEditors[$Text]->$Window, 'Activate');
+		GUIWindow($EnumEditors[$Text]->$Window, 'Focus');
+	}
+	Function onClickDelEnum()
+	{
+		my $Text = GUIListBox($EnumList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $Result = MsgBox("Are you sure you wish to delete the Enum '$Text' ?", $Title, 64 | 4);
+		If ( $Result != 6 ) // No
+			return;
+		unset($Enums[$Text]);
+		unset($EnumEditors[$Text]);
+		GUIListBox($EnumList, 'DelItem', $Text);
+	}
+	Function onClickAddEnum()
+	{
+		my $Name = InputBox($Title, "Enter the 'Name' for new enum", '');
+		if($Name === null)
+			return;
+		if(IsEmpty($Name))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(DoesNameExistInEnums($Name))
+		{
+			msgbox("A enum named '$Name' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($Name))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		my $EnumCode = '';
+		$EnumCode = "Enum $Name\r\n";
+		$EnumCode .= "\{\r\n";
+		$EnumCode .= "\t# ToDo -- Place the enum code in here\r\n";
+		$EnumCode .= "}; # $Name\r\n";
+		GUIListBox($EnumList, 'AddItem', $Name);
+		$Enums[$Name] = $EnumCode;
+	}
+	Function onDoubleClickFunction( )
+	{
+		my $Text = GUIListBox($FunctionList, 'SelectedText');
+		if(IsEmptyOrNull($Text) || $Text == $CurrentWindow)
+			return;
+		if(!IsSet($FunctionEditors[$Text]) || $FunctionEditors[$Text] !~ SourceEditor)
+			$FunctionEditors[$Text] = new SourceEditor(true, &$Functions[$Text], "Function $Text", $Text, false, true, false, $GUI);
+		GUIWindow($FunctionEditors[$Text]->$Window, 'Activate');
+		GUIWindow($FunctionEditors[$Text]->$Window, 'Focus');
+	}
+	Function onClickDelFunction()
+	{
+		my $Text = GUIListBox($FunctionList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $Result = MsgBox("Are you sure you wish to delete the Function '$Text' ?", $Title, 64 | 4);
+		If ( $Result != 6 ) // No
+			return;
+		unset($Functions[$Text]);
+		unset($FunctionEditors[$Text]);
+		GUIListBox($FunctionList, 'DelItem', $Text);
+	}
+	Function onClickAddFunction()
+	{
+		my $Name = InputBox($Title, "Enter the 'Name' for new function", '');
+		if($Name === null)
+			return;
+		if(IsEmpty($Name))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(DoesNameExistInFunctions($Name))
+		{
+			msgbox("A function named '$Name' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($Name))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		my $FuncCode = '';
+		$FuncCode = "Function $Name()\r\n";
+		$FuncCode .= "\{\r\n";
+		$FuncCode .= "\t# ToDo -- Place the functions code in here\r\n";
+		$FuncCode .= "} # $Name\r\n";
+		GUIListBox($FunctionList, 'AddItem', $Name);
+		$Functions[$Name] = $FuncCode;
+	}
+	Function onDoubleClickClass( )
+	{
+		my $Text = GUIListBox($ClassList, 'SelectedText');
+		if(IsEmptyOrNull($Text) || $Text == $CurrentWindow)
+			return;
+		if(!IsSet($ClassEditors[$Text]) || $ClassEditors[$Text] !~ SourceEditor)
+			$ClassEditors[$Text] = new SourceEditor(true, &$Classes[$Text], "Class $Text", $Text, false, true, false, $GUI);
+		GUIWindow($ClassEditors[$Text]->$Window, 'Activate');
+		GUIWindow($ClassEditors[$Text]->$Window, 'Focus');
+	}
+	Function onClickDelClass()
+	{
+		my $Text = GUIListBox($ClassList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		my $Result = MsgBox("Are you sure you wish to delete the Class '$Text' ?", $Title, 64 | 4);
+		If ( $Result != 6 ) // No
+			return;
+		unset($Classes[$Text]);
+		unset($ClassEditors[$Text]);
+		GUIListBox($ClassList, 'DelItem', $Text);
+	}
+	Function onClickAddClass()
+	{
+		my $Name = InputBox($Title, "Enter the 'Name' for new class", '');
+		if($Name === null)
+			return;
+		if(IsEmpty($Name))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(DoesNameExistInClasses($Name) || DoesNameExistInWindows($Name))
+		{
+			msgbox("A class/window named '$Name' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($Name))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		my $Ret = ChoiceBox('Class Template', 
+							'Please select a template from the options below', 
+							array('Empty Class', 'Basic (__construct etc)', 'All __ functions')
+							);
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick an option', $Title, 48);
+			return;
+		}
+		my $ClassCode = '';
+		switch($Ret)
+		{
+			case 'Empty Class':
+			{
+				$ClassCode = "Class $Name\r\n";
+				$ClassCode .= "\{\r\n";
+				$ClassCode .= "\t# ToDo -- Place the classes code here\r\n";
+				$ClassCode .= "}; # $Name\r\n";
+			}
+			break;
+			case 'Basic (__construct etc)':
+			{
+				$ClassCode = "Class $Name\r\n";
+				$ClassCode .= "\{\r\n";
+				$ClassCode .= "\tFunction __Construct()\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place constructor stuff in here\r\n";
+				$ClassCode .= "\t} # __Construct\r\n";
+				$ClassCode .= "\tFunction __Destruct()\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place destructor stuff in here\r\n";
+				$ClassCode .= "\t} # __Destruct\r\n";
+				$ClassCode .= "}; # $Name\r\n";
+			}
+			break;
+			case 'All __ functions':
+			{
+				$ClassCode = "Class $Name\r\n";
+				$ClassCode .= "\{\r\n";
+				$ClassCode .= "\tFunction __Construct()\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place constructor stuff in here\r\n";
+				$ClassCode .= "\t} # __Construct\r\n";
+				$ClassCode .= "\tFunction __Destruct()\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place destructor stuff in here\r\n";
+				$ClassCode .= "\t} # __Destruct\r\n";
+				$ClassCode .= "\tFunction __Set(\$Key, \$Value) # Is called when you do \$$Name['key'] = \r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place SET stuff in here\r\n";
+				$ClassCode .= "\t} # __Set\r\n";
+				$ClassCode .= "\tFunction __Get(\$Key) # Is called when you do \$$Name['key']\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place GET stuff in here\r\n";
+				$ClassCode .= "\t} # __Get\r\n";
+				$ClassCode .= "\tFunction __Unset(\$Key) # Is called when you do unset(\$$Name['key'])\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place UNSET stuff in here\r\n";
+				$ClassCode .= "\t} # __Unset\r\n";
+				$ClassCode .= "\tFunction __IsSet(\$Key) # Is called when you do isset(\$$Name['key']) or isset(\$$Name)\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place ISSET stuff in here\r\n";
+				$ClassCode .= "\t} # __IsSet\r\n";
+				$ClassCode .= "\tFunction __WakeUp(\$Key) # Is called when you unserialize() and create this class\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place WAKEUP stuff in here\r\n";
+				$ClassCode .= "\t} # __WakeUp\r\n";
+				$ClassCode .= "\tFunction __Clone(\$Key) # Is called when you do clone(\$$Name['key'])\r\n";
+				$ClassCode .= "\t\{\r\n";
+				$ClassCode .= "\t\t# ToDo -- Place CLONE stuff in here\r\n";
+				$ClassCode .= "\t} # __Clone\r\n";
+				$ClassCode .= "}; # $Name\r\n";
+			}
+			break;
+		}
+		GUIListBox($ClassList, 'AddItem', $Name);
+		$Classes[$Name] = $ClassCode;
+	}
+	Function onEditWindow( )
+	{
+		my $Text = GUIListBox($WindowList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		$Windows[$Text]->OpenEditor();
+	}
+	Function onSetMainWindow( )
+	{
+		my $Text = GUIListBox($WindowList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		if($Text == $MainWindow)
+		{
+			MsgBox("'$Text' is already the Main window", $Title, 48);
+			return;
+		}
+		$MainWindow = $Text;
+		MsgBox("'$Text' is now the Main window (and will load first)", $Title, 64);
+	}
+	Function onDoubleClickWindow( )
+	{
+		my $Text = GUIListBox($WindowList, 'SelectedText');
+		if(IsEmptyOrNull($Text) || $Text == $CurrentWindow )
+			return;
+		UnAttachControl();
+		$Windows[$CurrentWindow]->Hide();
+		$CurrentWindow = $Text;
+		$Windows[$CurrentWindow]->Show();
+		GUIWindow($Windows[$CurrentWindow]->$Object, 'Focus');
+		AttachControl($Windows[$CurrentWindow]);
+		SetCurrentWindow();
+	}
+	Function onClickDelWindow()
+	{
+		my $Text = GUIListBox($WindowList, 'SelectedText');
+		if(IsEmptyOrNull($Text))
+			return;
+		if(Count($Windows) == 1)
+		{
+			MsgBox("You must have at least one window at all times", $Title, 48);
+			return;
+		}
+		my $Result = MsgBox("Are you sure you wish to delete the Window '$Text' ?", $Title, 64 | 4);
+		If ( $Result != 6 ) // No
+			return;
+		UnAttachControl();
+		$Windows[$Text]->Hide();
+		unset($Windows[$Text]);
+		GUIListBox($WindowList, 'DelItem', $Text);
+		if($MainWindow == $Text)
+			$MainWindow = GUIListBox($WindowList, 'GetItems')[0];
+		if($CurrentWindow == $Text)
+		{
+			$CurrentWindow = $MainWindow;
+			$Windows[$CurrentWindow]->Show();
+			GUIWindow($Windows[$CurrentWindow]->$Object, 'Focus');
+			AttachControl($Windows[$CurrentWindow]);
+			SetCurrentWindow();
+		}
+	}
+	Function onClickAddWindow($MDI = false)
+	{
+		my $Name = InputBox($Title, "Enter the 'Name' for new window", '');
+		if($Name === null)
+			return;
+		if(IsEmpty($Name))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(DoesNameExistInClasses($Name) || DoesNameExistInWindows($Name))
+		{
+			msgbox("A window/class named '$Name' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($Name))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		GUIListBox($WindowList, 'AddItem', $Name);
+		$Windows[$Name] = new Window($Name, $MDI);
+	}
+	Function PropCellBeginEdit($arg)
+	{
+		my $a = $arg[0];
+		my $b = $arg[1];
+		my $Key = GUIDataGrid($this->$Data, 'GetValue', 0, $b);
+		my $Value = GUIDataGrid($this->$Data, 'GetValue', $a, $b);
+		if($a == 0)
+			return 1;
+		if(isEmpty($Key)) // Invalid key!
+			return 1;
+		if($Key == '(Name)') // Editing the name param is not acceptable
+			return 1;
+		my $Obj = $Windows[$CurrentWindow]->$Gripper->$Object;
+		foreach($Obj->$MyProps as my $Prop)
+		{
+			if(InArray(Object::$ReadonlyProps[$Obj->GetType()], $Key))
+				return 1;
+			if($Prop->$Name == $Key && ($Prop->$AccessType == PAT->$BeginEdit || $Prop->$AccessType == PAT->$BeginEditRet))
+			{
+				my $Ret = $Prop->SetProp($Obj, $Value);
+				if($Ret ~~ PropVerificationError)
+				{
+					$Ret = $Prop->GetDefault($Obj);
+					if($Ret !== null)
+						$Prop->SetProp($Obj, $Ret);
+				}
+				if($Ret !== null)
+				{
+					$Obj->SetChanged($PName);
+					if($Prop->$AccessType == PAT->$BeginEditRet)
+						GUIDataGrid($this->$Data, 'SetValue', $a, $b, $Ret);
+				}
+				return 1;
+			}
+		}
+		return 0;
+	}
+	Function PropCellEndEdit($arg)
+	{
+		if($arg[0] == 0)
+			return 1;
+		my $a = $arg[0];
+		my $b = $arg[1];
+		my $Key = GUIDataGrid($this->$Data, 'GetValue', 0, $b);
+		my $Value = GUIDataGrid($this->$Data, 'GetValue', $a, $b);
+		my $Obj = $Windows[$CurrentWindow]->$Gripper->$Object;
+		foreach($Obj->$MyProps as my $Prop)
+		{
+			if(InArray(Object::$ReadonlyProps[$Obj->GetType()], $Key))
+				return 1;
+			if($Prop->$Name == $Key && $Prop->$AccessType == PAT->$EndEdit)
+			{
+				my $Ret = $Prop->SetProp($Obj, $Value);
+				if($Ret ~~ PropVerificationError)
+				{
+					$Ret = $Prop->GetDefault($Obj);
+					if($Ret !== null)
+						$Prop->SetProp($Obj, $Ret);
+				}
+				if($Ret !== null)
+				{
+					GUIDataGrid($this->$Data, 'SetValue', $a, $b, $Ret);
+					$Obj->SetChanged($PName);
+				}
+				else
+					GUIDataGrid($this->$Data, 'SetValue', $a, $b, $Prop->GetProp($Obj));
+				break;
+			}
+		}
+		$Windows[$CurrentWindow]->$Gripper->SizeGrips();
+	}
+	Function EventCellBeginEdit($arg)
+	{
+		my $a = $arg[0];
+		my $b = $arg[1];
+		my $Key = GUIDataGrid($this->$EventData, 'GetValue', 0, $b);
+		my $Value = GUIDataGrid($this->$EventData, 'GetValue', $a, $b);
+		my $Obj = $Windows[$CurrentWindow]->$Gripper->$Object;
+		$Windows[$CurrentWindow]->OpenEditorOnLink($Key, $Obj);
+		return 1;
+	}
+	Function onListKeyDown( $arg, $TheList )
+	{
+		my List( $Key, $Code, $Data, $Value, $Modifiers, $Alt, $Shift, $Control ) = $arg;
+		if($Shift)
+		{
+			if($Control)
+			{
+				if($Code == 38) # UP
+				{
+					onClickMoveTop($TheList);
+					return 1;
+				}
+				else if($Code == 40) # Down
+				{
+					onClickMoveBottom($TheList);
+					return 1;
+				}
+			}
+			else
+			{
+				if($Code == 38) # UP
+				{
+					onClickMoveUp($TheList);
+					return 1;
+				}
+				else if($Code == 40) # Down
+				{
+					onClickMoveDown($TheList);
+					return 1;
+				}
+			}
+		}
+		return 0;
+	}
+};

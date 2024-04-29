@@ -1,0 +1,88 @@
+#<?
+# Check if a given name is not already in use somewhere in the project
+Function ValidName( $Name, $AllWindows = false )
+{
+	if($AllWindows)
+	{
+		foreach($Windows as my $WinName => my $WinObj)
+		{
+			if(DoesNameExistInWindow($Name, $WinName, $WinObj))
+				return false;
+		}
+	}
+	else
+	{
+		if(DoesNameExistInWindow($Name, $CurrentWindow, $Windows[$CurrentWindow]))
+			return false;
+		if(DoesNameExistInClasses($Name))
+			return false;
+	}
+	return true;
+}
+Function DoesNameExistInGlobals( $Name )
+{
+	foreach($Globals as my $GlobalName => $GlobalSource)
+	{
+		if($GlobalName eqi $Name)
+			return true;
+	}
+	return false;
+}
+Function DoesNameExistInEnums( $Name )
+{
+	foreach($Enums as my $EnumName => $EnumSource)
+	{
+		if($EnumName eqi $Name)
+			return true;
+	}
+	return false;
+}
+Function DoesNameExistInFunctions( $Name )
+{
+	foreach($Functions as my $FuncName => $FuncSource)
+	{
+		if($FuncName eqi $Name)
+			return true;
+	}
+	return false;
+}
+Function DoesNameExistInClasses( $Name )
+{
+	foreach($Classes as my $ClsName => $ClsSource)
+	{
+		if($ClsName eqi $Name)
+			return true;
+	}
+	return false;
+}
+Function DoesNameExistInWindows( $Name )
+{
+	foreach($Windows as my $WinName => my $WinObj)
+	{
+		if($WinName eqi $Name)
+			return true;
+	}
+	return false;
+}
+Function DoesNameExistInWindow( $Name, $WinName, $WinObj )
+{
+	if($WinName eqi $Name)
+		return true;
+	if(DoesNameExistInContainer($Name, $WinObj->GetContainer()))
+		return true;
+	return false;
+}
+Function DoesNameExistInContainer( $Name, $Container )
+{
+	foreach($Container->$Objects as my $ObjName => my $Obj)
+	{
+		if($ObjName eqi $Name)
+			return true;
+		if($Obj->HasContainer())
+		{
+			if(DoesNameExistInContainer($Name, $Obj->GetContainer()))
+				return true;
+		}
+	}
+	return false;
+}

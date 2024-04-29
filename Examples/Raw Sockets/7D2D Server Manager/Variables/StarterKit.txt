@@ -1,0 +1,40 @@
+# Weapons & Ammo
+crossbow{}|1
+crossbowBolt|50
+gunPistol{}|1
+9mmBullet|30
+
+# Tools
+fireaxeIron{}|1
+shovelIron{}|1
+pickaxeIron{}|1
+boneShiv{}|1
+
+# Food & Drink
+bottledWater|10
+cornBread|10
+
+# Meds
+painkillers|5
+antibiotics|4
+firstAidKit|3
+firstAidBandage|5
+
+# Clothing
+denimPants|1
+shirt|1
+
+# Armour
+miningHelmet{}|1
+leatherDuster{}|1
+leatherBoots{}|1
+leatherGloves{}|1
+leatherPants{}|1
+leatherJacket{}|1
+
+# Books
+crossbowSchematic|1
+pistolBook|1
+
+# Misc
+shortMetalPipe|4

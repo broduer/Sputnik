@@ -1,0 +1,58 @@
+#include-once
+#require-once
+/*
+// Example code
+include("FileDownloader.spk");
+my $Downloader = new FileDownloader();
+$Downloader->DownloadFile("http://uberfox.no-ip.org/usb.pkg", "./usb.pkg");
+println("Downloading file please wait....");
+
+until($Downloader->$Complete)
+{
+	sleep(1); // To avoid cpu hoggage
+	doEvents(); // required for COMPLETED AND PERCENT EVENTS!!!!!!
+	if(($Downloader->$ProgressPercent % 10) == 0)
+		println("Download percent: " . ($Downloader->$ProgressPercent));
+}
+println("Download Complete!!!");
+*/
+// Asynchronous file downloader class
+// Will download files in its own thread etc and report progress as it downloads it
+// Still if you want to get progress updates you need to have doEvents() being ticked
+// in a loop somewhere.
+Class FileDownloader
+{
+	my List ($Complete, $Downloading, $URL, $LOC, $ProgressPercent, $BytesTotal, $BytesDone);
+	Function __Construct($URL, $SaveTo)
+	{
+		$Complete = false;
+		$Downloading = false;
+	}
+	Function DownloadFile($URL, $LOC)
+	{
+		if($Downloading) return false;
+		$this->$URL = $URL;
+		$this->$LOC = $LOC;
+		if(HTTPDownload($URL, $LOC, '$param->Progress($arg);', '$param->Completed($arg);', $this))
+		{
+			$Downloading = true;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	Function Completed($arg)
+	{
+		$Complete = true;
+		$Downloading = false;
+	}
+	Function Progress($arg)
+	{
+		List ($URL, $LOC, $ProgressPercent, $BytesTotal, $BytesDone) = $arg;
+		$this->$ProgressPercent = $ProgressPercent;
+		$this->$BytesTotal = $BytesTotal;
+		$this->$BytesDone = $BytesDone;
+	}
+}

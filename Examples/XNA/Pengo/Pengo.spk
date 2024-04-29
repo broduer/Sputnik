@@ -1,0 +1,685 @@
+// Load Sputnik Sound Library
+PluginLoad(array('SputnikSound', 'Sputnik.%Name, SputnikSound, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'));
+
+// Load Sputnik XNA Library
+PluginLoad('SputnikXNA.dll');
+
+Enum GameState
+{
+	$Intro,
+	$Title,
+	$Playing,
+	$Paused,
+	$GameOver
+};
+
+Include('./Src/Colours.spk', true);
+Include('./Src/Entities.spk', true);
+Include('./Src/Entity.spk', true);
+Include('./Src/EntityPlayer.spk', true);
+Include('./Src/EntityPlayerPengo.spk', true);
+Include('./Src/EntityPlayerPenguina.spk', true);
+Include('./Src/EntityBreakingIce.spk', true);
+Include('./Src/EntityMovingBlock.spk', true);
+Include('./Src/EntityPoints.spk', true);
+Include('./Src/EntityMob.spk', true);
+Include('./Src/EntityMobCreeper.spk', true);
+Include('./Src/EntityMobSlime.spk', true);
+Include('./Src/EntityMobInky.spk', true);
+Include('./Src/EntityMobPinky.spk', true);
+Include('./Src/EntityMobBlaze.spk', true);
+Include('./Src/EntityMobGhost.spk', true);
+Include('./Src/EntityReward.spk', true);
+Include('./Src/EntityRewardFruit.spk', true);
+Include('./Src/EntityRewardOneUp.spk', true);
+Include('./Src/EntityRewardRainbow.spk', true);
+Include('./Src/EntityRewardYinYang.spk', true);
+Include('./Src/EntityRewardCandy.spk', true);
+Include('./Src/EntityRewardPizza.spk', true);
+Include('./Src/EntityRewardDiamond.spk', true);
+Include('./Src/EntityRewardHourGlass.spk', true);
+Include('./Src/EntityRewardBoost.spk', true);
+Include('./Src/EntityRewardMagic.spk', true);
+Include('./Src/EntityRewardRedRing.spk', true);
+Include('./Src/EntityRewardGreenRing.spk', true);
+Include('./Src/AI.spk', true);
+Include('./Src/AIMoveDelay.spk', true);
+Include('./Src/AIWander.spk', true);
+Include('./Src/AIWanderAStar.spk', true);
+Include('./Src/AIGhost.spk', true);
+Include('./Src/AIChase.spk', true);
+Include('./Src/AIAvoid.spk', true);
+Include('./Src/AIAttackPlayersInSight.spk', true);
+Include('./Src/Map.spk', true);
+Include('./Src/Levels.spk', true);
+Include('./Src/Utils.spk', true);
+Include('./Src/PathFinder.spk', true);
+
+Class EngineMain
+{
+    my $Name { get { return 'Main'; } }
+    my $_Disposed;
+    my $Disposed
+    {
+        get { return $this->$_Disposed; }
+        set { $this->$_Disposed = $value; }
+    };
+	my $Version;
+	my $Map;
+	my $PengoStatusTexture;
+	my $PenguinaStatusTexture;
+    my $FontArial;
+	my $ScoreTextures;
+	my $PengoLifeTexture;
+	my $PenguinaLifeTexture;
+	my $CreditTexture;
+	my $PausedTexture;
+	my $Pengo;
+	my $Penguina;
+	my $PengoEnabled;
+	my $PenguinaEnabled;
+	my $CurrentState;
+	my $IngameMusic;
+	my $TitleMusic;
+	my $MusicPlayer;
+	my $GameOverTextures;
+	my $GameOverTickCount;
+	my $GameOverTickInterval;
+	my $GameOverShownCount;
+	my $GameOverMessageShown;
+	my $GameOverSound;
+	my $IntroSound;
+	my $SkipIntro;
+	my $TitleTexture;
+	my $TitlePushTexture;
+	my $TitleParticleTexture;
+	my $TitleTickCount;
+	my $TitleTickInterval;
+	my $TitleTextOffset;
+	my $TitleTextOffsetDir;
+	my $TitleParticles;
+	my $TitleCodedTexture;
+	my $IntroTextures;
+	my $IntroTickCount;
+	my $IntroTickInterval;
+	my $IntroOffset;
+	my $IntroOffset2;
+	my $IntroCount;
+	my $IntroSplash;
+	my $IntroStartedTitleMusic;
+	my $SplashTexture;
+	my $AllowMusic;
+	my $GameWidth;
+	my $GameHeight;
+    Function __Construct()
+    {
+        $_Disposed = false;
+		$Pengo = null;
+		$Penguina = null;
+    }
+    Function Dispose()
+    {
+    }
+    Function Initialize()
+    {
+		$GameWidth = 640;
+		$GameHeight = 512;
+		if(@Compiled)
+			ConsoleHide();
+		XNAOpt('InactiveSleepTime', 0);
+		XNAOpt('Width', $GameWidth);
+		XNAOpt('Height', $GameHeight);
+    }
+    Function LoadContent()
+    {
+		$Version = "0.72 Beta";
+		XNAOpt('Title', "Pengo $Version created in Sputnik by UberFoX");
+		$AllowMusic = true;
+		$IngameMusic = array(BinaryLoad('./Music/InGame.mp3'), 'InGame.mp3');
+		$TitleMusic = array(BinaryLoad('./Music/Title.mp3'), 'Title.mp3');
+		$GameOverSound = array(BinaryLoad('./Sounds/GameOver.mp3'), 'GameOver.mp3');
+		$IntroSound = array(BinaryLoad('./Sounds/Intro.mp3'), 'Intro.mp3');
+        $FontArial = XNAFont('Fonts/Arial14', true);
+		$PengoStatusTexture = XNAPng('./Images/Interface/PengoStatus.png');
+		$PenguinaStatusTexture = XNAPng('./Images/Interface/PenguinaStatus.png');
+		$CreditTexture = XNAPng('./Images/Interface/Credit.png');
+		$PausedTexture = XNAPng('./Images/Interface/Paused.png');
+		$IntroTextures = array();
+		$IntroTextures[] = XNAPng('./Images/Intro/Intro1.png');
+		$IntroTextures[] = XNAPng('./Images/Intro/Intro2.png');
+		$SplashTexture = XNAPng('./Images/Intro/Splash.png');
+		$IntroStartedTitleMusic = false;
+		$IntroOffset = 0;
+		$IntroOffset2 = 0;
+		$IntroCount = 0;
+		$Map = new Map($this);
+		$IntroTickCount = 0;
+		$IntroTickInterval = 6;	
+		$TitleTickCount = 0;
+		$TitleTickInterval = 6;	
+		$TitleTextOffset = 0;
+		$TitleTextOffsetDir = false;
+		$GameOverTickCount = 0;
+		$GameOverTickInterval = 200;
+		$GameOverShownCount = 0;
+		$GameOverMessageShown = false;
+		$GameOverTextures = array();
+		$TitleTexture = XNAPng('./Images/Title/Pengo.png');
+		$TitlePushTexture = XNAPng('./Images/Title/Push.png');
+		$TitleParticleTexture = XNAPng('./Images/Title/Particle.png');
+		$TitleCodedTexture = XNAPng('./Images/Title/Coded.png');
+		GenParticles();
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver1.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver2.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver3.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver4.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver5.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver6.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver7.png');
+		$GameOverTextures[] = XNAPng('./Images/Interface/GameOver8.png');		
+		$ScoreTextures = array();
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score0.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score1.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score2.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score3.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score4.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score5.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score6.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score7.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score8.png');
+		$ScoreTextures[] = XNAPng('./Images/Interface/Score9.png');
+		$PenguinaLifeTexture = XNAPng('./Images/Interface/PenguinaLife.png');
+		$PengoLifeTexture = XNAPng('./Images/Interface/PengoLife.png');
+		$CurrentState = GameState->$Intro;
+		$PengoEnabled = false;
+		$PenguinaEnabled = false;
+		$IntroStage = 0;
+		$SkipIntro = !@Compiled; // Keep intro in compiled version only
+		$IntroSplash = false;
+		if(!$SkipIntro)
+			PlaySound($IntroSound, false);
+    }
+    Function IsMusicPlaying()
+    {
+		return $MusicPlayer != null;
+	}
+    Function PlayInGameMusic()
+    {
+		if(IsMusicPlaying())
+			StopMusic();
+		if(!$AllowMusic)
+			return;
+		$MusicPlayer = PlaySound($IngameMusic, true);
+	}
+    Function PlayTitleMusic()
+    {
+		if(IsMusicPlaying())
+			StopMusic();
+		if(!$AllowMusic)
+			return;
+		$MusicPlayer = PlaySound($TitleMusic, true);
+	}
+    Function StopMusic()
+    {
+		if(!IsMusicPlaying())
+			return;
+		Sound($MusicPlayer, 'Stop');
+		$MusicPlayer = null;
+	}
+    Function SetMusicSpeed( $Speed )
+    {
+		if(!IsMusicPlaying())
+			return;
+		Sound($MusicPlayer, 'PlaybackSpeed', $Speed);
+	}
+    Function GetMusicSpeed( )
+    {
+		if(!IsMusicPlaying())
+			return 0;
+		return Sound($MusicPlayer, 'PlaybackSpeed');
+	}
+	Function GenParticles()
+	{
+		$TitleParticles = array();
+		for(my $i = 0; $i < 400; $i++)
+			$TitleParticles[] = NewParticle();
+	}
+	Function NewParticle()
+	{
+		my $SX = (int)Random(0, $GameWidth);
+		my $SY = (int)Random(0, $GameHeight);
+		my $Size = (int)Random(2, 5);
+		return array($TitleParticleTexture, $SX, $SY, $Size);
+	}
+    Function AddPengo()
+    {
+		if($Pengo)
+			return;
+		$Pengo = new EntityPlayerPengo($this, 'Pengo');
+		$Map->$EntityManager->$Entities[$Pengo->$ID]['Pengo'] = $Pengo;
+		if($Map->$PengoSpawnPoint)
+			$Pengo->$DrawPosition = $Map->$PengoSpawnPoint;
+		else
+			$Pengo->$DrawPosition = $Map->MapCoordinateToVisual($Map->FindEmptyCoordinate());
+    }
+    Function AddPenguina()
+    {
+		if($Penguina)
+			return;
+		$Penguina = new EntityPlayerPenguina($this, 'Penguina');
+		$Map->$EntityManager->$Entities[$Penguina->$ID]['Penguina'] = $Penguina;
+		if($Map->$PenguinaSpawnPoint)
+			$Penguina->$DrawPosition = $Map->$PenguinaSpawnPoint;
+		else
+			$Penguina->$DrawPosition = $Map->MapCoordinateToVisual($Map->FindEmptyCoordinate());
+    }
+    Function RemovePengo()
+    {
+		if(!$Pengo)
+			return;
+		$Pengo->Dispose();
+		$Pengo = null;
+    }
+    Function RemovePenguina()
+    {
+		if(!$Penguina)
+			return;
+		$Penguina->Dispose();
+		$Penguina = null;
+    }
+    Function ReloadPlayers()
+    {
+		if($Pengo)
+		@{
+			RemovePengo();
+			AddPengo();
+		}
+		if($Penguina)
+		@{
+			RemovePenguina();
+			AddPenguina();
+		}
+    }
+    Function UnloadContent()
+    {
+    }
+    Function Update($ElapsedGameTime, $ElapsedRealTime, $TotalGameTime, $TotalRealTime, $IsRunningSlowly)
+    {
+		if($CurrentState != GameState->$Playing)
+			return;
+		$Map->Update();		
+		// Ghost Music check
+		if(IsMusicPlaying())
+		@{
+			my $GhostsOnMap = $Map->$EntityManager->EntityCount(EntityType->$Ghost);
+			if($GhostsOnMap)
+			@{
+				if(GetMusicSpeed() != 1.2)
+					SetMusicSpeed(1.2);
+			}
+			else
+			@{
+				if(GetMusicSpeed() != 1)
+					SetMusicSpeed(1);
+			}
+		}
+    }
+    Function Draw($ElapsedGameTime, $ElapsedRealTime, $TotalGameTime, $TotalRealTime, $IsRunningSlowly)
+    {
+		// Clear game window
+        XNAClear($ColBlack);
+		
+		// Allow drawing
+		XNADrawBegin();
+		
+		// Draw all "Intro" stuff
+		if($CurrentState == GameState->$Intro)
+		{
+			if($SkipIntro)
+				$IntroSplash = true;
+			else
+			@{
+				my $Seconds = $TotalGameTime / 1000; // 1000 MS in a Second
+				if($Seconds >= 15)
+					$IntroSplash = true;
+			}
+			if($IntroSplash && !$IntroStartedTitleMusic)
+			@{
+				$IntroStartedTitleMusic = true;
+				PlayTitleMusic();
+			}
+			my $NewIntroTickCount = TickCount($IntroTickCount);
+			if($NewIntroTickCount > $IntroTickInterval)
+			@{
+				$IntroTickCount = TickCount() + $IntroTickInterval;
+				if($IntroOffset >= 630)
+				@{
+					if($IntroOffset2 < 630)
+						$IntroOffset2 += 2;
+				}
+				else
+					$IntroOffset += 2;
+			}
+			if($IntroSplash)
+				XNADraw($SplashTexture, 0, 0, $ColWhite, $GameWidth, $GameHeight);
+			else
+			@{
+				XNADraw($IntroTextures[0], $GameWidth - $IntroOffset, ($GameHeight / 2) - 90, $ColWhite);
+				XNADraw($IntroTextures[1], $GameWidth - $IntroOffset2, ($GameHeight / 2), $ColWhite);
+			}
+		}
+		
+		// Draw all "Title" stuff
+		if($CurrentState == GameState->$Title)
+		{
+			for(my $i = 0; $i < count($TitleParticles); $i++)
+			@{
+				my $Particle = $TitleParticles[$i];
+				if(
+					($Particle[1] < 0 || $Particle[1] > $GameWidth)
+					||
+					($Particle[2] < 0 || $Particle[2] > $GameHeight)
+					)
+				@{
+					$TitleParticles[$i] = NewParticle();
+					$Particle = $TitleParticles[$i];
+				}
+				if((int)Random(0, 2))
+					$TitleParticles[$i][1]++;
+				else
+					$TitleParticles[$i][1]--;
+				
+				if((int)Random(0, 2))
+					$TitleParticles[$i][2]++;
+				else
+					$TitleParticles[$i][2]--;
+				
+				my $Size = $Particle[3];
+				XNADraw($Particle[0], $Particle[1], $Particle[2], $ColWhite, $Size, $Size);
+			}
+			
+			XNADraw($TitleTexture, 96, 93, $ColWhite, 426, 256);
+			my $NewTitleTickCount = TickCount($TitleTickCount);
+			if($NewTitleTickCount > $TitleTickInterval)
+			@{
+				$TitleTickCount = TickCount() + $TitleTickInterval;
+				if($TitleTextOffset == 30)
+					$TitleTextOffsetDir = false;
+				if($TitleTextOffset == 0)
+					$TitleTextOffsetDir = true;
+				if($TitleTextOffsetDir)
+					$TitleTextOffset++;
+				else
+					$TitleTextOffset--;
+			}
+			XNADraw($TitlePushTexture, 59, $TitleTextOffset + 370, $ColWhite, 506, 52);
+			XNADraw($TitleCodedTexture, 0, 0, $ColWhite);
+		}
+		
+		// Draw all "Playing" stuff (is allowed on "GameOver" and "Paused" screen too)
+		if($CurrentState == GameState->$Playing || $CurrentState == GameState->$GameOver || $CurrentState == GameState->$Paused)
+		{
+			// Draw Pengo Side Bar
+			XNADraw($PengoStatusTexture, 0, 0, $ColWhite, 64, 512);
+			
+			// Draw Penguina Side Bar
+			my $PenguinaSideBarX = 64 + ($Map->$MapTileSize * $Map->$MapWidth);
+			XNADraw($PenguinaStatusTexture, $PenguinaSideBarX, 0, $ColWhite, 64, 512);
+			
+			// Draw Pengo Stuff
+			if($Pengo != null)
+			@{
+				DrawScore(16, 64, $Pengo->$Score);
+				DrawLives($PengoLifeTexture, 10, 9, 415, $Pengo->$Lives);
+				DrawCredits($CreditTexture, 14, 9, 481, $Pengo->$Credits);
+			}
+			
+			// Draw Penguina Stuff
+			if($Penguina != null)
+			@{
+				DrawScore($PenguinaSideBarX + 16, 64, $Penguina->$Score);
+				DrawLives($PenguinaLifeTexture, 10, $PenguinaSideBarX + 9, 415, $Penguina->$Lives);
+				DrawCredits($CreditTexture, 14, $PenguinaSideBarX + 9, 481, $Penguina->$Credits);
+			}
+			
+			// Draw map
+			$Map->Draw();
+			
+			// Draw Entities
+			if(!$Map->$MovingLevel && !$Map->$LevelLoadingDisplay)
+			@{
+				foreach( $Map->$EntityManager->$EntityValues as my $EV )
+					foreach($Map->$EntityManager->$Entities[$EV] as my $K => my $V)
+						if(!$V->$Disposed)
+							$V->Draw();
+			}
+		}
+		
+		// Draw Paused
+		if($CurrentState == GameState->$Paused)
+		{
+			my List ($X, $Y) = $Map->$LevelPositions[5][7];
+			XNADraw($PausedTexture, $X, $Y, $ColWhite, 190, 29);
+		}
+		
+		// Draw Game Over
+		if($CurrentState == GameState->$GameOver)
+		{
+			my $NewGameOverTickCount = TickCount($GameOverTickCount);
+			if($NewGameOverTickCount > $GameOverTickInterval)
+			@{
+				$GameOverTickCount = TickCount() + $GameOverTickInterval;
+				if($GameOverShownCount != Count($GameOverTextures))
+					$GameOverShownCount++;
+				else
+					$GameOverMessageShown = true;
+			}
+			my List ($X, $Y) = $Map->$LevelPositions[4][7];
+			my $OffsetX = 0;
+			for(my $i = 0; $i < Count($GameOverTextures); $i++)
+			{
+				if($i > $GameOverShownCount)
+					break;
+				if($i == 4)
+					$OffsetX += $Map->$MapTileSize;
+				XNADraw($GameOverTextures[$i], $OffsetX + $X + ($i * $Map->$MapTileSize), $Y, $ColWhite, $Map->$MapTileSize, $Map->$MapTileSize);
+			}
+		}
+		
+		// Stop drawing
+		XNADrawEnd();
+	}
+    Function DrawCredits( $Tex, $TexSize, $X, $Y, $Credits )
+    {
+		if($Credits > 3)
+			$Credits = 3;
+		$OffsetX = 0;
+		for(my $i = 0; $i < 3; $i++)
+		{
+			if($Credits == 0)
+				return;
+			$Credits--;
+			XNADraw($Tex, $OffsetX + $X + ($i * $TexSize), $OffsetY + $Y + ($j * $TexSize), $ColWhite, $TexSize, $TexSize);
+			$OffsetX += 3;
+		}
+    }
+    Function DrawLives( $Tex, $TexSize, $X, $Y, $Lives )
+    {
+		if($Lives > 16)
+			$Lives = 16;
+		my $OffsetX = 0;
+		my $OffsetY = 0;
+		for(my $j = 0; $j < 4; $j++)
+		{
+			$OffsetX = 0;
+			for(my $i = 0; $i < 4; $i++)
+			{
+				if($Lives == 0)
+					return;
+				$Lives--;
+				XNADraw($Tex, $OffsetX + $X + ($i * $TexSize), $OffsetY + $Y + ($j * $TexSize), $ColWhite, $TexSize, $TexSize);
+				$OffsetX += 3;
+			}
+			$OffsetY += 3;
+		}
+    }
+    Function DrawScore( $X, $Y, $Score )
+    {
+		if($Score > 99999999)
+			$Score = 99999999;
+		my $ScorePadded = DecPad($Score, 8);
+		for(my $i = 1; $i <= 8; $i++)
+		{
+			my $Digit = $ScorePadded[$i - 1];
+			XNADraw($ScoreTextures[$Digit], $X, $Y + ($i * $Map->$MapTileSize), $ColWhite, $Map->$MapTileSize, $Map->$MapTileSize);
+		}
+    }
+    Function MousePress( $X, $Y, $Scroll, $Left, $Right, $Middle, $Extra1, $Extra2 )
+    {
+		if($CurrentState != GameState->$Playing)
+			return;
+		$Map->MousePress($X, $Y, $Scroll, $Left, $Right, $Middle, $Extra1, $Extra2);
+    }
+    Function KeyDown( $Key, $Char, $Control, $Shift, $Alt, $CapsLock )
+    {
+		my $EscapePressed = $CurrentState == GameState->$Playing && $Key == @KeyEscape;
+		$Map->KeyDown($Key, $Char, $Control, $Shift, $Alt, $CapsLock);
+        switch($Key)
+        {
+            case @KeyEnter:
+				if($CurrentState == GameState->$GameOver && $GameOverMessageShown)
+				{
+					$CurrentState = GameState->$Title;
+					PlayTitleMusic();
+				}
+				else if($CurrentState == GameState->$Intro && $IntroSplash)
+					$CurrentState = GameState->$Title;
+				else if($CurrentState == GameState->$Title)
+				{
+					$CurrentState = GameState->$Playing;
+					$Map->$LevelNumber = 1;
+					$Map->$LevelLoadingDisplayShown = 0; // Force show
+					$Map->BeginLevel();
+					AddPengo(); // Since enter was pressed....
+					ReloadPlayers();
+					// Make sure music loads once in game
+					$Map->$StartMenuOnLoad = true;
+				}
+				return;
+            case @KeyEscape: // Exit game
+				if(!$EscapePressed && $CurrentState == GameState->$Title)
+					Exit(0);
+				break;
+            case @KeyF11: // Full Screen Toggle
+				if(XNAOpt('FullScreen'))
+				{
+					// Return from full screen
+					XNAOpt('Width', $GameWidth);
+					XNAOpt('Height', $GameHeight);
+					XNAOpt('FullScreen', false);
+				}
+				else
+				{
+					// Goto full screen
+					XNAOpt('Width', 800);
+					XNAOpt('Height', 600);
+					XNAOpt('FullScreen', true);
+				}
+				break;
+            case @KeyM: // Toggle Music
+				if($CurrentState != GameState->$Intro)
+				{
+					if(IsMusicPlaying())
+					{
+						StopMusic();
+						$AllowMusic = false;
+					}
+					else
+					{
+						$AllowMusic = true;
+						if($CurrentState == GameState->$Title)
+							PlayTitleMusic();
+						else
+							PlayInGameMusic();
+					}
+				}
+				return;
+            case @KeyPause: // Toggle Pause
+				if($CurrentState == GameState->$Playing)
+					$CurrentState = GameState->$Paused;
+				else if($CurrentState == GameState->$Paused)
+					$CurrentState = GameState->$Playing;
+				return;
+			default: // Used for goto
+				break;
+		}
+		if($CurrentState != GameState->$Playing)
+			return;
+		if($Map->$MovingLevel)
+			return;
+		// Handle Pengos keyboard controls
+		if($Pengo != null)
+		{
+			if($Pengo->$BeenHit)
+				return; // No keys allowed during hit animations
+			if($Pengo->$KeyControls[ControlType->$MoveUp] == $Key) // Move Pengo Up
+				$Pengo->TryMove(Direction->$Up);
+			else if($Pengo->$KeyControls[ControlType->$MoveDown] == $Key) // Move Pengo Down
+				$Pengo->TryMove(Direction->$Down);
+			else if($Pengo->$KeyControls[ControlType->$MoveRight] == $Key) // Move Pengo Right
+				$Pengo->TryMove(Direction->$Right);
+			else if($Pengo->$KeyControls[ControlType->$MoveLeft] == $Key) // Move Pengo Left
+				$Pengo->TryMove(Direction->$Left);
+			else if($Pengo->$KeyControls[ControlType->$Attack] == $Key) // Push blocks with Pengo
+				$Pengo->Attack();
+		}
+		// Handle Penguinas keyboard controls
+		if($Penguina != null)
+		{
+			if($Penguina->$BeenHit)
+				return; // No keys allowed during hit animations
+			if($Penguina->$KeyControls[ControlType->$MoveUp] == $Key) // Move Penguina Up
+				$Penguina->TryMove(Direction->$Up);
+			else if($Penguina->$KeyControls[ControlType->$MoveDown] == $Key) // Move Penguina Down
+				$Penguina->TryMove(Direction->$Down);
+			else if($Penguina->$KeyControls[ControlType->$MoveRight] == $Key) // Move Penguina Right
+				$Penguina->TryMove(Direction->$Right);
+			else if($Penguina->$KeyControls[ControlType->$MoveLeft] == $Key) // Move Penguina Left
+				$Penguina->TryMove(Direction->$Left);
+			else if($Penguina->$KeyControls[ControlType->$Attack] == $Key) // Push blocks with Penguina
+				$Penguina->Attack();
+		}
+    }
+    Function KeyUp( $Key, $Char, $Control, $Shift, $Alt, $CapsLock )
+    {
+		if($CurrentState != GameState->$Playing)
+			return;
+		if($Map->$MovingLevel)
+			return;
+		if($Pengo != null)
+		{
+			if($Pengo->$BeenHit)
+				return; // No keys allowed during hit animations
+			if($Pengo->$KeyControls[ControlType->$Attack] == $Key) // Pengo stops attack texture
+				$Pengo->StopAttack();
+		}
+		if($Penguina != null)
+		{
+			if($Penguina->$BeenHit)
+				return; // No keys allowed during hit animations
+			if($Penguina->$KeyControls[ControlType->$Attack] == $Key) // Penguina stops attack texture
+				$Penguina->StopAttack();
+		}
+    }
+	Function GameOver( $Player )
+	{
+		$CurrentState = GameState->$GameOver;
+		$GameOverShownCount = 0;
+		$GameOverMessageShown = false;
+		StopMusic();
+		PlaySound($GameOverSound, false);
+	}
+};
+
+XNAEngineAdd(new EngineMain());
+XNARun();

@@ -1,0 +1,144 @@
+﻿// Make new Grabber
+my $TrackerGrabber = new GrabTracker();
+// Grab all servers on hltracker.com
+if ($TrackerGrabber->Grab('hotline.ubersoft.org'))
+{
+	// Loop through the captured servers
+	foreach($TrackerGrabber->$Trackers as my $Tracker)
+	{
+		// And finally print it!
+		printf('Found Server:');
+		printf("%s -- %s -- %s\n", $Tracker->$IP, $Tracker->$Port, $Tracker->$Name);
+		printf("%s\n", $Tracker->$Desc);
+		printf("\n");
+	}
+}
+else
+{
+	// Print error message
+	say "Failed to obtain the server list";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// Grabber Classes
+Class Tracker
+{
+	my $IP;
+	my $Port;
+	my $Name;
+	my $Desc;
+	Function __Construct($IP, $Port, $Name, $Desc)
+	{
+		$this->$IP = $IP;
+		$this->$Port = $Port;
+		$this->$Name = $Name;
+		$this->$Desc = $Desc;
+	}
+}
+Class GrabTracker
+{
+	my $Socket;
+	my $Trackers;
+	Function Dispose()
+	{
+		SocketShutdown($Socket);
+		SocketDisconnect($Socket);
+		unset($Socket);
+	}
+	Function Grab($Server)
+	{
+		unset($Trackers);
+		$this->$Trackers = array();
+		$Socket = SocketCreate('Stream', 'TCP');
+		my $IP = HostResolve($Server);
+		SocketConnect($Socket, $IP, 5498);
+		SocketSend($Socket, Pack('z0n', 'HTRK', 1));
+		my List( $Length, $Data ) = SocketReceive($Socket, 6, true, 2);
+		my $Pos = 0;
+		if($Length != 6)
+			return false;
+		my $MagicNumber = UnpackSingle('N', $Data, $Pos);
+		$Pos += 4;
+		if($MagicNumber != 0x4854524B)
+			return false;
+		my $version = UnpackSingle('n', $Data, $Pos);
+		$Pos += 2;
+		if ($version != 1 && $version != 2)
+			return false;
+		my List( $Length, $Data ) = SocketReceive($Socket, 8, true, 2);
+		$Pos = 0;
+		if ($Length != 8)
+			return false;
+		my $messageType = UnpackSingle('n', $Data, $Pos);
+		$Pos += 2;
+		if ($messageType != 1)
+			return false;
+		my $requestSize = UnpackSingle('n', $Data, $Pos);
+		$Pos += 2;
+		my $numServers = UnpackSingle('n', $Data, $Pos);
+		$Pos += 2;
+		my $numServers2 = UnpackSingle('n', $Data, $Pos);
+		$Pos += 2;
+		if ($numServers != $numServers2)
+			return false;
+		$Pos = 0;
+		my $dataSize = $requestSize - 4;
+		my $Data = BinaryCreate(0);
+		my $leftToGet = $dataSize;
+		my $dataSoFar = 0;
+		my $timeOutTicks = TickCount();
+		while ($dataSoFar < $dataSize)
+		{
+			if (TickCount($timeOutTicks) > 10 * 1000)
+				return false;
+			my List( $Length, $Bin ) = SocketReceive($Socket, $leftToGet > 102400 ? 102400 : $leftToGet, false, 2);
+			if ($Length <= 0)
+				continue;
+			BinaryAppend($Data, $Bin);
+			$dataSoFar += $Length;
+			$leftToGet -= $Length;
+		}
+		for (my $i = 0; $i < $numServers; $i++)
+		{
+			my $ipAddressA = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $ipAddressB = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $ipAddressC = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $ipAddressD = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $portNumber = UnpackSingle('n', $Data, $Pos);
+			$Pos += 2;
+			my $numberOfUsers = UnpackSingle('n', $Data, $Pos);
+			$Pos += 2;
+			my $numberOfUsersReserve = UnpackSingle('n', $Data, $Pos);
+			$Pos += 2;
+			my $nameSize = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $strData = BinaryCreate($nameSize);
+			for (my $j = 0; $j < $nameSize; $j++)
+				$strData[$j] = $Data[$Pos++];
+			my $name = BinaryToStr($strData, 'UTF8');
+			my $descSize = UnpackSingle('C', $Data, $Pos);
+			$Pos += 1;
+			my $strDescData = BinaryCreate($descSize);
+			for (my $j = 0; $j < $descSize; $j++)
+				$strDescData[$j] = $Data[$Pos++];
+			my $desc = BinaryToStr($strDescData, 'UTF8');
+			my $servIp = sprintf('%s.%s.%s.%s', $ipAddressA, $ipAddressB, $ipAddressC, $ipAddressD);
+			$Trackers[] = new Tracker($servIp, $portNumber, $name, $desc);
+		}
+		return true;
+	}
+}

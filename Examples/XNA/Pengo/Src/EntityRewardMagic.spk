@@ -1,0 +1,50 @@
+Class EntityRewardMagic extends EntityReward
+{
+	Static $UniqueID = 0;
+	my $Kills;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$Magic;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$TexArray = array();
+		$TexArray[] = XNAPng('./Images/Entities/Magic/M.png');
+		$TexArray[] = XNAPng('./Images/Entities/Magic/A.png');
+		$TexArray[] = XNAPng('./Images/Entities/Magic/G.png');
+		$TexArray[] = XNAPng('./Images/Entities/Magic/I.png');
+		$TexArray[] = XNAPng('./Images/Entities/Magic/C.png');
+		$DeathCounter = (int)Random(20, 40);
+		$RewardValue = 0;
+		$UseTexArray = true;
+		$TexArrayTickInterval = 50;
+		$Kills = 0;
+		
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		{
+			// Play Sound
+			PlayCollectionSound();
+			// Remove this Magic entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

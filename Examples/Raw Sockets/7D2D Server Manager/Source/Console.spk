@@ -1,0 +1,41 @@
+﻿$onServerInit[] = 'ConsoleInit';
+Class extends ServerManager
+{
+	my $console;
+	my $commandUser;
+	Function ConsoleInit()
+	{
+		$console = new ConsoleWithInput($appName);
+		$console->$ShowCommands = false;
+		$console->$ShowType = false;
+		$console->$TypedFunc = array($this, 'UserTyped');
+		$console->AddCommand('.exit', array($this, 'CmdExit'), 0, 0);
+		$console->AddCommand('.cls', array($this, 'CmdCls'), 0, 0);
+		foreach($LoadCommands as my $key => my $value)
+			$console->AddCommand($key, array($this, $value[0]), $value[1], $value[2]);
+		$commandUser = null;
+	}
+	Function UserTyped($Text)
+	{
+		SendToServer($Text);
+	}
+	Function AppendLine($text)
+	{
+		$console->AppendLine($text);
+	}
+	Function CmdCls($args, $argCount, $cmdRest)
+	{
+		if ($commandUser != null)
+			return;
+		$console->ClearScreen('-- Cleared');
+	}
+	Function CmdExit($args, $argCount, $cmdRest)
+	{
+		if ($commandUser != null)
+			return;
+		if ($loggedIn && GetConfig('ShowServerManagerDisconnected'))
+			SayToAll($appName . ' disconnected.');
+		unset($Socket);
+		exit;
+	}
+}

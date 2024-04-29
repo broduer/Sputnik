@@ -1,0 +1,57 @@
+﻿$onServerInit[] = 'BoundaryInit';
+$onPlayerListChange[] = 'BoundaryOnPlayerListChange';
+Class extends ServerManager
+{
+	my $killedPlayers;
+	Function BoundaryInit()
+	{
+		$killedPlayers = array();
+	}
+	Function IsPlayerOutOfBounds($player)
+	{
+		my $Boundary = (double)GetConfig('Boundary');
+		my $BoundaryClose = $Boundary * 0.90;
+		my $IgnoreAdmins = GetConfig('BoundaryIgnoreAdministrators');
+		my $IgnoreMods = GetConfig('BoundaryIgnoreModerators');
+		if ($IgnoreAdmins && IsUserAdmin($player))
+			return array(false, false);
+		if ($IgnoreMods && IsUserModerator($player))
+			return array(false, false);
+		my $steamId = $player->$SteamId;
+		my List($x, $y, $z) = $player->$Pos;
+		my $distX = Distance3D($x, 0, 0, 0, 0, 0);
+		my $distY = Distance3D(0, 0, $z, 0, 0, 0);
+		my $outOfBounds = $distX > $Boundary || $distY > $Boundary;
+		my $almostOutOfBounds = $distX > $BoundaryClose || $distY > $BoundaryClose;
+		return array($outOfBounds, $almostOutOfBounds);
+	}
+	Function BoundaryOnPlayerListChange($oldList, $newList)
+	{
+		if (!GetConfig('UseBoundary'))
+			return;
+		foreach($newList->$players as my $player)
+		{
+			my $steamId = $player->$SteamId;
+			my List($outOfBounds, $almostOutOfBounds) = IsPlayerOutOfBounds($player);
+			if ($outOfBounds)
+			{
+				if ($killedPlayers[$steamId] > 0)
+				{
+					$killedPlayers[$steamId]++;
+					if ($killedPlayers[$steamId] < 60)
+						return;
+				}
+				$killedPlayers[$steamId] = 1;
+				SayToUser($player, "§120You are past the map boundary die!!!");
+				my $name = $player->$Name;
+				SayToAll("§120$name went past the map boundary and got fried");
+				KillUser($player);
+				return;
+			}
+			else if ($killedPlayers[$steamId] > 0)
+				$killedPlayers[$steamId] = 0;
+			if ($almostOutOfBounds)
+				SayToUser($player, "§120WARNING!!! Turn back!!! You are approaching the map boundary if you continue on you will die!");
+		}
+	}
+}

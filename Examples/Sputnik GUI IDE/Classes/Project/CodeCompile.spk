@@ -1,0 +1,38 @@
+#<?
+Global $CodeTesterActive = true;
+Global $mProjectTestCode = GUICreate('MenuItem', $mProject, 'Make .exe');
+Global $mProjectTestCodeWin = GUICreate('MenuItem', $mProject, 'Make .exe (Auto Hide Console)');
+GUILink($mProjectTestCode, 'Click', 'CodeCompile(false);');
+GUILink($mProjectTestCodeWin, 'Click', 'CodeCompile(true);');
+Global $Compiling = false;
+Function CodeCompile( $Windows )
+{
+	if($CodeGenActive)
+	{
+		Cls();
+		if(SyntaxCheck() === false)
+			return;
+		Global $Exe = FileSaveDialog('Save new exe', @CurDir, 'Applications|*.exe', 8 + 4, $ProjectName . ".exe");
+		if($Exe === null)
+			return;
+		if(IsEmptyOrNull($Exe))
+		{
+			msgbox('You must enter a valid name', $Title, 48);
+			return;
+		}
+		my $Extra = '';
+		if($Windows)
+			$Extra = 'ConsoleHide();SetWindowsFlag();';
+		my $Compiler = new Compiler();
+		$Compiling = true;
+		my $Ret = $Compiler->BeginCompile($Extra . GenCodeSrc(), $Exe);
+		unset($Compiler);
+		gc(true);
+		$Compiling = false;
+		if($Ret)
+			msgbox('Compile complete', $Title, 64);
+		else
+			msgbox('Failed to create new executable', $Title, 48);
+		Cls();
+	}
+}

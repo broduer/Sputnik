@@ -1,0 +1,4 @@
+#include-once
+#require-once
+// This will include all Collection (like Stack etc) scripts in the library
+include('Collections/Stack.spk', true);

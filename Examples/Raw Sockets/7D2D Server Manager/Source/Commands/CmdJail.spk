@@ -1,0 +1,268 @@
+﻿$onPlayerCommandRecv[] = 'JailOnPlayerCommandRecv';
+$onPlayerListChange[] = 'JailOnPlayerListChange';
+$LoadCommands['jail'] = array('CmdJail', 1, 2);
+Class extends ServerManager
+{
+	Function CmdJail($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Create a jail and imprison griefers in it';
+		if ($args === 'help')
+			return array(
+						'Create a jail and imprison griefers in it',
+						'Use ''/jail set'' to create the jail spawn point where you stand',
+						'Use ''/jail add playerName'' to send a player to the jail',
+						'Use ''/jail del playerName'' to remove a player from the jail',
+						'Use ''/jail visit'' visit the jail'
+						);
+		if ($commandUser == null)
+			return;
+		my $name = $commandUser->$Name;
+		my $action = lc($args[0]);
+		switch ($action)
+		{
+			case 'list':
+			{
+				my $jailedPlayers = array();
+				my $jailFileData = $utils->getJailFile();
+				foreach($jailFileData as my $SteamId)
+				{
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayer($SteamId);
+					if ($found == null)
+						continue;
+					$jailedPlayers[] = $found;
+				}
+				my $count = count($jailedPlayers);
+				SayToUser($commandUser, "There is '$count' players in the jail right now");
+				my $i = 1;
+				foreach($jailedPlayers as my $player)
+				{
+					my $name = $player->$Name;
+					SayToUser($commandUser, "$i. $name");
+					$i++;
+				}
+			}
+			break;
+			case 'visit':
+			{
+				if ($argCount != 1)
+				{
+					SayToUser($commandUser, "Action 'visit' requires only 1 param");
+					return;
+				}
+				my $jailLoc = $utils->getJailLocation();
+				if ($jailLoc == null)
+				{
+					SayToUser($commandUser, "You have no jail to visit set one by typing '/jail set' where you want it to be");
+					return;
+				}
+				my List($x, $y, $z) = $jailLoc;
+				TeleportUserToXYZ($commandUser, $x, $y, $z);
+			}
+			break;
+			case 'set':
+			{
+				if ($argCount != 1)
+				{
+					SayToUser($commandUser, "Action 'set' requires only 1 param");
+					return;
+				}
+				my List($x, $y, $z) = $commandUser->$Pos;
+				$utils->setJailLocation($x, $y, $z);
+				SayToUser($commandUser, "Jail location set to X:$x, Y:$y, Z:$z");
+			}
+			break;
+			case 'add':
+			{
+				if ($argCount < 2)
+				{
+					SayToUser($commandUser, "You must provide a player name/id to jail");
+					return;
+				}
+				my $jailLoc = $utils->getJailLocation();
+				if ($jailLoc == null)
+				{
+					SayToUser($commandUser, "You must first set a jail location using '/jail set' before adding people to it");
+					return;
+				}
+				my $who = $args[1];
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+				if ($found == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of 'who'");
+					return;
+				}
+				my $whoName = $found->$Name;
+				my $whoSteamId = $found->$SteamId;
+				if (IsJailed($whoSteamId))
+				{
+					SayToUser($commandUser, "$whoName is already jailed");
+					return;
+				}
+				if ($found->$Id == $commandUser->$Id)
+				{
+					SayToUser($commandUser, "You cannot jail yourself");
+					return;
+				}
+				if (IsUserAdmin($found))
+				{
+					SayToUser($commandUser, "You cannot jail an Administrator");
+					return;
+				}
+				if (!IsUserAdmin($commandUser) && IsUserModerator($found))
+				{
+					SayToUser($commandUser, "You cannot jail a Moderator");
+					return;
+				}
+				AddToJail($whoSteamId);
+				SayToUser($commandUser, "$whoName has been jailed");
+				if ($isOnline)
+					SayToUser($found, "$name has jailed you");
+			}
+			break;
+			case 'del':
+			{
+				if ($argCount < 2)
+				{
+					SayToUser($commandUser, "You must provide a player name/id to unjail");
+					return;
+				}
+				my $who = $args[1];
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+				if ($found == null)
+				{
+					SayToUser($commandUser, "Could not find a player with the name/id of 'who'");
+					return;
+				}
+				my $whoName = $found->$Name;
+				my $whoSteamId = $found->$SteamId;
+				if (!IsJailed($whoSteamId))
+				{
+					SayToUser($commandUser, "$whoName is not jailed");
+					return;
+				}
+				DelFromJail($whoSteamId);
+				SayToUser($commandUser, "$whoName has been unjailed");
+				if ($isOnline)
+					SayToUser($found, "$name has unjailed you");
+			}
+			break;
+			default:
+			{
+				SayToUser($commandUser, "Invalid action '$action' see help");
+			}
+			break;
+		}
+			
+	}
+	Function IsJailed($SteamIdToCheck)
+	{
+		my $jailFileData = $utils->getJailFile();
+		foreach($jailFileData as my $SteamId)
+		{
+			if ($SteamId == $SteamIdToCheck)
+				return true;
+		}
+		return false;
+	}
+	Function DelFromJail($SteamId)
+	{
+		if (!IsJailed($SteamId))
+			return;
+		my $newJailFileData = array();
+		my $jailFileData = $utils->getJailFile();
+		foreach($jailFileData as my $jailedSteamId)
+		{
+			if ($jailedSteamId == $SteamId)
+				continue;
+			$newJailFileData[] = $jailedSteamId;
+		}
+		$utils->setJailFile($newJailFileData);
+	}
+	Function AddToJail($SteamId)
+	{
+		if (IsJailed($SteamId))
+			return;
+		my $jailFileData = $utils->getJailFile();
+		$jailFileData[] = $SteamId;
+		$utils->setJailFile($jailFileData);
+	}
+	Function JailOnPlayerCommandRecv($player, $command)
+	{
+		return IsJailed($player->$SteamId);
+	}
+	Function JailOnPlayerListChange($oldList, $newListWillBe)
+	{
+		my $jailLoc = $utils->getJailLocation();
+		if ($jailLoc == null)
+			return;
+		my $jailDist = (int)GetConfig('JailDist');
+		my List($jx, $jy, $jz) = $jailLoc;
+		foreach($newListWillBe->$players as my $player)
+		{
+			my $SteamId = $player->$SteamId;
+			if (!IsJailed($SteamId))
+				continue;
+			my List($x, $y, $z) = $player->$Pos;
+			my $dist = Distance3D($jx, $jy, $jz, $x, $y, $z);
+			if ($dist < $jailDist)
+				continue;
+			TeleportUserToXYZ($player, $jx, $jy, $jz);
+		}
+	}
+}
+
+Class extends Utils
+{
+	Function getJailFile()
+	{
+		my $jailFileData = array();
+		if (!FileExists('./Variables/Jail.txt'))
+			return $jailFileData;
+		my $itemFile = FileReadLines('./Variables/Jail.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $SteamId = $lineTrim;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			$jailFileData[] = $SteamId;
+		}
+		return $jailFileData;
+	}
+	Function setJailFile($jailFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId");
+		foreach($jailFileData as my $SteamId)
+			sbAppendLine($sb, $SteamId);
+		FileSave('./Variables/Jail.txt', sbToString($sb));
+		unset($sb);
+	}
+	Function getJailLocation()
+	{
+		if (!FileExists('./Variables/JailLocation.txt'))
+			return null;
+		my $data = FileLoad('./Variables/JailLocation.txt');
+		my $split = split($data, '|');
+		if (count($split) != 3)
+			return null;
+		my $x = (double)$split[0];
+		my $y = (double)$split[1];
+		my $z = (double)$split[2];
+		return array($x, $y, $z);
+	}
+	Function setJailLocation($x, $y, $z)
+	{
+		FileSave('./Variables/JailLocation.txt', "$x|$y|$z");
+	}
+}

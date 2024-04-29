@@ -1,0 +1,74 @@
+Class EntityBreakingIce extends Entity
+{
+	Static $UniqueID = 0;
+	my $EntityTickCount;
+	my $EntityTickInterval;
+	my $Position;
+	my $TexArray;
+	my $TexCurrent;
+	my $TexMax;
+	my $MapTileSize;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$ID = EntityType->$BreakingIce;
+		$CanDieFromBlocks = false;
+		$Position = array($X, $Y);
+		my List ($DX, $DY) = $Engine->$Map->$LevelPositions[$X][$Y];
+		$DrawPosition = array($DX, $DY);
+		$EntityTickCount = 0;
+		$EntityTickInterval = 5;
+		$MapTileSize = $Engine->$Map->$MapTileSize;
+		$TexArray = array();
+		$TexArray[] = XNAPng('./Images/Map/IceBreak1.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak2.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak3.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak4.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak5.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak6.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak7.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak8.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak9.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak10.png');
+		$TexArray[] = XNAPng('./Images/Map/IceBreak11.png');
+		$TexCurrent = 0;
+		$TexMax = Count($TexArray);
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+	}
+	Function Draw()
+	{
+		if($Disposed)
+			return;
+		my $Playing = $Game->$CurrentState == GameState->$Playing;
+		my $DX = $DrawPosition[0];
+		my $DY = $DrawPosition[1];
+		XNADraw($TexArray[$TexCurrent], $DX, $DY, $ColWhite, $MapTileSize, $MapTileSize);
+		my $NewEntityTickCount = TickCount($EntityTickCount);
+		if($Playing && $NewEntityTickCount > $EntityTickInterval)
+		@{
+			$EntityTickCount = TickCount() + $EntityTickInterval;
+			$TexCurrent++;
+		}
+		if($TexCurrent >= $TexMax)
+		@{
+			my $X = $Position[0];
+			my $Y = $Position[1];
+			$Game->$Map->SetTile($X, $Y, TileType->$Blank);
+			Dispose();
+		}
+	}
+};

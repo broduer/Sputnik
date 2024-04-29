@@ -1,0 +1,11 @@
+﻿Class FieldUtils
+{
+	Static Function NewField($id, $size, $data)
+	{
+		my $field = new StdClass();
+		$field->$Id = $id;
+		$field->$Size = $size;
+		$field->$Data = $data;
+		return $field;
+	}
+}

@@ -1,0 +1,96 @@
+Class EntityMob extends Entity
+{
+	Static $UniqueID = 0;
+	my $AI;
+	my $SpawnDelayTickCount;
+	my $SpawnDelayTickInterval;
+	my $TextureShiftDelayTickCount;
+	my $TextureShiftDelayTickInterval;
+	my $TextureShift;
+	my $Size;
+	my $SpawnTextures;
+	my $Spawned;
+	my $SpawnFrame;
+	my $Respawn;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$ID = EntityType->$Mob;
+		$Size = $Game->$Map->$MapTileSize;
+		$Spawned = false;
+		$SpawnFrame = 0;
+		$TextureShift = 0;
+		$SpawnDelayTickCount = 0;
+		$SpawnDelayTickInterval = 100;
+		$TextureShiftDelayTickCount = 0;
+		$TextureShiftDelayTickInterval = 50;
+		$MoveDirection = Direction->$Zero;
+		$DisallowedFacings[] = Facing->$Center;
+		$SpawnTextures = array();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		$AI->Dispose();
+	}
+	Function AttackPlayers( )
+	{
+		$DoneAttacks = 0;
+		// Did we bump into a Player?
+		my List($MX, $MY) = GetPosition();
+		foreach($Game->$Map->Players() as my $V)
+		@{
+			if(!$V->$BeenHit && (!$V->$Immortal || ($ID == EntityType->$Ghost && $V->$Immortal)))
+			@{
+				my List($X, $Y) = $V->GetPosition();
+				if($MX == $X && $MY == $Y)
+				@{
+					if(!$V->$Immortal)
+						$V->SubLives(1);
+					$V->Hit();
+					$DoneAttacks++;
+				}
+			}
+		}
+		return $DoneAttacks;
+	}
+	Function Draw( )
+	{
+		if($Disposed)
+			return;
+		my $Playing = $Game->$CurrentState == GameState->$Playing;
+		if($Spawned)
+		@{
+			my $NewTextureShiftDelayTickCount = TickCount($TextureShiftDelayTickCount);
+			if($Playing && $NewTextureShiftDelayTickCount > $TextureShiftDelayTickInterval)
+			@{
+				$TextureShiftDelayTickCount = TickCount() + $TextureShiftDelayTickInterval;
+				$TextureShift++;
+				if($TextureShift >= Count($Textures[$Facing]))
+					$TextureShift = 0;
+			}
+			XNADraw($Textures[$Facing][$TextureShift], $DrawPosition[0], $DrawPosition[1], $ColWhite, $Size, $Size);
+		}
+		else
+		@{
+			my $NewSpawnDelayTickCount = TickCount($SpawnDelayTickCount);
+			if($Playing && $NewSpawnDelayTickCount > $SpawnDelayTickInterval)
+			@{
+				$SpawnDelayTickCount = TickCount() + $SpawnDelayTickInterval;
+				$SpawnFrame++;
+				if($SpawnFrame == Count($SpawnTextures))
+				@{
+					$Spawned = true;
+					$AI->$Enabled = true;
+				}
+			}
+			XNADraw($SpawnTextures[$SpawnFrame], $DrawPosition[0], $DrawPosition[1], $ColWhite, $Size, $Size);
+		}
+	}
+};

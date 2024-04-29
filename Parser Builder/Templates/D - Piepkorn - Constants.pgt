@@ -1,0 +1,31 @@
+##TEMPLATE-NAME 'D - Matthias Piepkorn Engine (Constants)'
+##LANGUAGE 'D'
+##ENGINE-NAME 'D Engine by Matthias Piepkorn'
+##AUTHOR 'Matthias Piepkorn' 
+##FILE-EXTENSION 'd'
+##NOTES
+Creates a set of D constants for symbols and rules
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+##PARAMETERS
+module %OutputFileBase%; 
+##END-PARAMETERS
+
+// constant definitions
+
+// Symbols
+enum {
+##SYMBOLS
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-SYMBOLS
+}
+
+// Rules
+enum {
+##RULES
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-RULES
+}

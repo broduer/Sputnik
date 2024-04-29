@@ -1,0 +1,88 @@
+##TEMPLATE-NAME 'F# - Calitha Engine'
+##LANGUAGE 'F#'
+##ENGINE-NAME 'Calitha GOLD Parser Engine'
+##AUTHOR 'Roger Alsing' 
+##FILE-EXTENSION 'fs'
+##NOTES
+This template creates the constants for symbols
+and rules and a custom parser class that acts
+as a template for parsing any source.
+The custom objects will be created after the
+entire source has been parsed by the LALR
+parser.
+##END-NOTES
+##ID-CASE UPPERCASE
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+module Parsing
+
+open System
+open System.IO
+open System.Runtime.Serialization
+open com.calitha.goldparser.lalr
+open com.calitha.commons
+
+type SymbolConstants =    
+##SYMBOLS
+| %ID.Padded% = %Value.Padded%%Delimiter% // %Description%
+##END-SYMBOLS
+
+type RuleConstants =
+##RULES
+| %ID.Padded% = %Value.Padded%%Delimiter% // %Description%
+##END-RULES
+
+type Token =
+| NonterminalToken of RuleConstants * List<Token>
+| TerminalToken of SymbolConstants * string 
+
+type MyParser(filename : string) as self =
+    [<DefaultValue>]val mutable parser : com.calitha.goldparser.LALRParser
+
+    do
+        let stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read)
+        self.Init(stream)
+        stream.Close()
+
+    member public this.Init (stream : Stream) =     
+        let reader = new com.calitha.goldparser.CGTReader(stream)
+        this.parser <- reader.CreateNewParser()
+        this.parser.TrimReductions <- false
+        this.parser.StoreTokens <- com.calitha.goldparser.LALRParser.StoreTokensMode.NoUserObject
+
+        //parser.OnTokenError += new LALRParser.TokenErrorHandler(TokenErrorEvent);
+        //parser.OnParseError += new LALRParser.ParseErrorHandler(ParseErrorEvent);
+
+    member this.CreateObject(token : Token) : Object =
+        match token with
+        | TerminalToken(symbol,text) ->
+            match symbol with
+##SYMBOLS
+            //%Description%
+            | SymbolConstants.%ID.Padded% -> failwith("NotImplemented")
+##END-SYMBOLS
+            | _ -> failwith("Unknown symbol")
+        | NonterminalToken(rule,tokens) ->
+            match rule with
+##RULES
+            //%Description%
+            | RuleConstants.%ID.Padded% -> failwith("NotImplemented")
+##END-RULES      
+            | _ -> failwith("Unknown rule")  
+
+    member this.Parse(source : string) : Object =
+        let rec ToX (token : com.calitha.goldparser.Token)  : Token =
+            match token with
+                | :? com.calitha.goldparser.TerminalToken -> let t = token :?> com.calitha.goldparser.TerminalToken
+                                                             TerminalToken(enum t.Symbol.Id,t.Text)
+
+                | :? com.calitha.goldparser.NonterminalToken -> let t = token :?> com.calitha.goldparser.NonterminalToken
+                                                                NonterminalToken(enum t.Rule.Id, [for tok in t.Tokens -> ToX(tok)] )
+
+                | _ -> failwith("unknown token type")
+
+        let token = this.parser.Parse(source)
+        let xtoken = ToX(token)
+        let obj = this.CreateObject(xtoken)
+        obj

@@ -1,0 +1,185 @@
+Class HLClient
+{
+	// Objects
+	my $Window;
+	my $Tab;
+	my $TabPageStatus;
+	my $TabPagePublicChat;
+	my $tLog;
+	my $lStatus;
+	my $tChat;
+	my $tUsers;
+	my $tChatEnter;
+	// Hotline
+	my $Sock;
+	Function __construct()
+	{
+		my $Config = FileReadLines('Config.txt');
+		// Create socket
+		my $IP = $Config[0];
+		my $Port = trim($Config[1]);
+		unless($IP =~ m/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\:\d{1,5})/)
+			$IP = HostResolve($IP);
+		$Sock = new HLSocket($IP,  $Port);
+		$Sock->$Client = $this;
+		// Socket Debug Info
+		$Sock->$Debug = false;
+		$Sock->$ShowSendPackets = false;
+		$Sock->$ShowReceivePackets = false;
+		$Sock->$ShowParsePackets = false;
+		// Create Window
+		$Window = GUICreate('Window', 'Simple Hotline Chat Coded by UberFoX', 624, 425, -1, -1, 3);
+		// Create controls
+		// Make the main Tab sheet
+		$Tab = GUICreate('TabSheet', $Window, 8, 8, 628 - 20, 425 - 35);
+		// Add 2 pages to sheet
+		$TabPageStatus = GUICreate('TabPage', $Tab, 'Status');
+		$TabPagePublicChat = GUICreate('TabPage', $Tab, 'Public Chat');
+		// Add Stuff to Status page
+		$tLog = GUICreate('CodeBox', $TabPageStatus, '', 0, 25, 628 - 33, 425 - 90);
+		$lStatus = GUICreate('Label', $TabPageStatus, '', 0, 4, 628 - 33, 30);
+		// Add Stuff to Public Chat page
+		GUISetProp($tLog, 'ReadOnly', true);
+		$tChat = GUICreate('CodeBox', $TabPagePublicChat, '', 0, 25, 628 - 150, 425 - 122);
+		GUISetProp($tChat, 'ReadOnly', true);
+		GUISetProp($tChat, 'ShowLineNumbers', false);
+		$tUsers = GUICreate('ListBox', $TabPagePublicChat, 628 - 150, 25, 120, 425 - 120);
+		$tChatEnter = GUICreate('RichTextBox', $TabPagePublicChat, '', 0, 425 - 90, 628 - 30, 25);
+		GUILink($tChatEnter, 'KeyDown', '$param->OnChatKeyPress($arg);', $this);
+		// Window Links
+		GUILink($Window, 'FormClosing', '$param->OnFormClosing($arg);', $this);
+		// Finally Show the Window
+		GUILoad( $this->$Window );
+		// Connect and Login!
+		if(!$Sock->Connect())
+		{
+			OnDebugMessage('Error connecting');
+		}
+		if(!$Sock->Login($Config[2], 'guest', ''))
+		{
+			OnDebugMessage('Error logging in');
+		}
+	}
+	Function OnFormClosing( $arg )
+	{
+		Dispose();
+	}
+	Function OnChatKeyPress( $arg )
+	{
+		my List ($Char, $KeyCode, $KeyData, $KeyValue, $Modifiers, $Alt, $Shift, $Control) = $arg;
+		if($KeyCode == Asc(@CR) || $KeyCode == Asc(@LF))
+		{
+			my $Text = GUIGetProp($tChatEnter, 'Text');
+			GUISetProp($tChatEnter, 'Text', '');
+			$Sock->SendChatMsg(Trim($Text));
+		}
+	}
+	Function __destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		// Disconnect
+		$Sock->Disconnect();
+		// Clean Up
+		GUIUnload($this->$Window);
+		unset($this->$Window);
+	}
+	Function LogAdd( $Msg )
+	{
+		my $Len = StrLen(GUICodeBox($tLog, 'Text'));
+		GUICodeBox($tLog, 'SelectionStart', $Len);
+		GUICodeBox($tLog, 'SelectionEnd', $Len);
+		GUICodeBox($tLog, 'DoCaretVisible');
+		GUICodeBox($tLog, 'Insert', $Msg . @CRLF);
+	}
+	Function ChatAdd( $Msg )
+	{
+		my $Date = GetTimeOnly();
+		my $Len = StrLen(GUICodeBox($tChat, 'Text'));
+		GUICodeBox($tChat, 'SelectionStart', $Len);
+		GUICodeBox($tChat, 'SelectionEnd', $Len);
+		GUICodeBox($tChat, 'DoCaretVisible');
+		GUICodeBox($tChat, 'Insert', "[$Date] $Msg" . @CRLF);
+	}
+	Function DoUpdate()
+	{
+		$Sock->Process();
+	}
+	// Socket Events
+	Function OnStatusChanged( $Status )
+	{
+		switch($Status)
+		{
+			case HLSocketStatus->$Disconnected:
+				GUISetProp($lStatus, 'Text', 'Disconnected');
+				LogAdd('Disconnected');
+				ChatAdd(" <<<   Disconnected from server   >>>");
+				$Sock->$UserList->ClearAll();
+				$Sock->$UserList->UpdateUserList();
+				break;
+			case HLSocketStatus->$Connecting:
+				GUISetProp($lStatus, 'Text', 'Connecting...');
+				LogAdd('Trying to connect...');
+				break;
+			case HLSocketStatus->$Handsake:
+				GUISetProp($lStatus, 'Text', 'Handshake...');
+				LogAdd('Shaking hands with the server...');
+				break;
+			case HLSocketStatus->$Connected:
+				GUISetProp($lStatus, 'Text', 'Connected');
+				break;
+			case HLSocketStatus->$LoggingIn:
+				GUISetProp($lStatus, 'Text', 'Logging in');
+				LogAdd('Logging into the server...');
+				break;
+			case HLSocketStatus->$LoggedIn:
+				GUISetProp($lStatus, 'Text', 'Logged in');
+				LogAdd('Logged into the server');
+				$Sock->RequestUserList();
+				break;
+		}
+	}
+	Function OnUserJoined( $UserInfo )
+	{
+		my $UserName = $UserInfo->$UserName;
+		ChatAdd(" <<<   $UserName has joined   >>>");
+	}
+	Function OnUserLeft( $UserInfo )
+	{
+		my $UserName = $UserInfo->$UserName;
+		ChatAdd(" <<<   $UserName has left   >>>");
+		unset($UserInfo);
+	}
+	Function OnUserChangeName( $OldUserName, $UserName )
+	{
+		ChatAdd(" <<< $OldUserName is now known as $UserName >>>");
+	}
+	Function OnGetServerName( $ServerName )
+	{
+		ChatAdd(" <<<   Connected to $ServerName   >>>");
+	}
+	Function OnGetUserNameList( $UserList )
+	{
+		GUIListBox($tUsers, 'Clear');
+		foreach($UserList as my $UserInfo)
+		{
+			GUIListBox($tUsers, 'AddItem', $UserInfo->$UserName);
+		}
+	}
+	Function OnDebugMessage( $Message )
+	{
+		LogAdd($Message);
+	}
+	Function OnChatMessage( $Message, $ChatID )
+	{
+		foreach(Lines($Message) as my $Line)
+		{
+			my $text = trim($Line, "\n\r");
+			if (IsEmptyOrNull($text))
+				continue;
+			ChatAdd($text);
+		}
+	}
+}

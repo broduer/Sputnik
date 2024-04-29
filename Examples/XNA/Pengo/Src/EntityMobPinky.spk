@@ -1,0 +1,65 @@
+Class EntityMobPinky extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $DeathSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$ID = EntityType->$Pinky;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIChase = new AIChase($this);
+		$AIChase->$Enabled = true;
+		my $AIMoveDelay = new AIMoveDelay($this);
+		$AIMoveDelay->$MoveFor = 200;
+		$AIMoveDelay->$StopFor = 10;
+		$AIMoveDelay->$Enabled = true;
+		$AI->$AIList[] = $AIMoveDelay;
+		$AI->$AIList[] = $AIChase;
+		
+		$DeathSound = array(BinaryLoad('./Sounds/MonsterCrushed.wav'), 'MonsterCrushed.wav');
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Pinky/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Pinky/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Pinky/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Pinky/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Pinky/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Pinky/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Pinky/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Pinky/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Pinky/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Pinky/Spawn13.png');
+		$Respawn = false;
+	}
+	Function Death()
+	{
+		if($Disposed)
+			return;
+		PlaySound($DeathSound, false);
+		if($Respawn)
+			$Game->$Map->SpawnDelayed($ID);
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+			return;
+		$AI->Update();
+		AttackPlayers();
+	}
+};

@@ -1,0 +1,168 @@
+﻿$LoadCommands['mark'] = array('CmdMark', 0, 0);
+Class extends ServerManager
+{
+	Function CmdMark($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Mark a location so that you may return to it later';
+		if ($args === 'help')
+			return array(
+							'Mark a location so that you may return to it later',
+							'First use ''/mark'' to mark the location then use ''/recall'' to teleport back'
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowMark') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my List($outOfBounds, $almostOutOfBounds) = IsPlayerOutOfBounds($commandUser);
+		if ($outOfBounds || $almostOutOfBounds)
+		{
+			SayToUser($commandUser, "You cannot set your mark at this location since it is out of bounds");
+			return;
+		}
+		my $markFileData = $utils->getMarkFile();
+		my $homeFileData = $utils->getHomeFile();
+		my $OurSteamId = $commandUser->$SteamId;
+		my List($x, $y, $z) = $commandUser->$pos;
+		my $homeDist = GetConfig('HomeDist');
+		if ($homeDist > 0)
+		{
+			foreach($homeFileData as my $homeData)
+			{
+				my List($otherSteamId, $otherX, $otherY, $otherZ) = $homeData;
+				if ($otherSteamId eqi $OurSteamId)
+					continue;
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayer($otherSteamId);
+				if ($found != null && AreBothFriends($commandUser, $found))
+					continue;
+				my $dist = Distance3D($x, $y, $z, $otherX, $otherY, $otherZ);
+				if ($dist <= $homeDist)
+				{
+					SayToUser($commandUser, "You cannot set your mark at this location since it is too close to another players home");
+					return;
+				}
+			}
+		}
+		my $homePlrDist = GetConfig('HomePlrDist');
+		if ($homePlrDist > 0)
+		{
+			foreach($currentPlayers->$players as my $player)
+			{
+				my List($otherX, $otherY, $otherZ) = $player->$pos;
+				if ($player->$SteamId eqi $OurSteamId)
+					continue;
+				if (AreBothFriends($commandUser, $player))
+					continue;
+				my $dist = Distance3D($x, $y, $z, $otherX, $otherY, $otherZ);
+				if ($dist <= $homeDist)
+				{
+					SayToUser($commandUser, "You cannot set your mark at this location since it is too close to another player");
+					return;
+				}
+			}
+		}
+		my $tpCost = GetConfig('MarkCost');
+		if ($tpCost > 0)
+		{
+			SayToUser($commandUser, "Setting your marked location costs '$tpCost' cash");
+			my $userCash = GetUserCash($commandUser);
+			if ($userCash < $tpCost)
+			{
+				SayToUser($commandUser, "You cannot afford to set your marked location you have '$userCash' cash and need '$tpCost'");
+				return;
+			}
+			DelUserCash($commandUser, $tpCost);
+			$userCash = GetUserCash($commandUser);
+			MarkSetLocation($OurSteamId, $x, $y, $z);
+			SayToUser($commandUser, "Your mark location has been set to X:$x, Y:$y, Z:$z at a cost of '$tpCost' cash you now have '$userCash' cash left");
+		}
+		else
+		{
+			MarkSetLocation($OurSteamId, $x, $y, $z);
+			SayToUser($commandUser, "Your marked location has been set to X:$x, Y:$y, Z:$z");
+		}
+	}
+	Function MarkSetLocation($SteamId, $X, $Y, $Z)
+	{
+		MarkDeleteLocation($SteamId);
+		my $markFileData = $utils->getMarkFile();
+		$markFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		$utils->setMarkFile($markFileData);
+	}
+	Function MarkDeleteLocation($toFind)
+	{
+		my $markFileData = $utils->getMarkFile();
+		my $newMarkFileData = array();
+		for (my $i = 0; $i < count($markFileData); $i++)
+		{
+			my List($SteamId, $X, $Y, $Z) = $markFileData[$i];
+			if ($SteamId eqi $toFind)
+				continue;
+			$newMarkFileData[] = $markFileData[$i];
+		}
+		$utils->setMarkFile($newMarkFileData);
+	}
+	Function MarkLocationExists($toFind)
+	{
+		my $markFileData = $utils->getMarkFile();
+		foreach($markFileData as my $markData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $markData;
+			if ($SteamId eqi $toFind)
+				return true;
+		}
+		return false;
+	}
+}
+Class extends Utils
+{
+	Function getMarkFile()
+	{
+		my $markFileData = array();
+		if (!FileExists('./Variables/Marks.txt'))
+			return $markFileData;
+		my $markFile = FileReadLines('./Variables/Marks.txt');
+		foreach($markFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 4)
+				continue;
+			my List($SteamId, $X, $Y, $Z) = $split;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			if (IsEmptyOrNull($X))
+				$X = 0;
+			if (IsEmptyOrNull($Y))
+				$Y = 0;
+			if (IsEmptyOrNull($Z))
+				$Z = 0;
+			$markFileData[] = array($SteamId, (double)$X, (double)$Y, (double)$Z);
+		}
+		return $markFileData;
+	}
+	Function setMarkFile($markFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId|X|Y|Z");
+		foreach($markFileData as my $markData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $markData;
+			sbAppendLine($sb, "$SteamId|$X|$Y|$Z");
+		}
+		FileSave('./Variables/Marks.txt', sbToString($sb));
+		unset($sb);
+	}
+}

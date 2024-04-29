@@ -1,0 +1,47 @@
+#<?
+Class PropFakeChar extends Prop
+{
+	my $Value;
+	my $CodeGen;
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType, $PropCodeGen)
+	{
+		parent::__Construct($PropName, PAT->$EndEdit, $PropValidation, $PropDefault, $PropParentType);
+		$Value = (char)$PropDefault;
+		$this->$CodeGen = $PropCodeGen;
+	}
+	override Function GetDefault($Object)
+	{
+		return (char)$Default;
+	}
+	override Function GetProp($Object)
+	{
+		return (char)$Value;
+	}
+	override Function SetProp($Object, $v)
+	{
+		if($Validation !== null)
+		{
+			if(!RegexMatch($v, $Validation))
+				return new PropVerificationError();
+		}
+		$Value = (char)$v;
+		return $v;
+	}
+	override Function LoadProp($Object, $v)
+	{
+		SetProp($Object, $v);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)(char)GetProp($Object);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		if($CodeGen !== null && !$CodeGen)
+			return;
+		my $Code = '';
+		my $v = GetProp($Object);
+		$Code .= "GUISetProp(\$$ObjName, '$Name', $v);\r\n";
+		return $Code;
+	}
+};

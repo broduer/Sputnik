@@ -1,0 +1,45 @@
+﻿Include("TCC.spk", true);
+
+Test1(); // Send an int to C and get an int back
+say "";
+Test2(); // Send a String to C and get a string back
+
+Function Test1
+{
+	my $source = 
+	@"
+		#include <stdio.h>
+		int main(int a)
+		{
+			printf(""Value is '%d' Hello from C++\n"", a);
+			return 3;
+		}
+	";
+
+	my $newC = new InlineC();
+	$newC->SetOutputType($TCC_OUTPUT_MEMORY);
+	$newC->AddSource($source);
+	$newC->SetExecute("Int32", "i");
+	my $ret = $newC->Execute(999);
+	say "Return: $ret";
+}
+
+Function Test2
+{
+	my $source = 
+	@"
+		#include <stdio.h>
+		char* main(char* a)
+		{
+			printf(""Value is '%s' Hello from C++\n"", a);
+			return ""Hi from C"";
+		}
+	";
+
+	my $newC = new InlineC();
+	$newC->SetOutputType($TCC_OUTPUT_MEMORY);
+	$newC->AddSource($source);
+	$newC->SetExecute("String", "p");
+	my $ret = $newC->Execute("Moo");
+	say "Return: $ret";
+}

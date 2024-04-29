@@ -1,0 +1,125 @@
+﻿	Class Computable
+	{
+		abstract Function Calculate($Left, $Right) { }
+	}
+
+	[
+	Terminal("(EOF)")
+	Terminal("(Error)")
+	Terminal("(Whitespace)")
+	Terminal("(")
+	Terminal(")")
+	] : SpecialToken
+	Class myUselessTerminals{}
+	
+	[Terminal("Float")] : SpecialToken
+	Class myFloat
+	{
+		my $value;
+		Function __Construct($str)
+		{
+			$value = (Double)$str;
+		}
+	}
+	
+	[Terminal("Integer")] : SpecialToken
+	Class myInteger
+	{
+		my $value;
+		Function __Construct($str)
+		{
+			$value = (Double)$str;
+		}
+	}
+	
+	[Rule("<Negate Exp> ::= ~'-' <Value>")] : SpecialToken
+	Class Negate
+	{
+		my $value;
+		Function __Construct($val)
+		{
+			$value = -$val->$value;
+		}
+	}
+	
+	[Terminal("+")] : SpecialToken
+	Class opPlus extends Computable
+	{
+		override Function Calculate($Left, $Right)
+		{
+			return $Left += $Right;
+		}
+	}
+	
+	[Terminal("-")] : SpecialToken
+	Class opMinus extends Computable
+	{
+		override Function Calculate($Left, $Right)
+		{
+			return $Left -= $Right;
+		}
+	}
+	
+	[Terminal("*")] : SpecialToken
+	Class opMult extends Computable
+	{
+		override Function Calculate($Left, $Right)
+		{
+			return $Left *= $Right;
+		}
+	}
+	
+	[Terminal("/")] : SpecialToken
+	Class opDivide extends Computable
+	{
+		override Function Calculate($Left, $Right)
+		{
+			return $Left /= $Right;
+		}
+	}
+	
+	[
+	Rule("<Expression> ::= <Expression> '+' <Mult Exp>")
+	Rule("<Expression> ::= <Expression> '-' <Mult Exp>")
+	Rule("<Mult Exp> ::= <Mult Exp> '/' <Negate Exp>")
+	Rule("<Mult Exp> ::= <Mult Exp> '*' <Negate Exp>")
+	] : SpecialToken
+	Class Operation
+	{
+		my $value;
+		Function __Construct($Left, $OP, $Right)
+		{
+			$value = $OP->Calculate($Left->$value, $Right->$value);
+		}
+	}
+	
+	my $Trims = array( "<Value> ::= '(' <Expression> ')'" => "<Expression>" );
+	my $Parser = Parser("Calc.cgt", "SpecialToken", $Trims);
+	say "Enter expressions to be parsed.";
+	say "Example 100+(50/2)";
+	while(true)
+	{
+		my $Input = Input("> ");
+		try
+		{
+			if(IsEmptyOrNull($Input))
+			{
+				say "You must type an expression to parse";
+				continue;
+			}
+			my $ReturnToken = Parse($Parser, $Input);
+			if(IsVarClass($ReturnToken, 'Operation'))
+			{
+				my $FinalValue = $ReturnToken->$Value;
+				say "Result: $FinalValue";
+			}
+			else
+			{
+				say "The parse failed";
+			}
+		}
+		catch (Exception $e)
+		{
+			say "Error: " . $e->getMessage();
+		}
+	}

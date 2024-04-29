@@ -1,0 +1,60 @@
+Class EntityMobBlaze extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $DeathSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$ID = EntityType->$Blaze;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIAvoid = new AIAvoid($this);
+		$AIAvoid->$Enabled = true;
+		$AI->$AIList[] = $AIAvoid;
+		
+		$DeathSound = array(BinaryLoad('./Sounds/MonsterCrushed.wav'), 'MonsterCrushed.wav');
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Blaze/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Blaze/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Blaze/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Blaze/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Blaze/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Blaze/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Blaze/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Blaze/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Blaze/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Blaze/Spawn13.png');
+		$Respawn = false;
+	}
+	Function Death()
+	{
+		if($Disposed)
+			return;
+		PlaySound($DeathSound, false);
+		if($Respawn)
+			$Game->$Map->SpawnDelayed($ID);
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+			return;
+		$AI->Update();
+		AttackPlayers();
+	}
+};

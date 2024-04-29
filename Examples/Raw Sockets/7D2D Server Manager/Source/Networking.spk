@@ -1,0 +1,67 @@
+﻿$onServerInit[] = 'NetworkingInit';
+Class extends ServerManager
+{
+	my $Socket;
+	my $toProcess;
+	Function NetworkingInit()
+	{
+		$Socket = SocketCreate('Stream', 'TCP');
+		$toProcess = array();
+	}
+	Function Begin()
+	{
+		Connect(GetConfig('Ip'), GetConfig('Port'));
+		Go();
+	}
+	Function Connect($ip, $port)
+	{
+		SocketConnect($Socket, $ip, $port) or die('Failed to connect');
+		AppendLine("Client is connecting to IP '$ip' and Port '$port'");
+		ThreadCreate('netProcessing', '$arg->ReadNetwork();', $this);
+	}
+	Function Go()
+	{
+		while (true)
+		{
+			Process();
+			$console->Process();
+			ThreadLock("ToProcess")
+			{
+				ProcessNetwork();
+			}
+			sleep(1);
+		}
+	}
+	Function ReadNetwork()
+	{
+		while (true)
+		{
+			my $line = SocketReadLine($Socket);
+			my $lineTrim = trim($line);
+			if (!IsEmptyOrNull($lineTrim))
+			{
+				ThreadLock("ToProcess")
+				{
+					push($toProcess, $line);
+				}
+			}
+			sleep(1);
+		}
+	}
+	Function ProcessNetwork()
+	{
+		if (count($toProcess) <= 0)
+			return;
+		my $line = shift($toProcess);
+		order($toProcess);
+		OnProcess($line);
+	}
+	Function SendToServer($Text)
+	{
+		SocketSend($Socket, "$Text\r\n");
+	}
+	Function OnProcess($line)
+	{
+		OnProcessParser($line);
+	}
+}

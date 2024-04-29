@@ -1,0 +1,200 @@
+#<?
+Function Backup($ProjectFile, $BackupFolder, $ProjectFolder)
+{
+	my $i = 0;
+	while( FileExists(CombinePath($BackupFolder, $i . ".dat")) )
+		$i++;
+	FileSave(CombinePath($BackupFolder, $i . ".dat"), StrCompress(FileLoad($ProjectFile)));
+}
+Function Load()
+{
+	GUIListBox($ProjectView->$WindowList, 'Clear');
+	my $ProjectFile = "./Projects/$ProjectName/Project.dat";
+	ClearContent();
+	$MainWindow = GetContent("MainWND", $ProjectFile);
+	my $Objects = GetContent("Windows");
+	$ProjectFile = null;
+	for(my $i = 0; $i < $Objects; $i++)
+	{
+		my $WinName = GetContent("Window$i");
+		if($MainWindow === null)
+			$MainWindow = $WinName;
+		my $Source = GetContent("WND$WinName\_Source");
+		my $MDI = (bool)GetContent("WND$WinName\_MDI");
+		$Windows[$WinName] = new Window($WinName, $MDI);
+		$Windows[$WinName]->$Source = $Source;
+		$Windows[$WinName]->$MDI = $MDI;
+		foreach($Windows[$WinName]->$MyProps as my $Prop)
+		{
+			my $PName = $Prop->$Name;
+			my $PropValue = GetContent("WND$WinName\_$PName");
+			if($PropValue !== null)
+			{
+				$Prop->LoadProp($Windows[$WinName], $PropValue);
+				$Windows[$WinName]->SetChanged($PName);
+			}
+		}
+		GUIListBox($ProjectView->$WindowList, 'AddItem', $WinName);
+		my $Container = $Windows[$WinName]->GetContainer();
+		LoadContainer("WND$WinName", $Container, $ProjectFile, "WND$WinName");
+	}
+	GUIListBox($ProjectView->$ClassList, 'Clear');
+	my $ClsCount = GetContent("Classes");
+	for(my $i = 0; $i < $ClsCount; $i++)
+	{
+		my $ClsName = GetContent("Class$i");
+		my $ClsSource = GetContent("Class$ClsName\_Source");
+		$Classes[$ClsName] = $ClsSource;
+		GUIListBox($ProjectView->$ClassList, 'AddItem', $ClsName);
+	}
+	GUIListBox($ProjectView->$FunctionList, 'Clear');
+	my $FuncCount = GetContent("Functions");
+	for(my $i = 0; $i < $FuncCount; $i++)
+	{
+		my $FuncName = GetContent("Function$i");
+		my $FuncSource = GetContent("Function$FuncName\_Source");
+		$Functions[$FuncName] = $FuncSource;
+		GUIListBox($ProjectView->$FunctionList, 'AddItem', $FuncName);
+	}
+	GUIListBox($ProjectView->$EnumList, 'Clear');
+	my $FuncCount = GetContent("Enums");
+	for(my $i = 0; $i < $FuncCount; $i++)
+	{
+		my $EnumName = GetContent("Enum$i");
+		my $EnumSource = GetContent("Enum$EnumName\_Source");
+		$Enums[$EnumName] = $EnumSource;
+		GUIListBox($ProjectView->$EnumList, 'AddItem', $EnumName);
+	}
+	GUIListBox($ProjectView->$GlobalList, 'Clear');
+	my $FuncCount = GetContent("Globals");
+	for(my $i = 0; $i < $FuncCount; $i++)
+	{
+		my $GlobalName = GetContent("Global$i");
+		my $GlobalSource = GetContent("Global$GlobalName\_Source");
+		$Globals[$GlobalName] = $GlobalSource;
+		GUIListBox($ProjectView->$GlobalList, 'AddItem', $GlobalName);
+	}
+}
+Function Save()
+{
+	my $BackupFolder = "./Projects/$ProjectName/Backup";
+	if(!DirExists($BackupFolder)) MKDir($BackupFolder);
+	my $ProjectFile = "./Projects/$ProjectName/Project.dat";
+	if( -e $ProjectFile)
+		Backup($ProjectFile, $BackupFolder, "./Projects/$ProjectName");
+	ClearContent();	
+	my $ObjID = 0;	
+	SetContent("MainWND", $MainWindow);
+	foreach(GUIListBox($ProjectView->$WindowList, 'GetItems') as my $WinName)
+	{
+		$WinObj = $Windows[$WinName];
+		my $Source = $WinObj->$Source;
+		my $MDI = $WinObj->$MDI;
+		SetContent("WND$WinName\_Source", $Source);
+		SetContent("WND$WinName\_MDI", (string)$MDI);
+		foreach($WinObj->$MyProps as my $Prop)
+		{
+			my $PName = $Prop->$Name;
+			my $PropValue = $Prop->SaveProp($WinObj);
+			if($PropValue !== null)
+				SetContent("WND$WinName\_$PName", $PropValue);
+		}
+		my $Container = $WinObj->GetContainer();
+		SaveContainer("WND$WinName", $Container, "WND$WinName");
+		SetContent("Window$ObjID", $WinName);
+		$ObjID++;
+	}
+	SetContent("Windows", Count($Windows));
+	$ObjID = 0;
+	foreach(GUIListBox($ProjectView->$ClassList, 'GetItems') as my $ClsName)
+	{
+		my $ClsSource = $Classes[$ClsName];
+		SetContent("Class$ObjID", $ClsName);
+		SetContent("Class$ClsName\_Source", $ClsSource);
+		$ObjID++;
+	}
+	SetContent("Classes", Count($Classes));
+	$ObjID = 0;
+	foreach(GUIListBox($ProjectView->$FunctionList, 'GetItems') as my $FuncName)
+	{
+		my $FuncSource = $Functions[$FuncName];
+		SetContent("Function$ObjID", $FuncName);
+		SetContent("Function$FuncName\_Source", $FuncSource);
+		$ObjID++;
+	}
+	SetContent("Functions", Count($Functions));
+	$ObjID = 0;
+	foreach(GUIListBox($ProjectView->$EnumList, 'GetItems') as my $EnumName)
+	{
+		my $EnumSource = $Enums[$EnumName];
+		SetContent("Enum$ObjID", $EnumName);
+		SetContent("Enum$EnumName\_Source", $EnumSource);
+		$ObjID++;
+	}
+	SetContent("Enums", Count($Enums));
+	$ObjID = 0;
+	foreach(GUIListBox($ProjectView->$GlobalList, 'GetItems') as my $GlobalName)
+	{
+		$GlobalSource = $Globals[$GlobalName];
+		SetContent("Global$ObjID", $GlobalName);
+		SetContent("Global$GlobalName\_Source", $GlobalSource);
+		$ObjID++;
+	}
+	SetContent("Globals", Count($Globals));
+	// Save Timer
+	ChangeProjectName($ProjectName, " ;; Saving...");
+	my $Timer = GUICreate("Timer", $GUI, 1000);
+	GUILink($Timer, "Tick", "ChangeProjectName(\"$ProjectName\");GUITimer(\$param, \"Stop\");Unset(\$param);", $Timer);
+	GUITimer($Timer, "Start");
+	FileSave($ProjectFile, GetFullContent());
+}
+Function SaveContainer($ObjectName, $Container, $Window)
+{
+	// Save Objects
+	my $ObjID = 0;
+	foreach($Container->$Objects as my $Name => my $Object)
+	{
+		my $Type = $Object->GetType();
+		SetContent("$Window\_Object_$ObjectName\_$ObjID Name", $Object->GetName());
+		SetContent("$Window\_Object_$ObjectName\_$ObjID Type", $Object->GetType());
+		foreach($Object->$MyProps as my $Prop)
+		{
+			my $PName = $Prop->$Name;
+			my $PropValue = $Prop->SaveProp($Object);
+			if($PropValue !== null)
+				SetContent("$Window\_Object_$ObjectName\_$ObjID $PName", $PropValue);
+		}
+		if($Object->HasContainer())
+			SaveContainer($Name, $Object->GetContainer(), $Window);
+		$ObjID++;
+	}
+	SetContent("$Window\_Object_s$ObjectName", $ObjID);
+}
+Function LoadContainer($ObjectName, $Container, $ProjectFile, $Window)
+{
+	// Load Objects
+	my $ObjectCount = GetContent("$Window\_Object_s$ObjectName");
+	for(my $i = 0; $i < $ObjectCount; $i++)
+	{
+		my $Name = GetContent("$Window\_Object_$ObjectName\_$i Name");
+		my $Type = (int)GetContent("$Window\_Object_$ObjectName\_$i Type");
+		my $Object = CreateObject($Container, $Type, $Name);
+		foreach($Object->$MyProps as my $Prop)
+		{
+			my $PName = $Prop->$Name;
+			my $PropValue = GetContent("$Window\_Object_$ObjectName\_$i $PName");
+			if($PropValue !== null)
+			{
+				$Prop->LoadProp($Object, $PropValue);
+				$Object->SetChanged($PName);
+			}
+		}
+		$Container->$Objects[$Name] = $Object;
+		$Container->$ObjectNames[$Name] = true;
+		my $InternalObjectCount = GetContent("$Window\_Object_s$Name");
+		if($InternalObjectCount > 0)
+		{
+			LoadContainer("$Name", $Object->GetContainer(), $ProjectFile, $Window);
+		}
+	}
+}

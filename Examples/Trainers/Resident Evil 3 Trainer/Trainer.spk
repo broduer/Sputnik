@@ -1,0 +1,20 @@
+﻿PluginLoad('SputnikOldGUI.dll');
+
+Include("AmmoType.spk", true);
+Include("ItemType.spk", true);
+Include("ChestEditor.spk", true);
+
+Global $GamePID = ProcessID("ePSXe.exe");
+Global $Pointer = 0xB29AD5; # Should always link to Inventory Slot 1 AMMO
+Global $InvCount = 8;
+Global $ChestCount = 64;
+Global $ChestOffset = 0x28;
+//$Value = ReadMem($GamePID, "", $Pointer, "C", 1);
+//$Value = ReadMem($GamePID, "", $Pointer, "C", 1);
+//say "Value is: $Value";
+// differance is 4
+
+Global $a = new ChestEditor("Chest", $ChestCount, $ChestOffset);
+
+While ( ) 
+	DoEvents( );

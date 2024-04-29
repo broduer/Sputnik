@@ -1,0 +1,191 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "Array:Equate";
+println("[$CurrentName] Begins");
+ArrayEquateTest1();
+ArrayEquateTest2();
+ArrayEquateTest3();
+ArrayEquateTest4();
+ArrayEquateTest5();
+ArrayEquateTest6();
+ArrayEquateTest7();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function ArrayEquateTest1()
+{
+	println("$CurrentName Test 1");
+	my $newArray = array("The", "quick", "brown", "fox");
+	if(
+		$newArray[0] == "The" &&
+		$newArray[1] == "quick" &&
+		$newArray[2] == "brown" &&
+		$newArray[3] == "fox" &&
+		$newArray == array("The", "quick", "brown", "fox") &&
+		$newArray == ["The", "quick", "brown", "fox"] &&
+		$newArray == qw(The quick brown fox)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest2()
+{
+	println("$CurrentName Test 2");
+	my $newArray = array("The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	if(
+		$newArray[0] == "The" &&
+		$newArray[1] == "pink" &&
+		$newArray[2] == "brown" &&
+		$newArray[3] == "fox" &&
+		$newArray == array("The", "pink", "brown", "fox") &&
+		$newArray == ["The", "pink", "brown", "fox"] &&
+		$newArray == qw(The pink brown fox)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest3()
+{
+	println("$CurrentName Test 3");
+	my $newArray = array("The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	$newArray[] = "zaza";
+	if(
+		$newArray[0] == "The" &&
+		$newArray[1] == "pink" &&
+		$newArray[2] == "brown" &&
+		$newArray[3] == "fox" &&
+		$newArray[4] == "zaza" &&
+		$newArray == array("The", "pink", "brown", "fox", "zaza") &&
+		$newArray == ["The", "pink", "brown", "fox", "zaza"] &&
+		$newArray == qw(The pink brown fox zaza)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest4()
+{
+	println("$CurrentName Test 4");
+	my $newArray = array("The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	$newArray[] = "zaza";
+	$newArray[]! = "hehe";
+	if(
+		$newArray[0] == "hehe" &&
+		$newArray[1] == "The" &&
+		$newArray[2] == "pink" &&
+		$newArray[3] == "brown" &&
+		$newArray[4] == "fox" &&
+		$newArray[5] == "zaza" &&
+		$newArray == array("hehe", "The", "pink", "brown", "fox", "zaza") &&
+		$newArray == ["hehe", "The", "pink", "brown", "fox", "zaza"] &&
+		$newArray == qw(hehe The pink brown fox zaza)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest5()
+{
+	println("$CurrentName Test 5");
+	my $newArray = array("The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	$newArray[] = "zaza";
+	$newArray[]! = "hehe";
+	$newArray[500] = "ok";
+	if(
+		$newArray[0] == "hehe" &&
+		$newArray[1] == "The" &&
+		$newArray[2] == "pink" &&
+		$newArray[3] == "brown" &&
+		$newArray[4] == "fox" &&
+		$newArray[5] == "zaza" &&
+		$newArray[500] == "ok" &&
+		$newArray == array("hehe", "The", "pink", "brown", "fox", "zaza", 500 => "ok")
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest6()
+{
+	println("$CurrentName Test 6");
+	my $newArray = array("The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	$newArray[] = "zaza";
+	$newArray[]! = "hehe";
+	$newArray[500] = "ok";
+	if(
+		$newArray[<>] == "hehe The pink brown fox zaza ok" &&
+		$newArray[0] == "hehe" &&
+		$newArray[1] == "The" &&
+		$newArray[2] == "pink" &&
+		$newArray[3] == "brown" &&
+		$newArray[4] == "fox" &&
+		$newArray[5] == "zaza" &&
+		$newArray[500] == "ok" &&
+		$newArray == array("hehe", "The", "pink", "brown", "fox", "zaza", 500 => "ok")
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function ArrayEquateTest7()
+{
+	println("$CurrentName Test 7");
+	my $newArray = array(array("the", "Zox"), "The", "quick", "brown", "fox");
+	$newArray[1] = "pink";
+	$newArray[] = "zaza";
+	$newArray[]! = "hehe";
+	$newArray[500] = "ok";
+	if($newArray[<>] == 'hehe {ARRAY;Elements:2} pink quick brown fox zaza ok')
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

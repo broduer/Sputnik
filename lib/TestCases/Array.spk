@@ -1,0 +1,4 @@
+#include-once
+#require-once
+include('TestCases/Arrays/Equate.spk', true);
+include('TestCases/Arrays/Pointers.spk', true);

@@ -1,0 +1,283 @@
+﻿$LoadCommands['claims'] = array('CmdClaims', 0, 6);
+Class extends ServerManager
+{
+	Function CmdClaims($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'View all claims on server and optionally delete any';
+		if ($args === 'help')
+		{
+			return array(
+							'View all claims on server and optionally delete any',
+							'To view all player claims type ''/claims''',
+							'To view all players who have over xx claims type ''/claims 5'' where 5 is how many to filter',
+							'To view all claims of a player type ''/claims of playerName''',
+							'To teleport to the claim of a player type ''/claims of playerName 1'' where 1 is the number given in the previous command',
+							'To delete all claims of a player type ''/claims remove playerName'' where playerName is the name/id of the player',
+							'To delete a claim at an x y z location type ''/claims remove x y z'' where x/y/z is the location of the claim',
+							'To find all claims within xx blocks of yourself type ''/claims here 50'' where 50 is the dist you wish to search',
+							'To find all claims within xx blocks of yourself and delete them type ''/claims kill 50'' where 50 is the dist you wish to search'
+							);
+		}
+		if ($commandUser == null)
+			return;
+		switch ($argCount)
+		{
+			case 0:
+			{
+				my $foundAny = false;
+				my $landClaimData = GetLandClaimData();
+				foreach($landClaimData as my $ppSteamId => my $ppData)
+				{
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+					if ($found == null)
+						continue;
+					my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+					my $claimCount = count($keyStoneList);
+					if ($claimCount <= 0)
+						continue;
+					SayToUser($commandUser, "$ownerName has '$claimCount' claim(s)");
+					$foundAny = true;
+				}
+				if (!$foundAny)
+					SayToUser($commandUser, "No players have any claim(s)");
+			}
+			break;
+			case 1:
+			{
+				my $num = (int)$args[0];
+				if ($num <= 0)
+				{
+					SayToUser($commandUser, "You must enter a number of claims to filter");
+					return;
+				}
+				my $foundAny = false;
+				my $landClaimData = GetLandClaimData();
+				foreach($landClaimData as my $ppSteamId => my $ppData)
+				{
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+					if ($found == null)
+						continue;
+					my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+					my $claimCount = count($keyStoneList);
+					if ($claimCount <= 0)
+						continue;
+					if ($claimCount < $num)
+						continue;
+					SayToUser($commandUser, "$ownerName has '$claimCount' claim(s)");
+					$foundAny = true;
+				}
+				if (!$foundAny)
+					SayToUser($commandUser, "No players have '$num' or more claim(s)");
+			}
+			break;
+			case 2:
+			case 3:
+			{
+				my $action = $args[0];
+				switch (lc($action))
+				{
+					case 'of':
+					{
+						my $who = $args[1];
+						my $delNumber = $argCount >= 3 ? $args[2] : null;
+						if (IsEmptyOrNull($who))
+						{
+							SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+							return;
+						}
+						my List($target, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+						if ($target == null)
+						{
+							SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+							return;
+						}
+						my $targetName = $target->$Name;
+						my List($x, $y, $z) = $commandUser->$Pos;
+						my $landClaimData = GetLandClaimData();
+						my $foundAny = false;
+						foreach($landClaimData as my $ppSteamId => my $ppData)
+						{
+							my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+							if ($found == null)
+								continue;
+							if ($found->$SteamId != $target->$SteamId)
+								continue;
+							my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+							my $claimCount = count($keyStoneList);
+							if ($claimCount <= 0)
+								continue;
+							$foundAny = true;
+							SayToUser($commandUser, "$targetName has '$claimCount' claim(s)");
+							if ($delNumber === null)
+							{
+								my $i = 1;
+								foreach($keyStoneList as my $keyStone)
+								{
+									my List($kx, $ky, $kz) = $keyStone;
+									my $dist = (int)Distance3D($kx, $ky, $kz, $x, $y, $z);
+									SayToUser($commandUser, "$i. X:$kx, Y:$ky, Z:$kz (Dist from you: $dist)");
+									$i++;
+								}
+							}
+							else
+							{
+								my $portedTo = false;
+								my $i = 1;
+								foreach($keyStoneList as my $keyStone)
+								{
+									my List($kx, $ky, $kz) = $keyStone;
+									if ($i == $delNumber)
+									{
+										TeleportUserToXYZ($commandUser, $kx, $ky, $kz);
+										SayToUser($commandUser, "You arrive at claim X:$kx , Y:$ky, Z:$kz owned by $targetName");
+										$portedTo = true;
+										break;
+									}
+									$i++;
+								}
+								if (!$portedTo)
+									SayToUser($commandUser, "$targetName has no claim number $delNumber");
+							}
+						}
+						if (!$foundAny)
+							SayToUser($commandUser, "$targetName has '0' claim(s)");
+					}
+					break;
+					case 'here':
+					case 'kill':
+					{
+						my $isKill = $action == 'kill';
+						if ($argCount > 2)
+						{
+							SayToUser($commandUser, "Action '$action' requires 2 params");
+							return;
+						}
+						my $num = (int)$args[1];
+						if ($num <= 0)
+						{
+							SayToUser($commandUser, "You must enter a number (dist) to scan");
+							return;
+						}
+						my List($x, $y, $z) = $commandUser->$Pos;
+						my $landClaimData = GetLandClaimData();
+						my $foundAny = false;
+						foreach($landClaimData as my $ppSteamId => my $ppData)
+						{
+							my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+							if ($found == null)
+								continue;
+							my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+							my $claimCount = count($keyStoneList);
+							if ($claimCount <= 0)
+								continue;
+							my $i = 1;
+							foreach($keyStoneList as my $keyStone)
+							{
+								my List($kx, $ky, $kz) = $keyStone;
+								my $dist = (int)Distance3D($kx, $ky, $kz, $x, $y, $z);
+								if ($num < $dist)
+									continue;
+								$foundAny = true;
+								if ($isKill)
+								{
+									SayToUser($commandUser, "Removing claim X:$kx, Y:$ky, Z:$kz owner $ownerName");
+									KillLandClaim($kx, $ky, $kz);
+									LandPPPProcessForceGrab();
+								}
+								else
+									SayToUser($commandUser, "$ownerName X:$kx, Y:$ky, Z:$kz (Dist from you: $dist)");
+								$i++;
+							}
+						}
+						if (!$foundAny)
+							SayToUser($commandUser, "There are no claims within '$num' block(s) of you");
+					}
+					break;
+					case 'remove':
+					{
+						if ($argCount > 2)
+						{
+							SayToUser($commandUser, "Action '$action' requires 2 params");
+							return;
+						}
+						my $who = $args[1];
+						if (IsEmptyOrNull($who))
+						{
+							SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+							return;
+						}
+						my List($target, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+						if ($target == null)
+						{
+							SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+							return;
+						}
+						my $name = $target->$Name;
+						KillUsersLandClaims($target);
+						LandPPPProcessForceGrab();
+						SayToUser($commandUser, "Any/All land claims of $name have been removed");
+						if ($isOnline)
+							SayToUser($target, "All your land claims were removed");
+					}
+					break;
+					default:
+					{
+						SayToUser($commandUser, "Invalid action see help on this command");
+					}
+					break;
+				}
+			}
+			break;
+			case 4:
+			{
+				my $action = $args[0];
+				switch (lc($action))
+				{
+					case 'remove':
+					{
+						my $rx = (int)$args[1];
+						my $ry = (int)$args[2];
+						my $rz = (int)$args[3];
+						my $landClaimData = GetLandClaimData();
+						my $foundAny = false;
+						foreach($landClaimData as my $ppSteamId => my $ppData)
+						{
+							my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+							if ($found == null)
+								continue;
+							my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+							my $claimCount = count($keyStoneList);
+							if ($claimCount <= 0)
+								continue;
+							my $i = 1;
+							foreach($keyStoneList as my $keyStone)
+							{
+								my List($kx, $ky, $kz) = $keyStone;
+								if ($kx != $rx || $ky != $ry || $kz != $rz)
+									continue;
+								$foundAny = true;
+								SayToUser($commandUser, "Removing claim X:$kx, Y:$ky, Z:$kz owner $ownerName");
+								KillLandClaim($kx, $ky, $kz);
+								$i++;
+							}
+						}
+						if (!$foundAny)
+							SayToUser($commandUser, "There is no claim at X:$rx, Y:$ry, Z:$rz");
+					}
+					break;
+					default:
+					{
+						SayToUser($commandUser, "Invalid action see help on this command");
+					}
+					break;
+				}
+			}
+			break;
+		}
+	}
+}

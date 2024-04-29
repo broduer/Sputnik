@@ -1,0 +1,48 @@
+#<?
+Class PropText extends Prop
+{
+	my $Min;
+	my $Max;
+	Function __Construct($PropName, $PropMin, $PropMax, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, $PropDefault, $PropParentType);
+		$Min = $PropMin;
+		$Max = $PropMax;
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return GUIGetProp($Object->GetObject(), $Name);
+	}
+	override Function SetProp($Object, $vv)
+	{
+		my $v = InputBoxEx('Text', 'Enter text here', join(Lines(GUIGetProp($Object->GetObject(), $Name)), @CRLF));
+		if($v === null)
+			return null;
+		if($Validation !== null)
+		{
+			if(!RegexMatch($v, $Validation))
+				return new PropVerificationError();
+		}
+		GUISetProp($Object->GetObject(), $Name, $v);
+		return $v;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		GUISetProp($Object->GetObject(), $Name, $Value);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)GetProp($Object);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Value = MakeText(GetProp($Object));
+		$Code .= "GUISetProp(\$$ObjName, '$Name', $Value);\r\n";
+		return $Code;
+	}
+};

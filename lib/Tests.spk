@@ -1,0 +1,26 @@
+#include-once
+#require-once
+/*
+This will include all Test scripts in the library
+
+These are test cases to be run and if they come back with success
+it means Sputnik is working correctly.
+
+Right now there is too few test cases we really need to add a test
+for every function/feature in Sputnik.
+
+Just include this file in your script to do a quick test of Sputnik.
+*/
+include('TestCases/Sanity.spk', true);
+include('TestCases/Operators.spk', true);
+include('TestCases/Array.spk', true);
+include('TestCases/Binary.spk', true);
+include('TestCases/LocoTest.spk', true);
+include('TestCases/RegexMatcherTest.spk', true);
+include('TestCases/TextParserTest.spk', true);
+include('TestCases/ParserTest.spk', true);
+include('TestCases/String.spk', true);
+include('TestCases/Vec.spk', true);
+include('TestCases/Statements.spk', true);
+include('TestCases/PitbullDBExplorer/DBExplorer.spk', true);
+include('TestCases/Loops.spk', true);

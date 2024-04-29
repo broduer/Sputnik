@@ -1,0 +1,247 @@
+#include-once
+#require-once
+Class Point
+{
+	my $X = 0;
+	my $Y = 0;
+    Static Function Zero()
+    {
+        return new Point(0.0, 0.0);
+    }
+    my $Zero
+    {
+        get { return Self::Zero(); }
+    }
+	[Args("true")]
+    Function __Construct()
+    {
+        switch(Count(@args))
+        {
+            case 1:
+                if(@args[0] is Point) // Constructor for "clone" Point.
+                @{
+                    $X = @args[0]->$X;
+                    $Y = @args[0]->$Y;
+                }
+                else    // Constructor for "square" Point.
+                @{
+                    $X = (double)@args[0];
+                    $Y = (double)@args[0];
+                }
+                break;
+            case 2: // // Constructor foe standard 2D Point.
+                $X = (double)@args[0];
+                $Y = (double)@args[1];
+                break;
+            default:
+                $X = 0.0;
+                $Y = 0.0;
+                break;
+        }
+    }
+    Function Offset($offsetX, $offsetY)
+    {
+        $X += $offsetX;
+        $Y += $offsetY;
+    }
+	Function SumComponents()
+    {
+        return $X + $Y;
+    }
+    Operator "==" (Point $point)
+	{
+        return
+        (
+            Abs($X - $point->$X) <= @Double_Epsilon &&
+            Abs($Y - $point->$Y) <= @Double_Epsilon
+        );
+	}
+    Operator "!=" (Point $point)
+	{
+		return !($this == $point);
+	}
+    Operator "<" (Point $point)
+	{
+		return SumComponents() < $point->SumComponents();
+	}
+    Operator ">" (Point $point)
+	{
+		return SumComponents() > $point->SumComponents();
+	}
+    Operator "<=" (Point $point)
+	{
+		return SumComponents() <= $point->SumComponents();
+	}
+    Operator ">=" (Point $point)
+	{
+		return SumComponents() >= $point->SumComponents();
+	}
+	Operator "<>" (Point $point)
+	{
+		return $this < $point || $this > $point;
+	}
+    Operator "+" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X += $point->$X;
+			$Y += $point->$Y;
+		}
+		else
+		@{
+			$X += $point;
+			$Y += $point;
+		}
+	}
+    Operator "+=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X += $point->$X;
+			$Y += $point->$Y;
+		}
+		else
+		@{
+			$X += $point;
+			$Y += $point;
+		}
+	}
+    Operator "*" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X *= $point->$X;
+			$Y *= $point->$Y;
+		}
+		else
+		@{
+			$X *= $point;
+			$Y *= $point;
+		}
+	}
+    Operator "*=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X *= $point->$X;
+			$Y *= $point->$Y;
+		}
+		else
+		@{
+			$X *= $point;
+			$Y *= $point;
+		}
+	}
+    Operator "/" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X /= $point->$X;
+			$Y /= $point->$Y;
+		}
+		else
+		@{
+			$X /= $point;
+			$Y /= $point;
+		}
+	}
+    Operator "/=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X /= $point->$X;
+			$Y /= $point->$Y;
+		}
+		else
+		@{
+			$X /= $point;
+			$Y /= $point;
+		}
+	}
+	Operator "-" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X -= $point->$X;
+			$Y -= $point->$Y;
+		}
+		else
+		@{
+			$X -= $point;
+			$Y -= $point;
+		}
+	}
+	Operator "-=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X -= $point->$X;
+			$Y -= $point->$Y;
+		}
+		else
+		@{
+			$X -= $point;
+			$Y -= $point;
+		}
+	}
+	Operator "**" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X **= $point->$X;
+			$Y **= $point->$Y;
+		}
+		else
+		@{
+			$X **= $point;
+			$Y **= $point;
+		}
+	}
+	Operator "**=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X **= $point->$X;
+			$Y **= $point->$Y;
+		}
+		else
+		@{
+			$X **= $point;
+			$Y **= $point;
+		}
+	}
+	Operator "%" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X %= $point->$X;
+			$Y %= $point->$Y;
+		}
+		else
+		@{
+			$X %= $point;
+			$Y %= $point;
+		}
+	}
+	Operator "%=" ($point)
+	{
+		if($point ~~ Point)
+		@{
+			$X %= $point->$X;
+			$Y %= $point->$Y;
+		}
+		else
+		@{
+			$X %= $point;
+			$Y %= $point;
+		}
+	}
+    Function ToString()
+    {
+        return "(X:$X Y:$Y)";
+    }
+    Operator "string"
+    {
+        return ToString();
+    }
+}

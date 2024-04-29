@@ -1,0 +1,21 @@
+PluginLoad('SputnikOldGUI.dll');
+
+include('Utils.spk');
+include('UserList.spk');
+include('Transactions/Fields.spk');
+include('Transactions/Transaction.spk');
+include('Transactions/myTranAgreed.spk');
+include('Transactions/myTranChat.spk');
+include('Transactions/myTranLogin.spk');
+include('Transactions/myTranGetUserNameList.spk');
+include('Transactions/Parameters.spk');
+include('Transactions/TransactionParser.spk');
+include('HLSocket.spk');
+include('HLClient.spk');
+
+my $HLClient = new HLClient();
+while(true)
+{
+	$HLClient->DoUpdate();
+	DoEvents();
+}

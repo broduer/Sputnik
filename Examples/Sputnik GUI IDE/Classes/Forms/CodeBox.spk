@@ -1,0 +1,69 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$CodeBox] = false;
+Object::$Names[ObjectType->$CodeBox] = 'CodeBox';
+Object::$Props[ObjectType->$CodeBox] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropText('Text', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('ReadOnly', null, false, null, null),
+												new PropFakeBool('WordWrap', null, false, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null),
+												new PropCodeBoxLang('Language', null, null, null)
+											);
+Object::$Events[ObjectType->$CodeBox] = array(
+												Object::$GenericEvents[<=>],
+												'SelectionChanged' => EventType->$Link
+											);
+Object::$MenuAdd[ObjectType->$CodeBox] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$CodeBox]);
+GUILink(Object::$MenuAdd[ObjectType->$CodeBox], 'Click', 'CreateControl(ObjectType->$CodeBox);');
+Class CodeBox extends Object
+{
+	my $SettingSelection;
+	Function __construct($myParent, $Name, $Text = 'New ' . Object::$Names[ObjectType->$CodeBox], $Left = 8, $Top = 8, $Width = 110, $Height = 110)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$CodeBox);
+		SetName($Name);
+		SetObject(GUICreate('CodeBox', $myParent->GetObject(), $Text, $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		$SettingSelection = false;
+		GUISetProp(GetObject(), 'Cursor', 'Arrow');
+		GUILink(GetObject(), 'GotFocus', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'Click', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'SelectionChanged', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'KeyDown', 'return $param->onKeyDown();', $this);
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function doHideCaret()
+	{
+		if($SettingSelection)
+			return;
+		$SettingSelection = true;
+		GUICodeBox(GetObject(), 'CaretVisible', false);
+		GUICodeBox(GetObject(), 'Selection', null);
+		$SettingSelection = false;
+	}
+	Function onKeyDown()
+	{
+		doHideCaret();
+		return 1;
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

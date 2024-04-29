@@ -1,0 +1,174 @@
+﻿// Load the old GUI system
+// Since this an old GUI example
+PluginLoad('SputnikOldGUI.dll');
+
+Global $R = 11;
+Global $S = 30;
+Global $Cheats = false;
+Global $OFF = 'default';
+Global $ON = RGB(255, 0, 0);
+Global $NewGame = false;
+Global $Buttons = array();
+Global $State = array();
+Global $GUI = GUICreate('Window', 'Lightsout', 410, 462);
+Global $bNewGame = GUICreate('Button', $GUI, 'New Game', 88, 374, 110, 25);
+Global $RedCount = GUICreate('Label', $GUI, '', 88, 406, 152, 16);
+Global $bClose = GUICreate('Button', $GUI, 'Close', 208, 374, 110, 25);
+
+GUILink($bNewGame, 'Click', 'newGame();');
+GUILink($bClose, 'Click', 'closeGame();');
+
+initGame();
+
+if( -e 'LightData.txt' )
+	loadGame();
+else
+	newGame();
+RedCount();
+
+GUILoad($GUI);
+
+While ( GUIStatus( $GUI ) ) 
+	DoEvents( );
+	
+Function initGame()
+{
+	my $StartX = $S;
+	my $StartY = $S;
+	for( my $i = 0; $i < $R; $i++ )
+	{
+		for( my $j = 0; $j < $R; $j++ )
+		{
+			my $X = $StartX + ($S * $i);
+			my $Y = $StartY + ($S * $j);
+			$Buttons[$i][$j] = GUICreate('Button', $GUI, '', $X, $Y, $S, $S);
+			$State[$i][$j] = false;
+			GUILink($Buttons[$i][$j], 'Click', "OnClick($i, $j);");
+		}
+	}
+}
+
+Function loadGame()
+{
+	$State = Unserialize(FileLoad('LightData.txt'));
+	for( my $i = 0; $i < $R; $i++ )
+	{
+		for( my $j = 0; $j < $R; $j++ )
+		{
+			if($State[$i][$j])
+				GUISetProp($Buttons[$i][$j], 'BackColor', $ON);
+		}
+	}
+}
+
+Function closeGame()
+{
+	my $SaveData = Serialize($State);
+	FileSave('LightData.txt', $SaveData);
+	Exit(0);
+}
+
+Function newGame()
+{
+	$NewGame = true;
+	
+	if( RealGetKeyState(@KeyShiftKey) &&
+		RealGetKeyState(@KeyControlKey) &&
+		RealGetKeyState(@KeyMenu)
+		)
+	{
+		$Cheats = true;
+		for( my $i = 0; $i < $R; $i++ )
+		{
+			for( my $j = 0; $j < $R; $j++ )
+			{
+				$State[$i][$j] = false;
+				GUISetProp($Buttons[$i][$j], 'BackColor', $OFF);
+			}
+		}
+	}
+	else
+	{
+		$Cheats = false;
+		my $count = (int)Random(100, 600);
+		while($count--)
+		{
+			my $i = (int)Random(0, $R);
+			my $j = (int)Random(0, $R);
+			my $RandClick = (int)Random(1, 4);
+			while($RandClick--)
+			{
+				OnClick($i, $j);
+				DoEvents();
+			}
+		}
+	}
+	$NewGame = false;
+}
+
+Function OnClick( $Col, $Row )
+{
+	# Flip us
+	FlipLight($Col, $Row);
+	
+	if( RealGetKeyState(@KeyShiftKey) &&
+		RealGetKeyState(@KeyControlKey) &&
+		RealGetKeyState(@KeyMenu)
+		)
+	{
+		$Cheats = true;
+		RedCount();
+		return;
+	}
+	
+	# Flip bottom right
+	FlipLight($Col + 1, $Row + 1);
+	# Flip bottom left
+	FlipLight($Col + 1, $Row - 1);
+	# Flip top right
+	FlipLight($Col - 1, $Row + 1);
+	# Flip top left
+	FlipLight($Col - 1, $Row - 1);
+	RedCount();
+}
+
+Function RedCount()
+{
+	my $Count = 0;
+	for( my $i = 0; $i < $R; $i++ )
+	{
+		for( my $j = 0; $j < $R; $j++ )
+		{
+			if($State[$i][$j])
+				$Count++;
+		}
+	}
+	if(!$Cheats && !$NewGame && $Count == 0)
+	{
+		GUISetProp($RedCount, 'Text', 'YOU WIN!!!');
+		MsgBox('YOU WIN!!!');
+	}
+	else
+	{
+		if($Cheats)
+			GUISetProp($RedCount, 'Text', 'CHEATER!!!');
+		else
+			GUISetProp($RedCount, 'Text', "Amount of Reds: $Count");
+	}
+}
+
+Function FlipLight( $Col, $Row )
+{
+	if(!IsSet($Buttons[$Col][$Row]))
+		return;
+	if($State[$Col][$Row])
+	{
+		$State[$Col][$Row] = false;
+		GUISetProp($Buttons[$Col][$Row], 'BackColor', $OFF);
+	}
+	else
+	{
+		$State[$Col][$Row] = true;
+		GUISetProp($Buttons[$Col][$Row], 'BackColor', $ON);
+	}
+}

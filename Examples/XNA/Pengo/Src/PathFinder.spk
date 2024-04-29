@@ -1,0 +1,394 @@
+/*
+An A* pathfinding implamentation in Sputnik
+This is used to calculate the shortest path
+from point A to point B and it can travel
+around obstructions.
+
+It is used for Pengo's enemy AI
+
+However it can work on any engine based
+on flat 2D files such as Pengo, Pacman etc
+*/
+#region SearchNode
+class SearchNode
+{
+	/// Location on the map
+	my $Position;
+	/// If true, this tile can be walked on.
+	my $Walkable;
+	/// This contains references to the for nodes surrounding 
+	/// this tile (Up, Down, Left, Right).
+	my $Neighbors;
+	/// A reference to the node that transfered this node to
+	/// the open list. This will be used to trace our path back
+	/// from the goal node to the start node.
+	my $Parent;
+	/// Provides an easy way to check if this node
+	/// is in the open list.
+	my $InOpenList;
+	/// Provides an easy way to check if this node
+	/// is in the closed list.
+	my $InClosedList;
+	/// The approximate distance from the start node to the
+	/// goal node if the path goes through this node. (F)
+	my $DistanceToGoal;
+	/// Distance traveled from the spawn point. (G)
+	my $DistanceTraveled;
+};
+#endregion
+#region Pathfinder
+class Pathfinder
+{
+	#region Variables
+	// Stores an array of the walkable search nodes.
+	my $_searchNodes;
+	// The width of the map.
+	my $_levelWidth;
+	// The height of the map.
+	my $_levelHeight;
+	// The actual map
+	my $_map;
+	// Holds search nodes that are avaliable to search.
+	my $_openList;
+	// Holds the nodes that have already been searched.
+	my $_closedList;
+	// If true then the PathFinder is allowed to find paths
+	my $_ready;
+	#endregion
+	#region Constructor
+	Function __Construct()
+	{
+		ClearAll();
+	}
+	#endregion
+	#region IsPosValid
+	Function IsPosValid($x, $y)
+	{
+		return $x >= 0 && $x < $_levelWidth && $y >= 0 && $y < $_levelHeight;
+	}
+	#endregion
+	#region Clear
+	/// Clear all variables
+	Function ClearAll()
+	{
+		$_ready = false;
+		$_levelWidth = 0;
+		$_levelHeight = 0;
+		$_searchNodes = null;
+		$_map = null;
+		$_openList = null;
+		$_openList = array();
+		$_closedList = null;
+		$_closedList = array();
+	}
+	#endregion
+	#region SetMap
+	/// Define the map size etc and initiate it
+	Function SetMap($width, $height)
+	{
+		ClearAll();
+		$_levelWidth = $width;
+		$_levelHeight = $height;
+		$_map = array();
+		InitializeSearchNodes();
+		$_ready = true;
+	}
+	#endregion
+	#region SetTile
+	/// Set a tile at a given location (true = walkable)
+	Function SetTile($x, $y, $walkable)
+	{
+		if (!IsPosValid($x, $y))
+			return;
+		$_map[$x][$y] = $walkable;
+		$_searchNodes[$x][$y]->$Walkable = $walkable;
+	}
+	#endregion SetTile
+	#region GetTile
+	/// Get the tile at a given location (true = walkable)
+	Function GetTile($x, $y)
+	{
+		if (!IsPosValid($x, $y))
+			return false;
+		return $_map[$x][$y];
+	}
+	#endregion
+	#region Heuristic
+	/// Returns an estimate of the distance between two points. (H)
+	Function Heuristic($point1, $point2)
+	{
+		return Abs($point1[0] - $point2[0]) + Abs($point1[1] - $point2[1]);
+	}
+	#endregion
+	#region InitializeSearchNodes
+	/// Splits our level up into a grid of nodes.
+	Function InitializeSearchNodes()
+	{
+		$_openList = null;
+		$_openList = array();
+		$_closedList = null;
+		$_closedList = array();
+		$_searchNodes = null;
+		$_searchNodes = array();
+		
+		// First blank the map
+		for (my $x = 0; $x < $_levelWidth; $x++)
+			for (my $y = 0; $y < $_levelHeight; $y++)
+				$_map[$x][$y] = false;
+
+		// For each of the tiles in our map, we
+		// will create a search node for it.
+		for (my $x = 0; $x < $_levelWidth; $x++)
+			for (my $y = 0; $y < $_levelHeight; $y++)
+			@{
+				// Delete any old node
+				$_searchNodes[$x][$y] = null;
+
+				//Create a search node to represent this tile.
+				my $node = new SearchNode();
+				$node->$Position = array($x, $y);
+				$node->$Walkable = $_map[$x][$y];
+
+				// Add the search node to the array
+				$_searchNodes[$x][$y] = $node;
+			}
+
+		// Now for each of the search nodes, we will
+		// connect it to each of its neighbours.
+		for (my $x = 0; $x < $_levelWidth; $x++)
+			for (my $y = 0; $y < $_levelHeight; $y++)
+			@{
+				// Get the node
+				my $node = $_searchNodes[$x][$y];
+
+				// An array of all of the possible neighbors this 
+				// node could have. (We will ignore diagonals for now.)
+				my $neighbors = array
+				(
+					array($x, $y - 1), // The node above the current node
+					array($x, $y + 1), // The node below the current node.
+					array($x - 1, $y), // The node left of the current node.
+					array($x + 1, $y) // The node right of the current node
+				);
+
+				// We loop through each of the possible neighbors
+				for (my $i = 0; $i < count($neighbors); $i++)
+				@{
+					my $position = $neighbors[$i];
+
+					// We need to make sure this neighbour is part of the level.
+					if (!IsPosValid($position[0], $position[1]))
+						continue;
+
+					my $neighbor = $_searchNodes[$position[0]][$position[1]];
+
+					// Store a reference to the neighbor.
+					$node->$Neighbors[$i] = $neighbor;
+				}
+			}
+	}
+	#endregion
+	#region ResetSearchNodes
+	/// Resets the state of the search nodes.
+	Function ResetSearchNodes()
+	{
+		$_openList = array();
+		$_closedList = array();
+
+		for (my $x = 0; $x < $_levelWidth; $x++)
+			for (my $y = 0; $y < $_levelHeight; $y++)
+			@{
+				my $node = $_searchNodes[$x][$y];
+
+				if ($node == null || !$node->$Walkable)
+					continue;
+
+				$node->$InOpenList = false;
+				$node->$InClosedList = false;
+
+				$node->$DistanceTraveled = @FLOAT_MAX;
+				$node->$DistanceToGoal = @FLOAT_MAX;
+			}
+	}
+	#endregion
+	#region FindFinalPath
+	/// Use the parent field of the search nodes to trace
+	/// a path from the end node to the start node.
+	Function FindFinalPath(&$Path, SearchNode $startNode, SearchNode $endNode)
+	{
+		$_closedList[] = $endNode;
+
+		my $parentTile = $endNode->$Parent;
+
+		// Trace back through the nodes using the parent fields
+		// to find the best path.
+		while ($parentTile != $startNode)
+		@{
+			$_closedList[] = $parentTile;
+			$parentTile = $parentTile->$Parent;
+		}
+
+		// Reverse the path and transform into world space.
+		for (my $i = count($_closedList) - 1; $i >= 0; $i--)
+			$Path[] = $_closedList[$i]->$Position;
+	}
+	#endregion
+	#region FindBestNode
+	/// Returns the node with the smallest distance to goal.
+	Function FindBestNode()
+	{
+		my $currentTile;
+
+		my $smallestDistanceToGoal = @FLOAT_MAX;
+
+		// Find the closest node to the goal.
+		foreach ($_openList as my $t)
+		@{
+			if (!($t->$DistanceToGoal < $smallestDistanceToGoal)) 
+				continue;
+			$currentTile = $t;
+			$smallestDistanceToGoal = $currentTile->$DistanceToGoal;
+		}
+		return $currentTile;
+	}
+	#endregion
+	#region FindPath
+	/// Finds the optimal path from one point to another.
+	Function FindPath(&$Path, $startX, $startY, $endX, $endY)
+	{
+		// Make sure we are ready to start scanning
+		if(!$_ready)
+			return false;
+
+		// Make sure the coordinates given are actually inside the searchNodes
+		if (!IsPosValid($startX, $startY) || !IsPosValid($endX, $endY))
+			return false;
+
+		// Only try to find a path if the start and end points are different.
+		if ($startX == $endX && $startY == $endY)
+			return false;
+
+		// Create the start and end points
+		my $startPoint = array($startX, $startY);
+		my $endPoint = array($endX, $endY);
+
+		/////////////////////////////////////////////////////////////////////
+		// Step 1 : Clear the Open and Closed Lists and reset each node’s F 
+		//          and G values in case they are still set from the last 
+		//          time we tried to find a path. 
+		/////////////////////////////////////////////////////////////////////
+		ResetSearchNodes();
+
+		// Store references to the start and end nodes for convenience.
+		my $startNode = $_searchNodes[$startPoint[0]][$startPoint[1]];
+		my $endNode = $_searchNodes[$endPoint[0]][$endPoint[1]];
+
+		/////////////////////////////////////////////////////////////////////
+		// Step 2 : Set the start node’s G value to 0 and its F value to the 
+		//          estimated distance between the start node and goal node 
+		//          (this is where our H function comes in) and add it to the 
+		//          Open List. 
+		/////////////////////////////////////////////////////////////////////
+		$startNode->$InOpenList = true;
+
+		$startNode->$DistanceToGoal = Heuristic($startPoint, $endPoint);
+		$startNode->$DistanceTraveled = 0;
+
+		$_openList[] = $startNode;
+
+		/////////////////////////////////////////////////////////////////////
+		// Setp 3 : While there are still nodes to look at in the Open list : 
+		/////////////////////////////////////////////////////////////////////
+		while (count($_openList))
+		@{
+			/////////////////////////////////////////////////////////////////
+			// a) : Loop through the Open List and find the node that 
+			//      has the smallest F value.
+			/////////////////////////////////////////////////////////////////
+			my $currentNode = FindBestNode();
+
+			/////////////////////////////////////////////////////////////////
+			// b) : If the Open List empty or no node can be found, 
+			//      no path can be found so the algorithm terminates.
+			/////////////////////////////////////////////////////////////////
+			if ($currentNode == null || !$currentNode->$Walkable)
+				break;
+
+			/////////////////////////////////////////////////////////////////
+			// c) : If the Active Node is the goal node, we will 
+			//      find and return the final path.
+			/////////////////////////////////////////////////////////////////
+			if ($currentNode == $endNode)
+				return FindFinalPath($Path, $startNode, $endNode); // Trace our path back to the start.
+
+			/////////////////////////////////////////////////////////////////
+			// d) : Else, for each of the Active Node’s neighbours :
+			/////////////////////////////////////////////////////////////////
+			foreach ($currentNode->$Neighbors as my $neighbor)
+			@{
+				//////////////////////////////////////////////////
+				// i) : Make sure that the neighbouring node can 
+				//      be walked across. 
+				//////////////////////////////////////////////////
+				if ($neighbor == null || !$neighbor->$Walkable)
+					continue;
+
+				//////////////////////////////////////////////////
+				// ii) Calculate a new G value for the neighbouring node.
+				//////////////////////////////////////////////////
+				my $distanceTraveled = $currentNode->$DistanceTraveled + 1;
+
+				// An estimate of the distance from this node to the end node.
+				my $heuristic = Heuristic($neighbor->$Position, $endPoint);
+
+				//////////////////////////////////////////////////
+				// iii) If the neighbouring node is not in either the Open 
+				//      List or the Closed List : 
+				//////////////////////////////////////////////////
+				if ($neighbor->$InOpenList == false && $neighbor->$InClosedList == false)
+				@{
+					// (1) Set the neighbouring node’s G value to the G value we just calculated.
+					$neighbor->$DistanceTraveled = $distanceTraveled;
+					// (2) Set the neighbouring node’s F value to the new G value + the estimated 
+					//     distance between the neighbouring node and goal node.
+					$neighbor->$DistanceToGoal = $distanceTraveled + $heuristic;
+					// (3) Set the neighbouring node’s Parent property to point at the Active Node.
+					$neighbor->$Parent = $currentNode;
+					// (4) Add the neighbouring node to the Open List.
+					$neighbor->$InOpenList = true;
+					$_openList[] = $neighbor;
+				}
+				//////////////////////////////////////////////////
+				// iv) Else if the neighbouring node is in either the Open 
+				//     List or the Closed List :
+				//////////////////////////////////////////////////
+				else if ($neighbor->$InOpenList || $neighbor->$InClosedList)
+				@{
+					// (1) If our new G value is less than the neighbouring 
+					//     node’s G value, we basically do exactly the same 
+					//     steps as if the nodes are not in the Open and 
+					//     Closed Lists except we do not need to add this node 
+					//     the Open List again.
+					if ($neighbor->$DistanceTraveled > $distanceTraveled)
+					@{
+						$neighbor->$DistanceTraveled = $distanceTraveled;
+						$neighbor->$DistanceToGoal = $distanceTraveled + $heuristic;
+						$neighbor->$Parent = $currentNode;
+					}
+				}
+			}
+
+			/////////////////////////////////////////////////////////////////
+			// e) Remove the Active Node from the Open List and add it to the 
+			//    Closed List
+			/////////////////////////////////////////////////////////////////
+			RemoveValue($_openList, $currentNode, true);
+			$currentNode->$InClosedList = true;
+		}
+		// No path could be found.
+		return false;
+	}
+	#endregion
+};
+#endregion
+#endregion

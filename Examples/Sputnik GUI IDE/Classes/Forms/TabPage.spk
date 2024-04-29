@@ -1,0 +1,38 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$TabPage] = false;
+Object::$Names[ObjectType->$TabPage] = 'TabPage';
+Object::$Props[ObjectType->$TabPage] = array(
+												new PropString('Text', null, null, null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$Events[ObjectType->$TabPage] = array(
+												Object::$GenericEvents[<=>]
+											);
+Class TabPage extends Object
+{
+	Function __construct($myParent, $Name, $Text = 'New ' . Object::$Names[ObjectType->$TabPage])
+	{
+		CreateParent($myParent);
+		CreateContainer();
+		CreateParentOffset(0, 0);
+		SetType(ObjectType->$TabPage);
+		SetName($Name);
+		SetObject(GUICreate('TabPage', $myParent->GetObject(), $Text));
+		SetObjectName();
+		SetLinks();
+		SetGrid();
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

@@ -1,0 +1,155 @@
+﻿$LoadCommands['fe'] = array('CmdFe', 1, 3);
+Class extends ServerManager
+{
+	Function CmdFe($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Edit the friend list of another user';
+		if ($args === 'help')
+			return array(
+							'Edit the friend list of another user',
+							'To view a users friend list type ''/fe nameOfUser''',
+							'To add a user to a users friend list type ''/fe nameOfUser add nameOfOtherUser''',
+							'To delete a user from a users friend list type ''/fe nameOfUser del nameOfOtherUser''',
+							'To delete all users from a users friend list type ''/fe nameOfUser wipe'''
+						);
+		if ($commandUser == null)
+			return;
+		my $who = $args[0];
+		if (IsEmptyOrNull($who))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot use the friend editor on yourself");
+			return;
+		}
+		my $ourName = $commandUser->$Name;
+		my $foundName = $found->$Name;
+		if (IsUserAdmin($found))
+		{
+			SayToUser($commandUser, "You cannot use the friend editor on an Administrator");
+			return;
+		}
+		if (!IsUserAdmin($commandUser) && IsUserModerator($found))
+		{
+			SayToUser($commandUser, "You cannot use the friend editor on a Moderator");
+			return;
+		}
+		if ($argCount == 1)
+		{
+			my $friendList = GetFriendList($found);
+			my $count = count($friendList);
+			SayToUser($commandUser, "$foundName has '$count' friend(s) here is the list:");
+			my $i = 1;
+			foreach($friendList as my $friendSteamId)
+			{
+				my $Name = '';
+				my List($foundF, $isOnlineF) = FindOnlineOrOfflinePlayer($friendSteamId);
+				if ($foundF == null)
+					$Name = '<cannot get userName>';
+				else
+					$Name = $foundF->$Name;
+				my $status = $isOnlineF ? 'Online' : 'Offline';
+				my $bothFriends = AreBothFriends($foundF, $found);
+				if ($bothFriends)
+					SayToUser($commandUser, "$i, $Name, $status");
+				else
+					SayToUser($commandUser, "$i, $Name, $status (Has not friended)");
+				$i++;
+			}
+		}
+		if ($argCount == 2)
+		{
+			my $action = lc($args[1]);
+			switch ($action)
+			{
+				case 'wipe':
+				{
+					DelAllUserFriends($found);
+					SayToUser($commandUser, "You have wiped clean the friend list of '$foundName'");
+					if ($isOnline)
+						SayToUser($found, "'$ourName' wiped your friend list clean");
+				}
+				break;
+				default:
+				{
+					SayToUser($commandUser, "Invalid action '$action' for the friend editor");
+					return;
+				}
+			}
+		}
+		if ($argCount == 3)
+		{
+			my $action = lc($args[1]);
+			switch ($action)
+			{
+				case 'add':
+				{
+					my $whoIs = $args[2];
+					if (IsEmptyOrNull($whoIs))
+					{
+						SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+						return;
+					}
+					my List($foundWhoIs, $isOnlineWhoIs) = FindOnlineOrOfflinePlayerByIdOrPartialName($whoIs);
+					if ($foundWhoIs == null)
+					{
+						SayToUser($commandUser, "Could not find a player with the name/id of '$whoIs'");
+						return;
+					}
+					my $nameWhoIs = $foundWhoIs->$Name;
+					if (IsUserFriendOf($found, $foundWhoIs))
+					{
+						SayToUser($commandUser, "'$nameWhoIs' is already on the friend list of '$foundName'");
+						return;
+					}
+					AddUserFriend($found, $foundWhoIs);
+					SayToUser($commandUser, "'$nameWhoIs' has been added to the friend list of '$foundName'");
+				}
+				break;
+				case 'del':
+				{
+					my $whoIs = $args[2];
+					if (IsEmptyOrNull($whoIs))
+					{
+						SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+						return;
+					}
+					my List($foundWhoIs, $isOnlineWhoIs) = FindOnlineOrOfflinePlayerByIdOrPartialName($whoIs);
+					if ($foundWhoIs == null)
+					{
+						SayToUser($commandUser, "Could not find a player with the name/id of '$whoIs'");
+						return;
+					}
+					my $nameWhoIs = $foundWhoIs->$Name;
+					if (!IsUserFriendOf($found, $foundWhoIs))
+					{
+						SayToUser($commandUser, "'$nameWhoIs' is not on the friend list of '$foundName'");
+						return;
+					}
+					DelUserFriend($found, $foundWhoIs);
+					SayToUser($commandUser, "'$nameWhoIs' has been removed from the friend list of '$foundName'");
+				}
+				break;
+				default:
+				{
+					SayToUser($commandUser, "Invalid action '$action' for the friend editor");
+					return;
+				}
+			}
+		}
+	}
+}

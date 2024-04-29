@@ -1,0 +1,58 @@
+﻿$LoadCommands['recall'] = array('CmdRecall', 0, 0);
+Class extends ServerManager
+{
+	Function CmdRecall($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Teleport to a previously marked location';
+		if ($args === 'help')
+			return array(
+							'Teleport to a previously marked location',
+							'First use ''/mark'' to mark the location then use ''/recall'' to teleport back'
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowRecall') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $markFileData = $utils->getMarkFile();
+		my $OurSteamId = $commandUser->$SteamId;
+		if (!MarkLocationExists($OurSteamId))
+		{
+			SayToUser($commandUser, "You must first set a marked location using '/mark' before you can teleport to it");
+			return;
+		}
+		foreach($markFileData as my $markData)
+		{
+			my List($SteamId, $X, $Y, $Z) = $markData;
+			if ($SteamId eqi $OurSteamId)
+			{
+				my $tpCost = GetConfig('RecallCost');
+				if ($tpCost > 0)
+				{
+					SayToUser($commandUser, "Teleporting you to you marked location costs '$tpCost' cash");
+					my $userCash = GetUserCash($commandUser);
+					if ($userCash < $tpCost)
+					{
+						SayToUser($commandUser, "You cannot afford to teleport you have '$userCash' cash and need '$tpCost'");
+						return;
+					}
+					DelUserCash($commandUser, $tpCost);
+					$userCash = GetUserCash($commandUser);
+					SayToUser($commandUser, "You arrive back at your marked location at a cost of '$tpCost' cash you now have '$userCash' cash left");
+				}
+				else
+					SayToUser($commandUser, "You arrive back at your marked location");
+				TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+				return;
+			}
+		}
+		SayToUser($commandUser, "Could not find your marked location!");
+	}
+}

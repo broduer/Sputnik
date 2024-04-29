@@ -1,0 +1,54 @@
+﻿$onServerInit[] = 'PassiveCashInit';
+$onServerProcess[] = 'PassiveCashProcess';
+Class extends ServerManager
+{
+	my $PlayerPassiveCounter;
+	my $passiveCashProcessCounter;
+	Function PassiveCashInit()
+	{
+		$PlayerPassiveCounter = array();
+		$passiveCashProcessCounter = 0;
+	}
+	Function PassiveCashProcess()
+	{
+		if (!GetConfig('PassiveCash'))
+			return;
+		$passiveCashProcessCounter++;
+		if ($passiveCashProcessCounter < 60)
+			return;
+		$passiveCashProcessCounter = 0;
+		foreach($currentPlayers->$players as my $player)
+		{
+			my $SteamId = $player->$SteamId;
+			if (!IsKeySet($PlayerPassiveCounter, $SteamId))
+				$PlayerPassiveCounter[$SteamId] = array(0, $player->$Pos, $player->$Rot);
+			else
+			{
+				my $found = $currentPlayers->FindBySteamId($SteamId);
+				if ($found == null)
+					continue;
+				if (GetConfig('PassiveCashMovement'))
+				{
+					my $samePos = $player->$Pos == $PlayerPassiveCounter[$SteamId][1];
+					my $sameRot = $player->$Rot == $PlayerPassiveCounter[$SteamId][2];
+					if ($samePos && $sameRot)
+						continue;
+					$PlayerPassiveCounter[$SteamId][1] = $player->$Pos;
+					$PlayerPassiveCounter[$SteamId][2] = $player->$Rot;
+				}
+				$PlayerPassiveCounter[$SteamId][0]++;
+				my $total = $PlayerPassiveCounter[$SteamId][0];
+				my $cutOff = (double)GetConfig('PassiveCashDepositAfter');
+				if ($total < $cutOff)
+					continue;
+				$total -= $cutOff;
+				$PlayerPassiveCounter[$SteamId][0] = $total;
+				my $reward = (double)GetConfig('PassiveCashValue') * $cutOff;
+				AddUserCash($found, $reward);
+				my $userCash = GetUserCash($found);
+				SayToUser($found, "You have earned '$reward' cash for playing on the server your total cash is now '$userCash'");
+				DebugMsg($found->$Name . " earned '$reward' cash for online time");
+			}
+		}
+	}
+}

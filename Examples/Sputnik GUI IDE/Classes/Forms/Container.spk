@@ -1,0 +1,18 @@
+﻿#<?
+my $Objects = array();
+my $ObjectNames = array();
+Class Container
+{
+	my $Owner;
+	Function __construct( $Owner )
+	{
+		$this->$Owner = $Owner;
+	}
+	Function __destruct()
+	{
+		foreach($Objects as my $key => my $item)
+			unset($item);
+		unset($Objects);
+		unset($ObjectNames);
+	}
+};

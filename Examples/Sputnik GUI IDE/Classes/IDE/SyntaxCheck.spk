@@ -1,0 +1,50 @@
+#<?
+Function SyntaxCheck( )
+{
+	foreach($Windows as my $WinName => my $WinObj)
+	{
+		my $Syn = EvalSyntax( $WinObj->$Source );
+		if($Syn !== null)
+		{
+			msgbox("Syntax error found in Window '$WinName':\r\n\r\n$Syn", $Title, 48);
+			return false;
+		}
+	}	
+	foreach($Classes as my $ClsName => my $ClsSource)
+	{
+		my $Syn = EvalSyntax( $ClsSource );
+		if($Syn !== null)
+		{
+			msgbox("Syntax error found in Class '$ClsName':\r\n\r\n$Syn", $Title, 48);
+			return false;
+		}
+	}
+	foreach($Functions as my $FuncName => my $FuncSource)
+	{
+		my $Syn = EvalSyntax( $FuncSource );
+		if($Syn !== null)
+		{
+			msgbox("Syntax error found in Function '$FuncName':\r\n\r\n$Syn", $Title, 48);
+			return false;
+		}
+	}
+	foreach($Enums as my $EnumName => my $EnumSource)
+	{
+		my $Syn = EvalSyntax( $EnumSource );
+		if($Syn !== null)
+		{
+			msgbox("Syntax error found in Enum '$EnumName':\r\n\r\n$Syn", $Title, 48);
+			return false;
+		}
+	}
+	foreach($Globals as my $GlobalName => my $GlobalSource)
+	{
+		my $Syn = EvalSyntax( $GlobalSource );
+		if($Syn !== null)
+		{
+			msgbox("Syntax error found in Global '$GlobalName':\r\n\r\n$Syn", $Title, 48);
+			return false;
+		}
+	}	
+	return true;
+}

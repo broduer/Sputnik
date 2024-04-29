@@ -1,0 +1,207 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "String:Match";
+println("[$CurrentName] Begins");
+StringMatchTest1();
+StringMatchTest2();
+StringMatchTest3();
+StringMatchTest4();
+StringMatchTest5();
+StringMatchTest6();
+StringMatchTest7();
+StringMatchTest8();
+StringMatchTest9();
+StringMatchTest10();
+StringMatchTest11();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function StringMatchTest1()
+{
+	println("$CurrentName Test 1");
+	my $ret = match("I have 2 questions for you.", "%d+ %a+");
+	if(
+		$ret == "2 questions"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest2()
+{
+	println("$CurrentName Test 2");
+	my $ret = match("65856", '^[+-]?%d+$');
+	if(
+		$ret == "65856" &&
+		$ret == 65856
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest3()
+{
+	println("$CurrentName Test 3");
+	my $ret = match("ehehe", '^[+-]?%d+$');
+	if(
+		$ret == null &&
+		$ret === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest4()
+{
+	println("$CurrentName Test 4");
+	my $ret = match("C:/Users/Telamon/Documents", "/.-/");
+	if(
+		$ret == "/Users/"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest5()
+{
+	println("$CurrentName Test 5");
+	my $ret = match("C:/Users/Telamon/Documents", "/.*/");
+	if(
+		$ret == "/Users/Telamon/"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest6()
+{
+	println("$CurrentName Test 6");
+	my $ret =  match("cat", "^[%z\x01-\xFF]*\$");
+	if(
+		$ret == "cat"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest7()
+{
+	println("$CurrentName Test 7");
+	my $ret =  match("hello こんにちは!", 'こ.*は');
+	if(
+		$ret == "こんにちは"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest8()
+{
+	println("$CurrentName Test 8");
+	my $ret =  match("xcat", 'cat', 2);
+	if(
+		$ret == null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest9()
+{
+	println("$CurrentName Test 8");
+	my $ret =  match("xcat", 'cat', 1);
+	if(
+		$ret == "cat"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest10()
+{
+	println("$CurrentName Test 10");
+	my $ret =  match("xatcat", 'cat', -2);
+	if(
+		$ret == null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringMatchTest11()
+{
+	println("$CurrentName Test 11");
+	my $ret =  match("xatcat", 'cat', -3);
+	if(
+		$ret == "cat"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

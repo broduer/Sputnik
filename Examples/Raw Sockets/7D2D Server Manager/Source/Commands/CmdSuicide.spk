@@ -1,0 +1,24 @@
+﻿$LoadCommands['suicide'] = array('CmdSuicide', 0, 0);
+Class extends ServerManager
+{
+	Function CmdSuicide($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Commit suicide';
+		if ($args === 'help')
+			return array('Kill yourself to maybe solve being stuck somwhere?');
+		if ($commandUser == null)
+			return;
+		if (!GetConfig('AllowSuicide'))
+		{
+			SayToUser($commandUser, 'The suicide command is disabled on this server');
+			return;
+		}
+		SayToUser($commandUser, 'As you wish');
+		KillUser($commandUser);
+	}
+}

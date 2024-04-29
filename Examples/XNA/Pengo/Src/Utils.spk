@@ -1,0 +1,12 @@
+﻿class Utils
+{
+	Static Function Distance2D($dX0, $dY0, $dX1, $dY1)
+	{
+		return Sqrt(($dX1 - $dX0)*($dX1 - $dX0) + ($dY1 - $dY0)*($dY1 - $dY0));
+	}
+	Static Function ChanceOf($Min, $Max, $From, $To)
+	{
+		my $Chance = (int)Random($Min, $Max + 1);
+		return $Chance >= $From && $Chance <= $To;
+	}
+};

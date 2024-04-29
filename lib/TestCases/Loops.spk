@@ -1,0 +1,3 @@
+#include-once
+#require-once
+include('TestCases/Loops/Generic.spk', true);

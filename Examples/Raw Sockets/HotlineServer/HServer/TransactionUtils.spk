@@ -1,0 +1,94 @@
+﻿Class TransactionUtils
+{
+	Static Function NewTrans($client = null)
+	{
+		my $newTrans = new StdClass();
+		$newTrans->$Client = $client;
+		$newTrans->$Flags = 0;
+		$newTrans->$IsReply = 0;
+		$newTrans->$Type = 0;
+		$newTrans->$Id = 0;
+		$newTrans->$ErrorCode = 0;
+		$newTrans->$TotalSize = 0;
+		$newTrans->$DataSize = 0;
+		$newTrans->$Data = bin();
+		return $newTrans;
+	}
+	Static Function SendErrorMsg($trans, $message)
+	{
+		$trans->$Type = $Tran_Error;
+		my $params = ParamUtils::NewParams();
+		ParamUtils::AddString($params, $Field_ErrorText, $message);
+		TransactionUtils::SendData($trans, $params);
+	}
+	Static Function SendNoError($trans, $message)
+	{
+		my $params = ParamUtils::NewParams();
+		TransactionUtils::SendData($trans, $params);
+	}
+	Static Function SendData($trans, $params)
+	{
+		$trans->$IsReply = 1;
+		$trans->$Flags = 0;
+		$trans->$ErrorCode = 0;
+		TransactionUtils::SetData($trans, $params);
+		TransactionUtils::Send($trans);
+	}
+	Static Function Send($trans)
+	{
+		my $transBin = TransactionUtils::ToBinary($trans);
+		my $sock = $trans->$Client->$sock;
+		SocketSend($sock, $transBin);
+	}
+	Static Function ToBinary($trans)
+	{
+		my $buf = ByteBufferNew();
+		ByteBufferPut($buf, 'V', PackSingle('C', $trans->$Flags));
+		ByteBufferPut($buf, 'V', PackSingle('C', $trans->$IsReply));
+		ByteBufferPut($buf, 'V', PackSingle('n', $trans->$Type));
+		ByteBufferPut($buf, 'V', PackSingle('N', $trans->$Id));
+		ByteBufferPut($buf, 'V', PackSingle('N', $trans->$ErrorCode));
+		ByteBufferPut($buf, 'V', PackSingle('N', $trans->$TotalSize));
+		ByteBufferPut($buf, 'V', PackSingle('N', $trans->$DataSize));
+		ByteBufferPut($buf, 'V', $trans->$Data);
+		my $bin = ByteBufferToBinary($buf);
+		unset($buf);
+		return $bin;
+	}
+	Static Function SetData($trans, $params)
+	{
+		my $paramBin = ParamUtils::ToBinary($params);
+		my $size = count($paramBin);
+		$trans->$TotalSize = $size;
+		$trans->$DataSize = $size;
+		$trans->$Data = $paramBin;
+	}
+	Static Function ParseData($transData)
+	{
+		my $params = ParamUtils::NewParams();
+		my $size = count($transData);
+		if ($size < 2)
+			return $params;
+		my $pos = 0;
+		my $num = UnpackSingle('n', $transData, $pos);
+		$pos += 2;
+		for(my $i = 0; $i < $num; $i++)
+		{
+			if ($pos + 4 > $size)
+				return $params;
+			my $fieldId = UnpackSingle('n', $transData, $pos);
+			$pos += 2;
+			my $fieldSize = UnpackSingle('n', $transData, $pos);
+			$pos += 2;
+			if ($pos + $fieldSize > $size)
+				return $params;
+			my $data = BinaryMid($transData, $pos, $fieldSize);
+			if (count($data) != $fieldSize)
+				return $params;
+			$pos += $fieldSize;
+			my $field = FieldUtils::NewField($fieldId, $fieldSize, $data);
+			$params->$Fields[] = $field;
+		}
+		return $params;
+	}
+}

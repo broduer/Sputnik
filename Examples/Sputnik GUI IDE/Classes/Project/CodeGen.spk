@@ -1,0 +1,590 @@
+#<?
+include('String/StringBuilder.spk', true);
+if($CodeTesterActive)
+{
+    GUICreate("MenuItem", $mProject, "-");
+}
+Global $CodeGenActive = true;
+Global $mProjectGenCode = GUICreate("MenuItem", $mProject, "[Debug] Generate Code");
+GUILink($mProjectGenCode, "Click", 'GenCode();');
+Global $CodeGenEditor = null;
+
+Function MakeText($text)
+{
+    if(Count(Lines($text)) > 1)
+        return 'Hex2Str("' . Str2Hex($Text, 2) . '", 2)';
+    else
+    {
+        $Text = Replace($Text, '''', '''''');
+        return "'$Text'";
+    }
+}
+Function MakeChar($char)
+{
+    my $Text = (char)$char;
+    if($Text == @'''')
+        $Text .= '''';
+    if($Text == @'\0')
+        $Text = '';
+    return "\@'$Text'";
+}
+Function GenCode()
+{
+    if(isSet($CodeGenEditor))
+        unset($CodeGenEditor);
+    my $Code = new StringBuilder();
+	$Code->$NewLine = @CRLF;
+    $Code->AppendLine("# This code is not part of your project!");
+    $Code->AppendLine("# Editing this will not change anything in your project");
+    $Code->AppendLine("# It is only here to be used in debugging");
+    $Code->Append(GenCodeSrc());
+    Global $CodeGenEditor = new SourceEditor(false, null, 'Unsaved', 'GenCode', false, true, false, $GUI);
+    GUICodeBox($CodeGenEditor->$tSource, 'Text', (string)$Code);
+	gc(true);
+}
+
+Function GenCodeSrc()
+{
+	ChangeProjectName($ProjectName, " ;; Generating source...");
+    my $Code = new StringBuilder();
+	$Code->$NewLine = @CRLF;
+	//if($Compiling) -- back on!
+	//{
+		$Code->AppendLine("// Load the old GUI system");
+		$Code->AppendLine("PluginLoad('SputnikOldGUI.dll');");
+	//}
+    $Code->AppendLine("");
+    $Code->AppendLine("Global \$OpenWindows = 0;");
+    foreach(GUIListBox($ProjectView->$WindowList, 'GetItems') as my $WinName)
+    {
+        my $Window = $Windows[$WinName];
+        my $Name = $Window->GetName();
+        $Code->AppendLine('Global $' . $Name . " = new $Name();");
+    }
+    foreach(GUIListBox($ProjectView->$GlobalList, 'GetItems') as my $GlobalName)
+    {
+        my $GlobalSource = $Globals[$GlobalName];
+        $Code->AppendLine($GlobalSource);
+    }
+    foreach(GUIListBox($ProjectView->$EnumList, 'GetItems') as my $EnumName)
+    {
+        my $EnumSource = $Enums[$EnumName];
+        $Code->AppendLine($EnumSource);
+    }
+    foreach(GUIListBox($ProjectView->$ClassList, 'GetItems') as my $ClsName)
+    {
+        my $ClsSource = $Classes[$ClsName];
+        $Code->AppendLine($ClsSource);
+    }
+    foreach(GUIListBox($ProjectView->$WindowList, 'GetItems') as my $WinName)
+    {
+        my $Window = $Windows[$WinName];
+        GenWindowCodeSrc($Code, $Window);
+    }
+    $Code->AppendLine("");
+    foreach(GUIListBox($ProjectView->$FunctionList, 'GetItems') as my $FuncName)
+    {
+        my $FuncSource = $Functions[$FuncName];
+        $Code->AppendLine($FuncSource);
+    }
+    $Code->AppendLine('');
+    $Code->AppendLine("\$$MainWindow->Show();");
+    $Code->AppendLine('');
+    $Code->AppendLine("While ( !ExitCalled() && \$OpenWindows > 0 )");
+    $Code->AppendLine("\{");
+    $Code->AppendLine("\tDoEvents( );");
+    foreach(GUIListBox($ProjectView->$WindowList, 'GetItems') as my $WinName)
+    {
+        my $Window = $Windows[$WinName];
+        my $Name = $Window->GetName();
+		$Code->AppendLine("\tIf( FunctionExists('Form_EventTick', \$$Name) )");
+		$Code->AppendLine("\t\t\$$Name->Form_EventTick();");
+    }
+    $Code->AppendLine("}");
+    foreach(GUIListBox($ProjectView->$WindowList, 'GetItems') as my $WinName)
+    {
+		$Code->AppendLine("unset(\$$WinName);");
+    }
+	ChangeProjectName($ProjectName);
+    return (string)$Code;
+}
+Function GenWindowCodeSrc( StringBuilder $Code, $Window )
+{
+    my $Name = $Window->GetName();
+    my $Container = $Window->GetContainer();
+    my List( $ContainerCode, $ContainerVars ) = GenContainerCodeSrc($Window, $Container, '$Form');
+    
+    my $WindowPropCode = GenPropSrc($Window, $Window, 'Form');
+    my $WindowLinkCode = GenLinkSrc($Window, $Window, 'Form');
+    
+    my $Width = GUIGetProp($Window->$Object, "Width");
+    my $Height = GUIGetProp($Window->$Object, "Height");
+    my $Text = GUIGetProp($Window->$Object, "Text");
+    
+    $ContainerCode =~ s/^(?=[^\n\r])/\t\t/gm;
+    $ContainerVars =~ s/^(?=[^\n\r])/\t/gm;
+    $WindowPropCode =~ s/^(?=[^\n\r])/\t\t/gm;
+    $WindowLinkCode =~ s/^(?=[^\n\r])/\t\t/gm;
+    
+    $Code->AppendLine("Class $Name");
+    $Code->AppendLine('{');
+    $Code->AppendLine("\tmy \$Form;");
+    $Code->AppendLine("\tmy \$FormHKeyTimerFuncs;");
+    $Code->Append($ContainerVars);
+    $Code->AppendLine("\tFunction __Construct()");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tIf( FunctionExists('Form_Initialize', \$this) )");
+    $Code->AppendLine("\t\t\tForm_Initialize();");
+    // Initalize variables
+    $Code->AppendLine("\t\t\$FormHKeyTimerFuncs = array();");
+    // Create controls
+    my $WinType = $Window->$MDI ? 'MDIWindow' : 'Window';
+    $Code->AppendLine("\t\t\$Form = GUICreate(\"$WinType\", \"$Text\", $Width, $Height);");   
+    $TimerSpeed = $Window->GetProp('HotkeyTimerSpeed');
+    $Code->AppendLine("\t\t\$FormHKeyTimer = GUICreate(\"Timer\", \$Form, $TimerSpeed);");
+    $Code->Append($WindowPropCode);
+    $Code->Append($ContainerCode);
+    // Links
+    $Code->Append($WindowLinkCode);
+    $Code->AppendLine("\t\tGUILink(\$Form, 'FormClosing', 'if(isvarclass(\$param))\$param->Hide(true);', \$this);");
+    $Code->AppendLine("\t\tGUILink(\$FormHKeyTimer, 'Tick', '\$param->_FormHKeyTimer();', \$this);");
+    $Code->AppendLine("\t\tGUITimer(\$FormHKeyTimer, 'Start');");
+    $Code->AppendLine("\t\tIf( FunctionExists('Form_Load', \$this) )");
+    $Code->AppendLine("\t\t\tForm_Load();");
+    $Code->AppendLine("\t}");
+    $Code->AppendLine("\tFunction __Destruct()");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tIf( FunctionExists('Form_Unload', \$this) )");
+    $Code->AppendLine("\t\t\tForm_Unload();");
+    $Code->AppendLine("\t\tUnset(\$Form);");  
+    while( $ContainerVars =~ m/my\s+\W(\w+)/g )
+    {
+        my $VarName = $_rg[$_][1];
+        $Code->AppendLine("\t\tUnset(\$$VarName);");
+    }
+    $Code->AppendLine("\t}");
+    $Code->AppendLine("\tFunction Show()");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tIf( FunctionExists('Form_Show', \$this) )");
+    $Code->AppendLine("\t\t\tForm_Show();");
+    $Code->AppendLine("\t\tif(GUIStatus(\$Form))");
+    $Code->AppendLine("\t\t\tGUIWindow(\$Form, 'Focus');");
+    $Code->AppendLine("\t\telse");
+    $Code->AppendLine("\t\t\@\{");
+    $Code->AppendLine("\t\t\t\$OpenWindows++;");
+    $Code->AppendLine("\t\t\tGUILoad(\$Form);");
+    $Code->AppendLine("\t\t}");
+    $Code->AppendLine("\t}");
+    $Code->AppendLine("\tFunction Hide(\$Event = false)");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tIf( FunctionExists('Form_Hide', \$this) )");
+    $Code->AppendLine("\t\t\tForm_Hide();");
+    $Code->AppendLine("\t\tif(\$Event)");
+    $Code->AppendLine("\t\t\t\$OpenWindows--;");
+    $Code->AppendLine("\t\tif(GUIStatus(\$Form))");
+    $Code->AppendLine("\t\t\tGUIUnload(\$Form);");
+    $Code->AppendLine("\t}");
+    $Code->AppendLine("\tFunction _FormHKeyTimer()");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tforeach(\$FormHKeyTimerFuncs as my \$HKey)");
+    $Code->AppendLine("\t\t\@\{");
+    $Code->AppendLine("\t\t\tif(\$HKey[2] ? RealGetKeyState('\{ONCE}', \$HKey[0]) : RealGetKeyState(\$HKey[0]))");
+    $Code->AppendLine("\t\t\t\tCall(\$HKey[1]);");
+    $Code->AppendLine("\t\t}");
+    $Code->AppendLine("\t}");
+    $Code->AppendLine("\tFunction Dispose()");
+    $Code->AppendLine("\t\{");
+    $Code->AppendLine("\t\tUnset(\$this);");
+    $Code->AppendLine("\t}");
+    // Source
+    my $Src = $Window->$Source;
+    $Src =~ s/^/\t/gm;
+    $Code->AppendLine($Src . "");
+    // Done
+    $Code->AppendLine("};");
+    return (String)$Code;
+}
+Function GenContainerCodeSrc($Window, $Container, $Form)
+{
+    my $Code = new StringBuilder();
+	$Code->$NewLine = @CRLF;
+    my $Vars = new StringBuilder();
+	$Vars->$NewLine = @CRLF;
+    foreach($Container->$Objects as my $Name => my $Object)
+    {
+        switch($Object->GetType())
+        {
+            case ObjectType->$Button:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"Button\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$TextBox:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"TextBox\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$TextBoxEx:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"TextBoxEx\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$RichTextBox:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"RichTextBox\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$CodeBox:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"CodeBox\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$HotkeyBox:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"HotkeyBox\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$DataGrid:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"DataGrid\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$PictureBox:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"PictureBox\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                if($Compiling)
+                {
+                    my $PicName = PropPicture::GenPictureName($Object);
+                    my $ImageLoc = CombinePath(".\\Projects\\$ProjectName", $PicName);
+                    if(FileExists($ImageLoc))
+                        $Code->AppendLine("#include binary \$$PicName \"$ImageLoc\"");
+                }
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$RadioButton:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"RadioButton\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$CheckBox:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"CheckBox\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$Label:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"Label\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$GroupBox:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"GroupBox\", $Form, " . $Text . @", " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$ListBox:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"ListBox\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$ComboBox:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"ComboBox\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$TabSheet:
+            {
+                my $Left = GUIGetProp($Object->$Object, "Left");
+                my $Top = GUIGetProp($Object->$Object, "Top");
+                my $Width = GUIGetProp($Object->$Object, "Width");
+                my $Height = GUIGetProp($Object->$Object, "Height");
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"TabSheet\", $Form, " . $Left . ", " . $Top . ", " . $Width . ", " . $Height . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$TabPage:
+            {
+                my $Text = GUIGetProp($Object->$Object, "Text");
+                $Text = MakeText($Text);
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"TabPage\", $Form, " . $Text . ");");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+            case ObjectType->$Timer:
+            {
+                $Vars->AppendLine(@"my $" . $Name . ";");
+                $Interval = $Object->GetProp('Interval');
+                $Code->AppendLine(@"$" . $Name . " = GUICreate(\"Timer\", $Form, $Interval);");
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+                if($Object->GetProp('Enabled'))
+                    $Code->AppendLine("GUITimer(\$$Name, 'Start');");
+            }
+            break;
+            case ObjectType->$Hotkey:
+            {
+                $Code->Append(GenPropSrc($Window, $Object, $Name));
+                $Code->Append(GenLinkSrc($Window, $Object, $Name));
+                $Code->Append($Object->CodeGen($Window, $Object, $Name));
+            }
+            break;
+        }
+        if($Object->HasContainer())
+        {
+            my List( $Code1, $Vars1) = GenContainerCodeSrc($Window, $Object->GetContainer(), '$' . $Name);
+            $Code->Append($Code1);
+            $Vars->Append($Vars1);
+        }
+    }
+    return array((String)$Code, (String)$Vars);
+}
+
+Function GenPropSrc($Window, $Object, $Name)
+{
+    my $Code = new StringBuilder();
+	$Code->$NewLine = @CRLF;
+    foreach($Object->$MyProps as my $Prop)
+    {
+        switch($Prop->$Name)
+        {
+            # These are handled by the control creation
+            case 'Left':
+            case 'Top':
+            case 'Width':
+            case 'Height':
+            case 'Text':
+                continue;
+        }
+        $Code->Append($Prop->CodeGen($Window, $Object, $Name));
+    }
+    return (string)$Code;
+}
+Function GenLinkSrc($Window, $Object, $Name)
+{
+    my $Code = new StringBuilder();
+	$Code->$NewLine = @CRLF;
+    foreach(Object::$Events[$Object->GetType()] as my $LinkName => my $LinkType)
+    {
+        my $NameLink = $Name . "_$LinkName";
+        if($Window->$Source =~ m/^\s*Function[\s\n\r]+$NameLink/im)
+        {
+            if($LinkType == EventType->$CustomLink)
+            {
+                $Code->Append($Object->__GetLinkSource($Window, $Name, $NameLink, $LinkName));
+                continue;
+            }
+            switch($LinkType)
+            {
+                case EventType->$Link:
+                @{
+                    my $Parentheses = GenerateLinkParentheses($LinkName);
+					my $Return = GenerateLinkReturn($LinkName);
+                    $Code->AppendLine("GUILink(\$$Name, '$LinkName', '$Return\$param->$NameLink$Parentheses;', \$this);");
+                }
+                break;
+            }
+        }
+    }
+    return (string)$Code;
+}
+Function GenerateLinkReturn( $Link )
+{
+    switch($Link)
+    {
+        case 'FormClosing':
+        case 'KeyPress':
+        case 'KeyDown':
+        case 'KeUp':
+        case 'CellBeginEdit':
+        case 'DeletingRow':
+            return 'return ';
+        default:
+            return '';
+    }
+}
+Function GenerateLinkParentheses( $Link )
+{
+    switch($Link)
+    {
+        case 'MouseClick':
+        case 'MouseDoubleClick':
+        case 'MouseDown':
+        case 'MouseUp':
+        case 'MouseMove':
+        case 'MouseWheel':
+        case 'KeyUp':
+        case 'KeyDown':
+        case 'KeyPress':
+        case 'CellBeginEdit':
+        case 'CellEndEdit':
+        case 'DeletingRow':
+        case 'SelectedIndexChanged':
+            return '( $arg )';
+        default:
+            return '()';
+    }
+}
+Function GenerateLinkInit( $Link )
+{
+    switch($Link)
+    {
+        case 'SelectedIndexChanged':
+            return 'my List( $Index, $Text ) = $arg;' . @CRLF;
+        case 'CellBeginEdit':
+        case 'CellEndEdit':
+            return 'my List( $Column, $Row ) = $arg;' . @CRLF;
+        case 'DeletingRow':
+            return 'my List( $Row ) = $arg;' . @CRLF;
+        case 'MouseMove':
+            return 'my List( $MX, $MY ) = $arg;' . @CRLF;
+        case 'MouseClick':
+        case 'MouseDoubleClick':
+        case 'MouseDown':
+        case 'MouseUp':
+        case 'MouseWheel':
+            return 'my List( $MX, $MY, $MClicks, $MButton, $MWheelDelta ) = $arg;' . @CRLF;
+        case 'KeyUp':
+        case 'KeyDown':
+            return 'my List( $Key, $Code, $Data, $Value, $Modifiers, $Alt, $Shift, $Control ) = $arg;' . @CRLF;
+        case 'KeyPress':
+            return 'my List( $Key ) = $arg;' . @CRLF;
+        default:
+            return null;
+    }
+}

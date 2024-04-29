@@ -1,0 +1,77 @@
+﻿$LoadCommands['pay'] = array('CmdPay', 2, 2);
+Class extends ServerManager
+{
+	Function CmdPay($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Economy;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Pay cash to another player';
+		if ($args === 'help')
+			return array(
+							'Allows you to give/pay cash to another player',
+							"To give 100 cash to UberFoX type",
+							"'/pay UberFoX 100'",
+							"If more than one player has same name use '/prid' then instead of typing the player name use the id instead",
+							"Note you can use short names like '/pay uber 100' to pay to UberFoX"
+			);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowPayCash') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $payWho = $args[0];
+		if (IsEmptyOrNull($payWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my $found = $currentPlayers->FindByIdOrPartialName($payWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$payWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot pay yourself");
+			return;
+		}
+		my $foundName = $found->$Name;
+		my $payAmount = (double)$args[1];
+		if ($payAmount <= 0)
+		{
+			SayToUser($commandUser, "You must enter a value to pay");
+			return;
+		}
+		my $minValue = (double)GetConfig('PayCashMin');
+		if ($minValue > $payAmount)
+		{
+			SayToUser($commandUser, "Your payment does not mean the minimal requirement you need to pay a minimum of '$minValue'");
+			return;
+		}
+		my $maxValue = (double)GetConfig('PayCashMax');
+		if ($payAmount > $maxValue)
+		{
+			SayToUser($commandUser, "Your payment is too high there is a pay limit of '$maxValue' per transaction");
+			return;
+		}
+		my $cash = GetUserCash($commandUser);
+		if ($payAmount > $cash)
+		{
+			SayToUser($commandUser, "You cannot afford to pay '$payAmount' since you only have '$cash'");
+			return;
+		}
+		DelUserCash($commandUser, $payAmount);
+		my $cash = GetUserCash($commandUser);
+		SayToUser($commandUser, "You paid '$payAmount' cash to '$foundName' you now have '$cash' cash left");
+		my $ourName = $commandUser->$Name;
+		AddUserCash($found, $payAmount);
+		my $foundCash = GetUserCash($found);
+		SayToUser($found, "$ourName has paid you '$payAmount' in cash you now have '$foundCash' cash");
+	}
+}

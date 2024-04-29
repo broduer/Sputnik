@@ -1,0 +1,104 @@
+﻿$LoadCommands['starter'] = array('CmdStarter', 1, 1);
+Class extends ServerManager
+{
+	Function CmdStarter($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Moderation;
+		if ($args === 'rank')
+			return CommandRanks->$Moderator;
+		if ($args === 'helpDesc')
+			return 'Give somebody a starter kit!';
+		if ($args === 'help')
+			return array("Give somebody a starter kit!");
+		if ($commandUser == null)
+			return;
+		if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+		{
+			SayToUser($commandUser, "Only Admins/Mods may give out starter kits");
+			return;
+		}
+		my $friendWho = $args[0];
+		if (IsEmptyOrNull($friendWho))
+		{
+			SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+			return;
+		}
+		my $found = $currentPlayers->FindByIdOrPartialName($friendWho);
+		if ($found == null)
+		{
+			SayToUser($commandUser, "Could not find a player with the name/id of '$friendWho'");
+			return;
+		}
+		if ($found->$Id == $commandUser->$Id)
+		{
+			SayToUser($commandUser, "You cannot give a starter kit to yourself");
+			return;
+		}
+		my $starterData = $utils->getStarterKitFile();
+		foreach($starterData as my $data)
+		{
+			my List($ItemName, $Amount) = $data;
+			$ItemName = trim($ItemName);
+			my $usingParts = false;
+			my $parts = null;
+			my $brackPos = strpos($ItemName, '[');
+			my $endBrackPos = strpos($ItemName, ']');
+			if ($brackPos != -1 && $endBrackPos != -1)
+			{
+				$usingParts = true;
+				my $partsString = trim(sub($ItemName, $brackPos + 1, $endBrackPos - 1));
+				$parts = split($partsString, ',');
+				$ItemName = trim(substr($ItemName, 0, $brackPos));
+			}
+			if ($usingParts)
+			{
+				for (my $i = 0; $i < $Amount; $i++)
+				{
+					foreach($parts as my $part)
+					{
+						$part = trim($part);
+						BuyItemForUser($found, $part, 1, true);
+					}
+				}
+			}
+			else
+				BuyItemForUser($found, $ItemName, $Amount);
+		}
+		SayToUser($commandUser, "You gave a starter kit to " . $found->$Name);
+		SayToUser($found, "Hey! " . $commandUser->$Name . " gave you a starter kit pick it up off the floor!");
+		SayToUser($found, "HOLD down the E key to pick up the items or pick them up one at a time carefully");
+		SayToUser($found, "Watch out some items may try escape you!");
+	}
+}
+Class extends Utils
+{
+	Function getStarterKitFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/StarterKit.txt'))
+			return $cashFileData;
+		my $itemFile = FileReadLines('./Variables/StarterKit.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 2)
+				continue;
+			my List($ItemName, $Amount) = $split;
+			$ItemName = trim($ItemName);
+			$Amount = trim($Amount);
+			if (IsEmptyOrNull($ItemName))
+				continue;
+			if ((int)$Amount <= 0)
+				continue;
+			$fileInfo[] = array($ItemName, (int)$Amount);
+		}
+		return $fileInfo;
+	}
+}

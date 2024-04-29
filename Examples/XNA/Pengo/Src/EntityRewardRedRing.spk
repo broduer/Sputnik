@@ -1,0 +1,42 @@
+Class EntityRewardRedRing extends EntityReward
+{
+	Static $UniqueID = 0;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$RedRing;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/RedRing/RedRing.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 0;
+		$NoClip = true;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			// Play Sound
+			PlayCollectionSound();
+			// Remove this RedRing entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

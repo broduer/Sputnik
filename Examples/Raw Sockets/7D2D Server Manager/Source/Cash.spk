@@ -1,0 +1,101 @@
+﻿Class extends ServerManager
+{
+	Function HasUserGotCash($user)
+	{
+		my $cashFileData = $utils->getCashFile();
+		foreach($cashFileData as my $cashData)
+		{
+			my List($SteamId, $Cash) = $cashData;
+			if ($user->$SteamId != $SteamId)
+				continue;
+			return true;
+		}
+		return false;
+	}
+	Function GetUserCash($user)
+	{
+		my $cashFileData = $utils->getCashFile();
+		foreach($cashFileData as my $cashData)
+		{
+			my List($SteamId, $Cash) = $cashData;
+			if ($user->$SteamId != $SteamId)
+				continue;
+			return $Cash;
+		}
+		return 0;
+	}
+	Function SetUserCash($user, $value)
+	{
+		my $cashFileData = $utils->getCashFile();
+		if (!HasUserGotCash($user))
+		{
+			$cashFileData[] = array($user->$SteamId, $value);
+			$utils->setCashFile($cashFileData);
+			return;
+		}
+		for (my $i = 0; $i < count($cashFileData); $i++)
+		{
+			my List($SteamId, $Cash) = $cashFileData[$i];
+			if ($user->$SteamId == $SteamId)
+			{
+				$cashFileData[$i][1] = $value;
+				$utils->setCashFile($cashFileData);
+				return;
+			}
+		}
+	}
+	Function AddUserCash($user, $value)
+	{
+		my $userCash = GetUserCash($user);
+		SetUserCash($user, $userCash + $value);
+	}
+	Function DelUserCash($user, $value)
+	{
+		my $userCash = GetUserCash($user);
+		$userCash -= $value;
+		if ($userCash < 0)
+			$userCash = 0;
+		SetUserCash($user, $userCash);
+	}
+}
+Class extends Utils
+{
+	Function getCashFile()
+	{
+		my $cashFileData = array();
+		if (!FileExists('./Variables/Cash.txt'))
+			return $cashFileData;
+		my $itemFile = FileReadLines('./Variables/Cash.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 2)
+				continue;
+			my List($SteamId, $Cash) = $split;
+			if (IsEmptyOrNull($SteamId))
+				continue;
+			if (IsEmptyOrNull($Cash))
+				$Cash = 0;
+			$cashFileData[] = array($SteamId, (int64)$Cash);
+		}
+		return $cashFileData;
+	}
+	Function setCashFile($cashFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#SteamId|Cash");
+		foreach($cashFileData as my $cashData)
+		{
+			my List($SteamId, $Cash) = $cashData;
+			sbAppendLine($sb, "$SteamId|$Cash");
+		}
+		FileSave('./Variables/Cash.txt', sbToString($sb));
+		unset($sb);
+	}
+}

@@ -1,0 +1,1 @@
+A very basic GUI based game based on the class Lightsout puzzle game

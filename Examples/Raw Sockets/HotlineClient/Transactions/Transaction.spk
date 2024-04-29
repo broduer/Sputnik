@@ -1,0 +1,175 @@
+Enum myTran
+{
+	$Error = 100,
+	$GetMsgs = 101,
+	$NewMsg = 102,
+	$OldPostNews = 103,
+	$ServerMsg = 104,
+	$ChatSend = 105,
+	$ChatMsg = 106,
+	$Login = 107,
+	$SendInstantMsg = 108,
+	$ShowAgreement = 109,
+	$DisconnectUser = 110,
+	$DisconnectMsg = 111,
+	$InviteNewChat = 112,
+	$InviteToChat = 113,
+	$RejectChatInvite = 114,
+	$JoinChat = 115,
+	$LeaveChat = 116,
+	$NotifyChatChangeUser = 117,
+	$NotifyChatDeleteUser = 118,
+	$NotifyChatSubject = 119,
+	$SetChatSubject = 120,
+	$Agreed = 121,
+	$ServerBanner = 122,
+	$GetFileNameList = 200,
+	$DownloadFile = 202,
+	$UploadFile = 203,
+	$DeleteFile = 204,
+	$NewFolder = 205,
+	$GetFileInfo = 206,
+	$SetFileInfo = 207,
+	$MoveFile = 208,
+	$MakeFileAlias = 209,
+	$DownloadFldr = 210,
+	$DownloadInfo = 211,
+	$DownloadBanner = 212,
+	$UploadFldr = 213,
+	$GetUserNameList = 300,
+	$NotifyChangeUser = 301,
+	$NotifyDeleteUser = 302,
+	$GetClientInfoText = 303,
+	$SetClientUserInfo = 304,
+	$NewUser = 350,
+	$DeleteUser = 351,
+	$GetUser = 352,
+	$SetUser = 353,
+	$UserAccess = 354,
+	$UserBroadcast = 355,
+	$GetNewsCatNameList = 370,
+	$GetNewsArtNameList = 371,
+	$DelNewsItem = 380,
+	$NewNewsFldr = 381,
+	$NewNewsCat = 382,
+	$GetNewsArtData = 400,
+	$PostNewsArt = 410,
+	$DelNewsArt = 411
+}
+Class Transaction
+{
+	my $Flags;
+	my $IsReply;
+	my $Type;
+	my $ID;
+	my $ErrorCode;
+	my $TotalSize;
+	my $DataSize;
+	my $Params;
+	my $TData;
+	my $TDataPos;
+	my $HLSocket;
+	Function SetDataPos( $Value )
+	{
+		$TDataPos = $Value;
+	}
+	Function GetDataPos()
+	{
+		return $TDataPos;
+	}
+	Function SetFlags( $Value )
+	{
+		$Flags = Pack('c', $Value);
+	}
+	Function GetFlags()
+	{
+		return Unpack('c', $Flags)[0];
+	}
+	Function SetIsReply( $Value )
+	{
+		$IsReply = Pack('c', $Value);
+	}
+	Function GetIsReply()
+	{
+		return Unpack('c', $IsReply)[0];
+	}
+	Function SetType( $Value )
+	{
+		$Type = Pack('n', $Value);
+	}
+	Function GetType()
+	{
+		return Unpack('n', $Type)[0];
+	}
+	Function SetID( $Value )
+	{
+		$ID = Pack('N', $Value);
+	}
+	Function GetID()
+	{
+		return Unpack('N', $ID)[0];
+	}
+	Function SetErrorCode( $Value )
+	{
+		$ErrorCode = Pack('N', $Value);
+	}
+	Function GetErrorCode()
+	{
+		return Unpack('N', $ErrorCode)[0];
+	}
+	Function SetTotalSize( $Value )
+	{
+		$TotalSize = Pack('N', $Value);
+	}
+	Function GetTotalSize()
+	{
+		return Unpack('N', $TotalSize)[0];
+	}
+	Function SetDataSize( $Value )
+	{
+		$DataSize = Pack('N', $Value);
+	}
+	Function GetDataSize()
+	{
+		return Unpack('N', $DataSize)[0];
+	}
+	Function SetData( $Value )
+	{
+		$TData = $Value;
+	}
+	Function GetDataRaw()
+	{
+		return $TData;
+	}
+	Function GetData()
+	{
+		my $Data = BinaryCreate(20);
+		$Data[0] = $Flags[0];
+		$Data[1] = $IsReply[0];
+		$Data[2] = $Type[0];
+		$Data[3] = $Type[1];
+		$Data[4] = $ID[0];
+		$Data[5] = $ID[1];
+		$Data[6] = $ID[2];
+		$Data[7] = $ID[3];
+		$Data[8] = $ErrorCode[0];
+		$Data[9] = $ErrorCode[1];
+		$Data[10] = $ErrorCode[2];
+		$Data[11] = $ErrorCode[3];
+		$Data[12] = $TotalSize[0];
+		$Data[13] = $TotalSize[1];
+		$Data[14] = $TotalSize[2];
+		$Data[15] = $TotalSize[3];
+		$Data[16] = $DataSize[0];
+		$Data[17] = $DataSize[1];
+		$Data[18] = $DataSize[2];
+		$Data[19] = $DataSize[3];
+		BinaryAppend($Data, $TData);
+		return $Data;
+	}
+	Function ParseData()
+	{
+		$Params = new Parameters();
+		$Params->ParseData($TData);
+	}
+}

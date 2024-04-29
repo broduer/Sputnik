@@ -1,0 +1,13 @@
+﻿#include-once
+#require-once
+say "Testing loop with embedded ++";
+$a = (binary)"Hello";
+$b = array();
+my $pos = 0;
+my $pos2 = 0;
+foreach($a as my $c)
+	$b[$pos++] = $a[$pos2++];
+assert($pos == 5);
+assert($pos2 == 5);
+assert($b == array(0x48, 0x65, 0x6C, 0x6C, 0x6F));
+say "DONE Testing loop with embedded ++";

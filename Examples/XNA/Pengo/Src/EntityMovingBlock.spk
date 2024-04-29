@@ -1,0 +1,296 @@
+Class EntityMovingBlock extends Entity
+{
+	Static $UniqueID = 0;
+	my $BlockType;
+	my $Tex;
+	my $Position;
+	my $MapTileSize;
+	my $Score;
+	my $ScoreEntity;
+	my $Player;
+	my $MobSlayings;
+	my $DisposeTimerInterval;
+	my $DisposeTimer;
+	my $DisposeTimerStarted;
+	my $MadeSolid;
+	my $AttachedEntities;
+	my $LastPosition;
+	my $MagicEntity;
+	Function __Construct(EngineMain $Engine, $EName, $BType, $X, $Y)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$ID = EntityType->$MovingBlock;
+		$CanDieFromBlocks = false;
+		$BlockType = $BType;
+		$Position = array($X, $Y);
+		my List ($DX, $DY) = $Engine->$Map->$LevelPositions[$X][$Y];
+		$DrawPosition = array($DX, $DY);
+		$Tex = $Engine->$Map->$TileTextures[$BlockType];
+		$MapTileSize = $Engine->$Map->$MapTileSize;
+		$KeepsMoving = true;
+		$VelocityValue = 8;
+		$VelocityMovesValue = 4;
+		$ScoreEntity = null;
+		$Player = null;
+		$MobSlayings = 0;
+		$DisposeTimer = 0;
+		$DisposeTimerStarted = false;
+		$DisposeTimerInterval = 1000;
+		$MadeSolid = false;
+		$LastPosition = array();
+		$MagicEntity = null;
+		GetAttachments();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		$Player = null;
+		if($ScoreEntity != null && !$ScoreEntity->$Disposed)
+			$ScoreEntity->$DrawPosition = $DrawPosition;
+	}
+	Function GetAttachments( )
+	{
+		$AttachedEntities = array();
+		my List($MX, $MY) = GetPosition();
+		foreach( $Game->$Map->$EntityManager->$EntityValues as my $EV )
+			foreach($Game->$Map->$EntityManager->$Entities[$EV] as my $K => my $V)
+			@{
+				if($V->$Disposed)
+					continue;
+				// Find rewards to drag with us
+				if($V->$ParentID == EntityType->$Reward)
+				@{
+					my List($X, $Y) = $V->GetPosition();
+					if($MX == $X && $MY == $Y)
+					{
+						$AttachedEntities[] = $V;
+						$V->$DeathCounter += 10; // Give it extra time to follow the block
+					}
+				}
+			}
+	}
+	Function DragAttachments( )
+	{
+		foreach($AttachedEntities as my $V)
+		{
+			$V->$Position = $Position;
+			$V->$DrawPosition = $DrawPosition;
+		}
+	}
+	Function ClearAttachments( )
+	{
+		$AttachedEntities = array();
+	}
+	Function HitOn( $Entity )
+	{
+		if($Entity->$IsPlayer)
+		{
+			if(!$Entity->$Immortal)
+			{
+				$Entity->SubLives(1);
+				$Entity->Hit();
+			}
+		}
+		else
+		{
+			// Even kills mobs that are spawning same as original game
+			$MobSlayings++;
+			if(FunctionExists('death', $Entity))
+				$Entity->Death();
+			$Entity->Dispose();
+			// Increase score if a player started this moving block
+			if($Player != null)
+			{
+				my $GainedScore = 25 * ($MobSlayings > 1 ? ($MobSlayings * $MobSlayings) : $MobSlayings);
+				$Score += $GainedScore;
+				$Player->$Score += $GainedScore;
+				AddPoints($GainedScore);
+				AddMagic();
+			}
+		}
+	}
+	Function AddMagic()
+	{
+		my $DoMagic = false;
+		if($MagicEntity == null)
+		@{
+			switch($MobSlayings)
+			{
+				case 2: // Killed two monsters
+					if(Utils::ChanceOf(0, 100, 30, 60)) // 30% chance to get Magic
+						$DoMagic = true;
+					break;
+				case 3: // Killed three monsters
+					if(Utils::ChanceOf(0, 100, 20, 80)) // 60% chance to get Magic
+						$DoMagic = true;
+					break;
+				default: // Killed many monsters
+					if($MobSlayings > 3)
+						$DoMagic = true; // 100% chance to get Magic
+					break;
+			}
+		}
+		else
+			$DoMagic = true;
+		if($DoMagic)
+		@{
+			if($MagicEntity == null)
+			@{
+				// Magic
+				my List($MX, $MY) = GetPosition();
+				my $MagicName = 'EntityRewardMagic' . EntityRewardMagic::$UniqueID++;
+				$MagicEntity = new EntityRewardMagic($Game, $MagicName, $MX, $MY);
+				$Game->$Map->$EntityManager->$Entities[$MagicEntity->$ID][$MagicName] = $MagicEntity;
+			}
+			$MagicEntity->$Kills = $MobSlayings;
+		}
+	}
+	Function HitCheck( )
+	{
+		// Did we hit an Entity?
+		my List($MX, $MY) = GetPosition();
+		my $UpdateLastPosition = $LastPosition[0] != $MX || $LastPosition[1] != $MY;
+		// If we already made this area solid and its no longer solid
+		// Then we cant hit anything!
+		if($MadeSolid && $Game->$Map->$Level[$MX][$MY] == TileType->$Blank)
+			return;
+		foreach( $Game->$Map->$EntityManager->$EntityValues as my $EV )
+			foreach($Game->$Map->$EntityManager->$Entities[$EV] as my $K => my $V)
+			@{
+				if($V->$Disposed)
+					continue;
+				// Dont hit the player that started pushing it!
+				if($Player != null && $Player->$UID == $V->$UID)
+					continue;
+				// Kill entity or take a life from player
+				if($V->$CanDieFromBlocks)
+				@{
+					my List($X, $Y) = $V->GetPosition();
+					my $Hit = false;
+					if($MX == $X && $MY == $Y)
+					@{
+						HitOn($V);
+						$Hit = true;
+					}
+					// Check the last tile we was in unless we stopped moving
+					else if(!$MadeSolid && $UpdateLastPosition)
+					@{
+						if($LastPosition[0] == $X && $LastPosition[1] == $Y)
+						@{
+							HitOn($V);
+							$Hit = false;
+						}
+					}
+					// No hits on coordinates? Lets try draw position
+					if(!$Hit)
+					@{
+						my List ($DX, $DY) = $DrawPosition;
+						my List ($VX, $VY) = $V->$DrawPosition;
+						my $Dist = Utils::Distance2D($DX, $DY, $VX, $VY);
+						if($Dist <= 0.9)
+						@{
+							HitOn($V);
+							$Hit = false;
+						}
+					}
+					
+				}
+			}
+		
+		if($UpdateLastPosition)
+		{
+			$LastPosition[0] = $MX;
+			$LastPosition[1] = $MY;
+		}
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		// Drag attachments with us
+		DragAttachments();
+		// Did we crush something?
+		HitCheck();
+		// Check if we finished moving
+		if(Stopped())
+		{
+			ClearAttachments(); // Stop dragging now just incase the player pushes again
+			if(!$DisposeTimerStarted)
+			{
+				$DisposeTimerStarted = true;
+				$DisposeTimer = TickCount() + $DisposeTimerInterval;
+				// If we have an active score entity we must increase
+				// its life time by 1 second or else we might score something outside
+				// of it
+				if($ScoreEntity != null && !$ScoreEntity->$Disposed)
+					$ScoreEntity->$DeathCounter += 50; // Wait longer to disappear (1 second)
+			}
+			else
+			{
+				if(TickCount($DisposeTimer) > $DisposeTimerInterval)
+					Dispose(); // All done
+			}
+			// Solidify the block
+			if(!$MadeSolid)
+			@{
+				$MadeSolid = true;
+				my List ($X, $Y) = GetPosition();
+				$Game->$Map->SetTile($X, $Y, $BlockType);
+				// Did a Ruby victory just happen?
+				if($BlockType == TileType->$Ruby)
+				{
+					// Check UP and DOWN
+					if($Game->$Map->$Level[$X][$Y+1] == TileType->$Ruby && $Game->$Map->$Level[$X][$Y-1] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+					// Check LEFT and RIGHT
+					else if($Game->$Map->$Level[$X+1][$Y] == TileType->$Ruby && $Game->$Map->$Level[$X-1][$Y] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+					// Check UP and UP
+					else if($Game->$Map->$Level[$X][$Y-1] == TileType->$Ruby && $Game->$Map->$Level[$X][$Y-2] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+					// Check DOWN and DOWN
+					else if($Game->$Map->$Level[$X][$Y+1] == TileType->$Ruby && $Game->$Map->$Level[$X][$Y+2] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+					// Check LEFT and LEFT
+					else if($Game->$Map->$Level[$X+1][$Y] == TileType->$Ruby && $Game->$Map->$Level[$X+2][$Y] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+					// Check RIGHT and RIGHT
+					else if($Game->$Map->$Level[$X-1][$Y] == TileType->$Ruby && $Game->$Map->$Level[$X-2][$Y] == TileType->$Ruby)
+						$Game->$Map->$RubyWin = true;
+				}
+			}
+		}
+	}
+	Function AddPoints($GainedScore)
+	{
+		if($Disposed)
+			return;
+		if($ScoreEntity == null)
+		{
+			my $PointsName = 'EntityPoints' . EntityPoints::$UniqueID++;
+			$ScoreEntity = new EntityPoints($Game, $PointsName, 1, 1, $GainedScore);
+			$Game->$Map->$EntityManager->$Entities[$ScoreEntity->$ID][$PointsName] = $ScoreEntity;
+			$ScoreEntity->$LinkedEntity = $this;
+		}
+		else
+		{
+			$ScoreEntity->$Points += $GainedScore;
+		}
+	}
+	Function Draw()
+	{
+		if($Disposed)
+			return;
+		if($MadeSolid)
+			return;
+		my $DX = $DrawPosition[0];
+		my $DY = $DrawPosition[1];
+		XNADraw($Tex, $DX, $DY, $ColWhite, $MapTileSize, $MapTileSize);
+	}
+};

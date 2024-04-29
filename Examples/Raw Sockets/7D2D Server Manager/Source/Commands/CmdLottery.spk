@@ -1,0 +1,274 @@
+﻿$onServerInit[] = 'LotteryInit';
+$onServerProcess[] = 'LotteryProcess';
+$LoadCommands['lottery'] = array('CmdLottery', 0, 1);
+Class extends ServerManager
+{
+	my $lotterEndHour;
+	Function LotteryInit()
+	{
+		$lotterEndHour = -1;
+	}
+	Function CmdLottery($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Gambling;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Play the lottery for a chance to win BIG BUCKS';
+		if ($args === 'help')
+		{
+			my $gimmeMinutes = GetConfig('GimmeMinutes');
+			return array(
+							"Play the lottery for a chance to win BIG BUCKS",
+							"Use '/lottery' to see the current status of the lottery",
+							"Use '/lottery buy' to buy a ticket and get a chance of winning"
+							);
+		}
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowLottery') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $ourSteamId = $commandUser->$SteamId;
+		my $lotteryFile = $utils->getLotteryFile();
+		my $Cost = GetConfig('LotteryTicketCost');
+		if ($argCount == 0)
+		{
+			LotteryInfo($commandUser);
+			return;
+		}
+		if ($argCount == 1)
+		{
+			my $action = lc($args[0]);
+			switch ($action)
+			{
+				case 'buy':
+				{
+					LotteryBuy($commandUser);
+					return;
+				}
+				break;
+				default:
+				{
+					SayToUser($commandUser, "Invalid action '$action' for lottery");
+					return;
+				}
+			}
+		}
+	}
+	Function LotteryProcess()
+	{
+		my list($TimeIsReady, $TimeDay, $TimeHour, $TimeMinute) = GetTime();
+		if (!$TimeIsReady)
+			return;
+		if ($lotterEndHour == $TimeHour)
+			return;
+		if ($lotterEndHour != $TimeHour)
+			$lotterEndHour = -1;
+		my $lotteryFile = $utils->getLotteryFile();
+		my $Cost = GetConfig('LotteryTicketCost');
+		my $TicketsSold = count($lotteryFile['tickets']);
+		my $TicketsMustSell = (int)GetConfig('LotteryMinTickets');
+		if ($TicketsSold < $TicketsMustSell)
+			return;
+		my $jackPot = ($TicketsSold * $Cost) + $lotteryFile['jackpotRoll'];
+		if (IsEmptyOrNull($jackPot) || $jackPot < 0)
+			$jackPot = 0;
+		if ($jackPot <= 0)
+			return;
+		my $LottHour = (int)GetConfig('LotteryHour');
+		if ($TimeHour == $LottHour)
+		{
+			LotteryEnd();
+			$lotterEndHour = $TimeHour;
+		}
+	}
+	Function LotteryInfo($user)
+	{
+		my $lotteryFile = $utils->getLotteryFile();
+		my $Cost = GetConfig('LotteryTicketCost');
+		my $housePot = (int)GetConfig('LotteryHousePot');
+		my $jackPot = (count($lotteryFile['tickets']) * $Cost) + $lotteryFile['jackpotRoll'] + $housePot;
+		if (IsEmptyOrNull($jackPot) || $jackPot < 0)
+			$jackPot = 0;
+		my $sold = count($lotteryFile['tickets']);
+		if (IsEmptyOrNull($sold) || $sold < 0)
+			$sold = 0;
+		my $TicketsMustSell = (int)GetConfig('LotteryMinTickets');
+		my $hasTicket = InArray($lotteryFile['tickets'], $ourSteamId);
+		SayToUser($user, "Todays lottery jackpot is current up to '$jackPot' cash");
+		SayToUser($user, "So far '$sold' ticket(s) have been sold");
+		if ($sold < $TicketsMustSell)
+			SayToUser($user, "There must be '$TicketsMustSell' ticket(s) sold for the lottery to take place so far only '$sold' ticket(s) have been sold");
+		else
+		{
+			my $LottHour = (int)GetConfig('LotteryHour');
+			if (strlen($LottHour) < 2)
+				$LottHour ..= '0';
+			SayToUser($user, "Enough tickets have been sold the lottery will happen at the next '$LottHour:00' hour");
+		}		
+		if ($hasTicket)
+			SayToUser($user, "You have already bought a ticket today");
+		else
+			SayToUser($user, "To buy your ticket type /lottery buy");
+	}
+	Function LotteryBuy($user)
+	{
+		my $ourSteamId = $user->$SteamId;
+		my $lotteryFile = $utils->getLotteryFile();
+		my $Cost = GetConfig('LotteryTicketCost');
+		my $hasTicket = InArray($lotteryFile['tickets'], $ourSteamId);
+		if ($hasTicket)
+		{
+			SayToUser($user, "You already have a ticket");
+			return;
+		}
+		if ($Cost <= 0)
+		{
+			SayToUser($user, "Tickets have no cost report this to the admin");
+			return;
+		}
+		my $userCash = GetUserCash($user);
+		if ($userCash < $Cost)
+		{
+			SayToUser($user, "You cannot afford to buy a lottery ticket you have '$userCash' cash and need '$Cost'");
+			return;
+		}
+		DelUserCash($user, $Cost);
+		$userCash = GetUserCash($user);
+		SayToUser($user, "You bought a lottery ticket at a cost of '$Cost' cash you now have '$userCash' cash left");
+		SayToUser($user, "If your ticket wins you will gain the entire jackpot or share it with other winners");
+		$lotteryFile['tickets'][] = $ourSteamId;
+		$utils->setLotteryFile($lotteryFile);
+	}
+	Function LotteryEnd()
+	{
+		my $lotteryFile = $utils->getLotteryFile();
+		my $Cost = GetConfig('LotteryTicketCost');
+		my $tickets = count($lotteryFile['tickets']);
+		my $winners = 0;
+		if ($tickets > 0)
+			$winners = Random(0, min(4, $tickets + 1), 0);
+		my $jackPot = count($lotteryFile['tickets']) * $Cost;
+		if (IsEmptyOrNull($jackPot) || $jackPot < 0)
+			$jackPot = 0;
+		my $jackPotRoll = $lotteryFile['jackpotRoll'];
+		if (IsEmptyOrNull($jackPotRoll) || $jackPotRoll < 0)
+			$jackPotRoll = 0;
+		my $housePot = (int)GetConfig('LotteryHousePot');
+		my $totalJackpot = $jackPot + $jackPotRoll + $housePot;
+		if ($winners <= 0 && $tickets > 0 && Random(0, 100, 0) <= 70)
+			$winners = 1;
+		if ($winners <= 0)
+		{
+			$lotteryFile['tickets'] = array();
+			$totalJackpot -= $housePot;
+			if ($totalJackpot <= 0)
+			{
+				$utils->setLotteryFile($lotteryFile);
+				return;
+			}
+			SayToAll("The lottery has ended there were '0' winner(s) for the jackpot of '$totalJackpot' cash (does not include the house pot)");
+			SayToAll("The jackpot will now be added to the next jackpot");
+			$lotteryFile['jackpotRoll'] += $totalJackpot;
+			$utils->setLotteryFile($lotteryFile);
+			return;
+		}
+		SayToAll("The lottery has ended there were '$winners' winner(s) for the jackpot of '$totalJackpot' cash");
+		if ($winners == 1)
+		{
+			SayToAll("The winner is:");
+			my $rand = 0;
+			while (true)
+			{
+				$rand = Random(0, count($lotteryFile['tickets']) + 1, 0);
+				if ($rand < 0 || $rand >= count($lotteryFile['tickets']))
+					continue;
+				break;
+			}
+			my $winnerSteam = $lotteryFile['tickets'][$rand];
+			my List($found, $isOnline) = FindOnlineOrOfflinePlayer($winnerSteam);
+			if ($found == null)
+			{
+				SayToAll("Error could not find user");
+				$lotteryFile['tickets'] = array();
+				$utils->setLotteryFile($lotteryFile);
+				return;
+			}
+			my $winnerName = $found->$Name;
+			my $winnerSteam = $found->$SteamId;
+			SayToAll("$winnerName");
+			AddUserCash($found, $totalJackpot);
+			if ($isOnline)
+				SayToUser($found, "You won '$totalJackpot' cash in the lottery!");
+		}
+		else
+		{
+			SayToAll("The winner(s) are:");
+			my $toPay = (int)($totalJackpot / $winners);
+			if ($toPay < 0)
+				$toPay = 0;
+			my $paid = 0;
+			my $winnerSteams = array();				
+			while($paid != $winners)
+			{
+				my $rand = Random(0, count($lotteryFile['tickets']) + 1, 0);
+				if ($rand < 0 || $rand >= count($lotteryFile['tickets']))
+					continue;
+				my $winnerSteam = $lotteryFile['tickets'][$rand];
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayer($winnerSteam);
+				if ($found == null)
+				{
+					SayToAll("Error could not find user");
+					continue;
+				}
+				my $winnerName = $found->$Name;
+				my $winnerSteam = $found->$SteamId;
+				if (InArray($winnerSteams, $winnerSteam))
+					continue;
+				$winnerSteams[] = $winnerSteam;
+				SayToAll("$winnerName");
+				AddUserCash($found, $toPay);
+				if ($isOnline)
+					SayToUser($found, "You won '$toPay' cash in the lottery!");
+				$paid++;
+			}
+			$winnerSteams = null;
+		}
+		$lotteryFile['jackpotRoll'] = 0;
+		$lotteryFile['tickets'] = array();
+		$utils->setLotteryFile($lotteryFile);
+	}
+}
+Class extends Utils
+{
+	Function newLotteryFile()
+	{
+		my $data = array();
+		$data['tickets'] = array();
+		$data['stats'] = array();
+		return $data;
+	}
+	Function getLotteryFile()
+	{
+		if (!FileExists('./Variables/Lottery.db'))
+			return newLotteryFile();
+		my $dileData = FileLoad('./Variables/Lottery.db');
+		my $data = unserialize($dileData);
+		if ($data == null || !IsVarArray($data))
+			return newLotteryFile();
+		if (!IsKeySet($data, 'tickets'))
+			$data['tickets'] = array();
+		if (!IsKeySet($data, 'stats'))
+			$data['stats'] = array();
+		return $data;
+	}
+	Function setLotteryFile($lotteryData)
+	{
+		my $data = serialize($lotteryData);
+		FileSave('./Variables/Lottery.db', $data);
+	}
+}

@@ -1,0 +1,335 @@
+﻿Global $p = new SpkProc('tld');
+Global $savedPos = null;
+Global $bunkerCur = null;
+Global $bunkerLocations = array(
+							array(-46, 162.5, 1615),
+							array(-79, 197.4, 1654.7),
+							array(-8, 124.8, 1247),
+							array(3.1, 109.5, 1238.3),
+							array(8, 108.4, 1247),
+							array(-41, 50.5, 606),
+							array(745 , 88.9, 430),
+							array(1172, 107.4, -72),
+							array(1635, 101.2, 637),
+							array(1305, 70, 1040),
+							array(1312, 91.7, 1562)
+						);
+Global $mysteryLakeCur = null;
+Global $mysteryLakeLocations = array(
+							array('Carter Hydro Dam', array(1676.4, 42.4, 1383.9)),
+							array('Train Loading Area', array(1301.2, 38.4, 1249.3)),
+							array('Derailment', array(969.6, 40.4, 849.4)),
+							array('Camp Office', array(1013.3, 27.9, 437.2)),
+							array('Hunting Stand #1', array(1630, 20, 830)),
+							array('Alans Cave', array(1515.9, 37.5, 835.7)),
+							array('Logging Camp', array(910, 22.8, 1250)),
+							array('Deadfall Area', array(569.2, -0.1, 256.8)),
+							array('Tunnel Collapse', array(760, 38.9, -120)),
+							array('Maxs Last Stand', array(320, 12.6, -40)),
+							array('Trappers Ruins', array(145, 5, 45)),
+							array('Trappers Homestead', array(38.8, 16.8, 29.2)),
+							array('Hunting Stand #2', array(140, 10, 670)),
+							array('Isolated Cabin', array(69.6, 27.2, 946.5)),
+							array('Forestry Lookout', array(445.5, 170.4, 1002)),
+							array('Clear Cut', array(340, 16.8, 1220))
+						);
+						
+if (!$p->IsValid())
+{
+	say "Load the game and get into the game world";
+	say "Then load this trainer again";
+	exit;
+}
+						
+HotKeySet('{Numpad1}', 'SaveLoc();');
+HotKeySet('{Numpad2}', 'LoadLoc();');
+HotKeySet('{Numpad3}', 'Bunker(false);');
+HotKeySet('^{Numpad3}', 'Bunker(true);');
+HotKeySet('{Numpad4}', 'MysteryLake(false);');
+HotKeySet('^{Numpad4}', 'MysteryLake(true);');
+
+if (!IsInjected())
+	DoInjection();
+	
+if (IsInjected())
+{
+	say 'Hotkeys are:';
+	say 'Numpad1 -- Save Current Location';
+	say 'Numpad2 -- Load Last Saved Location';
+	say 'Numpad3 -- Teleport to next possible Bunker location';
+	say 'Control+Numpad3 -- Teleport to previous possible Bunker location';
+	say 'Numpad4 -- Teleport to next main location in Mystery Lake';
+	say 'Control+Numpad4 -- Teleport to previous main location in Mystery Lake';
+}
+else
+{
+	say "Failed to inject!";
+	say "Make sure you are in-game playing then load the trainer";
+	exit;
+}
+
+while (true)
+{
+	DoEvents();
+	sleep(1);
+}
+
+Function PosToStr($pos)
+{
+	my $x = sprintf('%.02f', $pos[0]);
+	my $y = sprintf('%.02f', $pos[1]);
+	my $z = sprintf('%.02f', $pos[2]);
+	return "(X: $x, Y: $y, Z: $z)";
+}
+
+Function ArrayIndexShift($current, $count, $goBackwards)
+{
+	if ($goBackwards)
+	{
+		if ($current === null)
+			return $count - 1;
+		$current--;
+		if ($current < 0)
+			$current = $count - 1;
+	}
+	else
+	{
+		if ($current === null)
+			return 0;
+		$current++;
+		if ($current >= $count)
+			$current = 0;
+	}
+	return $current;
+}
+
+Function MysteryLake($goBackwards)
+{
+	$mysteryLakeCur = ArrayIndexShift($mysteryLakeCur, count($mysteryLakeLocations), $goBackwards);
+	my $name = $mysteryLakeLocations[$mysteryLakeCur][0];
+	my $pos = $mysteryLakeLocations[$mysteryLakeCur][1];
+	SetPos($pos[0], $pos[1], $pos[2]);
+	say "Teleporting to $name";
+	say PosToStr($pos);
+}
+
+Function Bunker($goBackwards)
+{
+	$bunkerCur = ArrayIndexShift($bunkerCur, count($bunkerLocations), $goBackwards);
+	my $pos = $bunkerLocations[$bunkerCur];
+	SetPos($pos[0], $pos[1], $pos[2]);
+	say 'Teleporting to possible Bunker Location...';
+	say PosToStr($pos);
+}
+
+Function SaveLoc()
+{
+	$savedPos = GetPos();
+	say 'Saving location...';
+	say PosToStr($savedPos);
+}
+
+Function LoadLoc()
+{
+	if ($savedPos === null)
+		return;
+	my $pos = $savedPos;
+	SetPos($pos[0], $pos[1], $pos[2]);
+	say 'Loading location...';
+	say PosToStr($pos);
+}
+
+Function SetPos($x, $y, $z)
+{
+	my $coreAddr = $p->GetCoreAddress('tld.exe+300');
+	$coreAddr += 0x0E; // Skip Magic
+	my $xAddr = $p->ReadMem($coreAddr, @rInt32);
+	my $yAddr = $p->ReadMem($coreAddr+4, @rInt32);
+	my $zAddr = $p->ReadMem($coreAddr+8, @rInt32);
+	$p->WriteMem($xAddr, (double)$x);
+	$p->WriteMem($yAddr, (double)$y);
+	$p->WriteMem($zAddr, (double)$z);
+}
+
+Function GetPos()
+{
+	my $coreAddr = $p->GetCoreAddress('tld.exe+300');
+	$coreAddr += 0x0E; // Skip Magic
+	my $xAddr = $p->ReadMem($coreAddr, @rInt32);
+	my $yAddr = $p->ReadMem($coreAddr+4, @rInt32);
+	my $zAddr = $p->ReadMem($coreAddr+8, @rInt32);
+	my $x = $p->ReadMem($xAddr, @rDouble);
+	my $y = $p->ReadMem($yAddr, @rDouble);
+	my $z = $p->ReadMem($zAddr, @rDouble);
+	return array($x, $y, $z);
+}
+
+Function IsInjected()
+{
+	my $coreAddr = $p->GetCoreAddress('tld.exe+300');
+	my $magic = $p->ReadMem($coreAddr, @rAscii, 13);
+	return $magic == 'Teleport Hack';
+}
+
+Function DoInjection($enable = true)
+{
+	if ($enable)
+	{
+		if (IsInjected())
+		{
+			say "Teleport already enabled!";
+			return;
+		}
+	}
+	else
+	{
+		if (!IsInjected())
+		{
+			say "Teleport already disabled!";
+			return;
+		}
+	}
+	my $injectScript = 
+	q~
+		[ENABLE]
+		
+		registersymbol(INJECT)
+		registersymbol(positionX)
+		registersymbol(positionY)
+		registersymbol(positionZ)
+		
+		aobscanmodule(INJECT,tld.exe,F3 0F 7E 86 A0 01 00 00 8B 55 1C F3 0F 10 8E F0 01 00 00 8B 5D 08 66 0F D6 45 D4 F3 0F 7E 86 A8 01 00 00 0F 94 C0 66 0F D6 45 DC F3 0F 7E 86 B0 01 00 00)
+		
+		define(vars,"tld.exe"+300)
+		FULLACCESS(vars,1000)
+		
+		alloc(newmem,$1000)
+		
+		label(code)
+		label(exit)
+		label(return)
+		label(saveEAX)
+		label(magic)
+		label(positionX)
+		label(positionY)
+		label(positionZ)
+		
+		vars:
+		magic:
+		  db 'Teleport Hack',0
+		positionX:
+		  db 00 00 00 00
+		positionY:
+		  db 00 00 00 00
+		positionZ:
+		  db 00 00 00 00
+		saveEAX:
+		  db 00 00 00 00
+		
+		newmem:
+		
+		code:
+		  // save eax
+		  mov [saveEAX], eax
+		  // make sure its a player
+		  // this rather unique identifier seems to only
+		  // be this number when scanning a player
+		  // since this function gets called by all animals
+		  // in the game we needed a way to filter them out
+		  // and find just the player...
+		  mov eax, [esi+000001A0-28] // - from X
+		  cmp eax, #16843008
+		  jne exit
+		  // get X
+		  lea eax, [esi+000001A0]
+		  mov [positionX], eax
+		  // get Y
+		  lea eax, [esi+000001A8]
+		  mov [positionY], eax
+		  // get Z
+		  lea eax, [esi+000001B0]
+		  mov [positionZ], eax
+		  jmp exit
+		
+		exit:
+		  // load eax
+		  mov eax, [saveEAX]
+		  // orig code
+		  movq xmm0,[esi+000001A0]
+		  mov edx,[ebp+1C]
+		  movss xmm1,[esi+000001F0]
+		  mov ebx,[ebp+08]
+		  movq [ebp-2C],xmm0
+		  movq xmm0,[esi+000001A8]
+		  sete al
+		  movq [ebp-24],xmm0
+		  movq xmm0,[esi+000001B0]
+		  jmp return
+		
+		INJECT:
+		  jmp code
+		  db 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90
+		return:
+		
+		[DISABLE]
+		
+		INJECT:
+		  db F3 0F 7E 86 A0 01 00 00 8B 55 1C F3 0F 10 8E F0 01 00 00 8B 5D 08 66 0F D6 45 D4 F3 0F 7E 86 A8 01 00 00 0F 94 C0 66 0F D6 45 DC F3 0F 7E 86 B0 01 00 00
+		
+		unregistersymbol(INJECT)
+		unregistersymbol(positionX)
+		unregistersymbol(positionY)
+		unregistersymbol(positionZ)
+		
+		dealloc(newmem)
+		
+		// ORIGINAL CODE - INJECTION POINT: "tld.exe"+96773C
+		// "tld.exe"+967717: 56                       -  push esi
+		// "tld.exe"+967718: 0F AE 5D FC              -  stmxcsr [ebp-04]
+		// "tld.exe"+96771C: 57                       -  push edi
+		// "tld.exe"+96771D: 8B 7D FC                 -  mov edi,[ebp-04]
+		// "tld.exe"+967720: 8B F1                    -  mov esi,ecx
+		// "tld.exe"+967722: C7 45 FC C0 9F 00 00     -  mov [ebp-04],00009FC0
+		// "tld.exe"+967729: 0F AE 55 FC              -  ldmxcsr [ebp-04]
+		// "tld.exe"+96772D: 8D 4D CC                 -  lea ecx,[ebp-34]
+		// "tld.exe"+967730: E8 5B 31 02 00           -  call tld.exe+98A890
+		// "tld.exe"+967735: 83 BE F8 01 00 00 01     -  cmp dword ptr [esi+000001F8],01
+		// ---------- INJECTING HERE ----------
+		// "tld.exe"+96773C: F3 0F 7E 86 A0 01 00 00  -  movq xmm0,[esi+000001A0]
+		// "tld.exe"+967744: 8B 55 1C                 -  mov edx,[ebp+1C]
+		// "tld.exe"+967747: F3 0F 10 8E F0 01 00 00  -  movss xmm1,[esi+000001F0]
+		// "tld.exe"+96774F: 8B 5D 08                 -  mov ebx,[ebp+08]
+		// "tld.exe"+967752: 66 0F D6 45 D4           -  movq [ebp-2C],xmm0
+		// "tld.exe"+967757: F3 0F 7E 86 A8 01 00 00  -  movq xmm0,[esi+000001A8]
+		// "tld.exe"+96775F: 0F 94 C0                 -  sete al
+		// "tld.exe"+967762: 66 0F D6 45 DC           -  movq [ebp-24],xmm0
+		// "tld.exe"+967767: F3 0F 7E 86 B0 01 00 00  -  movq xmm0,[esi+000001B0]
+		// ---------- DONE INJECTING  ----------
+		// "tld.exe"+96776F: 0F B6 C8                 -  movzx ecx,al
+		// "tld.exe"+967772: 8B 45 18                 -  mov eax,[ebp+18]
+	~;
+	$injectScript = trim($injectScript);
+	$injectScript = RegexReplace($injectScript, @"/^\s+/gm", '');
+	my $autoRet = $p->AutoAssemble($injectScript, $enable);
+	my $result = $autoRet[0];
+	if ($enable)
+	{
+		if ($result)
+			say "Teleport Ready!";
+		else
+		{
+			say "Failed to inject!";
+			say "Make sure you are in-game playing then load the trainer";
+		}
+	}
+	else
+	{
+		if ($result)
+			say "Teleport Disabled!";
+		else
+		{
+			say "Failed to inject!";
+			say "Make sure you are in-game playing then load the trainer";
+		}
+	}
+}

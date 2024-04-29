@@ -1,0 +1,348 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "String:Sub";
+println("[$CurrentName] Begins");
+StringSubTest1();
+StringSubTest2();
+StringSubTest3();
+StringSubTest4();
+StringSubTest5();
+StringSubTest6();
+StringSubTest7();
+StringSubTest8();
+StringSubTest9();
+StringSubTest10();
+StringSubTest11();
+StringSubTest12();
+StringSubTest13();
+StringSubTest14();
+StringSubTest15();
+StringSubTest16();
+StringSubTest17();
+StringSubTest18();
+StringSubTest19();
+StringSubTest20();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function StringSubTest1()
+{
+	println("$CurrentName Test 1");
+	if(
+		sub("I am a string", 2, 3) == "am"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest2()
+{
+	println("$CurrentName Test 2");
+	if(
+		sub("Hello Corona user", 6) == "Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest3()
+{
+	println("$CurrentName Test 3");
+	if(
+		sub("Hello Corona user", 6, 8) == "Cor"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest4()
+{
+	println("$CurrentName Test 4");
+	if(
+		sub("Hello Corona user", -11) == "Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest5()
+{
+	println("$CurrentName Test 5");
+	if(
+		sub("Hello Corona user", -11, 11) == "Corona"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest6()
+{
+	println("$CurrentName Test 6");
+	if(
+		sub("Hello Corona user", -11, -6) == "Corona"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest7()
+{
+	println("$CurrentName Test 7");
+	if(
+		sub("Hello Corona user", 0, 0) == "H"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest8()
+{
+	println("$CurrentName Test 8");
+	if(
+		sub("Hello Corona user", 0, -1) == "Hello Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest9()
+{
+	println("$CurrentName Test 9");
+	if(
+		sub("Hello Corona user", 0, -2) == "Hello Corona use"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest10()
+{
+	println("$CurrentName Test 10");
+	if(
+		sub("Hello Corona user", -2, -1) == "er"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest11()
+{
+	println("$CurrentName Test 11");
+	if(
+		sub("I am a string", array(2, 3)) == "am"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest12()
+{
+	println("$CurrentName Test 12");
+	say sub("Hello Corona user", array(6));
+	if(
+		sub("Hello Corona user", array(6)) == "Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest13()
+{
+	println("$CurrentName Test 13");
+	if(
+		sub("Hello Corona user", array(6, 8)) == "Cor"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest14()
+{
+	println("$CurrentName Test 14");
+	if(
+		sub("Hello Corona user", array(-11)) == "Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest15()
+{
+	println("$CurrentName Test 15");
+	if(
+		sub("Hello Corona user", array(-11, 11)) == "Corona"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest16()
+{
+	println("$CurrentName Test 16");
+	if(
+		sub("Hello Corona user", array(-11, -6)) == "Corona"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest17()
+{
+	println("$CurrentName Test 17");
+	if(
+		sub("Hello Corona user", array(0, 0)) == "H"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest18()
+{
+	println("$CurrentName Test 18");
+	if(
+		sub("Hello Corona user", array(0, -1)) == "Hello Corona user"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest19()
+{
+	println("$CurrentName Test 19");
+	if(
+		sub("Hello Corona user", array(0, -2)) == "Hello Corona use"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringSubTest20()
+{
+	println("$CurrentName Test 20");
+	if(
+		sub("Hello Corona user", array(-2, -1)) == "er"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

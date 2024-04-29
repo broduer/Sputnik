@@ -1,0 +1,9 @@
+#<?
+Global $CodeTesterActive = true;
+Global $mToolsEditor = GUICreate("MenuItem", $mTools, "Open new Sputnik Editor");
+GUILink($mToolsEditor, "Click", 'OpenNewEditor();');
+
+Function OpenNewEditor()
+{
+	new SourceEditor(false, null, 'Unsaved', 'Generic', false, true, false, $GUI);
+}

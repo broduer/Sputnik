@@ -1,0 +1,287 @@
+﻿$LoadCommands['buy'] = array('CmdBuy', 0, 2);
+Class extends ServerManager
+{
+	Function CmdBuy($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Economy;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Spend cash to buy items';
+		if ($args === 'help')
+			return array(
+							'This command can be used to buy items for cash.',
+							'If you type ''/buy'' (without quotes) by itself it will show you the categories to you may buy items from.',
+							'If you type ''/buy categoryName'' (without quotes) it will show all the items you may buy in that category.',
+							'Each of thoes items has a number at the start of it telling you its number.',
+							'So to buy item 2 from Ammo (the second item in the list) type ''/buy ammo 2'' (without quotes)',
+							'To search for an item use the - modifier for exmaple type ''/buy -9mm'' to find items with 9mm in their name'
+							);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowItemBuying') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		if ($argCount == 0)
+		{
+			SayToUser($commandUser, "Here is a list of categories you may buy from");
+			$count = 0;
+			foreach($utils->getBuyItemFile() as my $category => my $info)
+			{
+				my $count = count($info);
+				SayToUser($commandUser, "$category ('$count' item(s))");
+				$count++;
+			}
+			SayToUser($commandUser, "To view all items in a category type");
+			SayToUser($commandUser, "/buy <categoryName>");
+		}
+		else if ($argCount == 1)
+		{
+			my $cat = $args[0];
+			if (IsEmptyOrNull($cat))
+			{
+				SayToUser($commandUser, "'$cat' is not a valid buy category or action type");
+				return;
+			}
+			if (StartsWith($cat, '-'))
+			{
+				my $find = substr($cat, 1);
+				my $buyFile = $utils->getBuyItemFile();
+				my $found = array();
+				foreach($utils->getBuyItemFile() as my $category => my $info)
+				{
+					my $Id = -1;
+					foreach($info as my $inf)
+					{
+						$Id++;
+						my List($ItemName, $Amount, $Cost) = $inf;
+						$ItemName = SanitizeItemName($ItemName);
+						if (!Contains($ItemName, $find, true))
+							continue;
+						$found[] = array($Category, $Id, $ItemName, $Amount, $Cost);
+					}
+				}
+				my $count = count($found);
+				if ($count == 0)
+				{
+					SayToUser($commandUser, "Could not find any items with a name containing '$find'");
+					return;
+				}
+				SayToUser($commandUser, "There are '$count' item(s) containing the name '$find'");
+				foreach($found as my $inf)
+				{
+					my List($Category, $Id, $ItemName, $Amount, $Cost) = $inf;
+					SayToUser($commandUser, "$ItemName | $Amount | $Cost");
+					SayToUser($commandUser, "-- To Buy type: /buy $Category $Id");
+				}
+				$found = null;
+			}
+			else
+			{
+				my $buyFile = $utils->getBuyItemFile();
+				my $foundCat = false;
+				foreach($utils->getBuyItemFile() as my $category => my $info)
+				{
+					if (lc($cat) == lc($category))
+					{
+						$foundCat = true;
+						$cat = $category;
+						break;
+					}
+				}
+				if (!$foundCat)
+				{
+					SayToUser($commandUser, "'$cat' is not a valid buy category");
+					return;
+				}
+				SayToUser($commandUser, "Here is a list of items you may buy from the category $cat");
+				SayToUser($commandUser, "The ordering is Buy ID | Item Name | Amount | Cost");
+				$count = 0;
+				foreach($buyFile[$cat] as my $info)
+				{
+					my List($ItemName, $Amount, $Cost) = $info;
+					$ItemName = SanitizeItemName($ItemName);
+					SayToUser($commandUser, "$count | $ItemName | $Amount | $Cost");
+					$count++;
+				}
+				SayToUser($commandUser, "To buy an item type");
+				SayToUser($commandUser, "/buy $cat <id>");
+				SayToUser($commandUser, "Where the <id> is the number listed above");
+				SayToUser($commandUser, "Remember to scroll all the way back down (if you scroll up) or else your chat may bug");
+			}
+		}
+		else if ($argCount == 2)
+		{
+			my $cat = $args[0];
+			if (IsEmptyOrNull($cat))
+			{
+				SayToUser($commandUser, "'$cat' is not a valid buy category or action type");
+				return;
+			}
+			my $buyFile = $utils->getBuyItemFile();
+			my $foundCat = false;
+			foreach($utils->getBuyItemFile() as my $category => my $info)
+			{
+				if (lc($cat) == lc($category))
+				{
+					$foundCat = true;
+					$cat = $category;
+					break;
+				}
+			}
+			if (!$foundCat)
+			{
+				SayToUser($commandUser, "'$cat' is not a valid buy category");
+				return;
+			}
+			my $numText = $args[1];
+			if (!IsDigit($numText))
+			{
+				SayToUser($commandUser, "You entered an invalid number");
+				return;
+			}
+			my $num = (int)$numText;
+			if ($num < 0 || $num >= count($buyFile[$cat]))
+			{
+				SayToUser($commandUser, "You entered an invalid item number");
+				return;
+			}
+			if (!IsKeySet($buyFile[$cat], $num))
+			{
+				SayToUser($commandUser, "You entered an invalid item number");
+				return;
+			}
+			my $found = $buyFile[$cat][$num];	
+			my List($ItemName, $Amount, $Cost) = $found;
+			my List($ItemName, $UsingParts, $Parts) = ResolveItemNameForBuy($ItemName);
+			my $sanItemName = SanitizeItemName($ItemName);
+			SayToUser($commandUser, "You wish to buy item number '$num' which is '$sanItemName' (amount '$Amount') for cost of $Cost");
+			my $userCash = GetUserCash($commandUser);
+			if ($userCash < $Cost)
+			{
+				SayToUser($commandUser, "You cannot afford this item you have '$userCash' cash and need '$Cost'");
+				return;
+			}
+			DelUserCash($commandUser, $Cost);
+			$userCash = GetUserCash($commandUser);
+			SayToUser($commandUser, "You have bought the item(s) for '$Cost' cash you now have '$userCash' cash left");
+			SayToUser($commandUser, "The item has been given you may pick it up now (it should be at your feet!");
+			if ($usingParts)
+			{
+				SayToUser($commandUser, "Note - This item comes in parts you must assemble it yourself!");
+				for (my $i = 0; $i < $Amount; $i++)
+				{
+					foreach($parts as my $part)
+						BuyItemForUser($commandUser, $part, 1, true);
+				}
+			}
+			else
+				BuyItemForUser($commandUser, $ItemName, $Amount);
+		}
+	}
+	Function ResolveItemNameForBuy($ItemName)
+	{
+		my $usingParts = false;
+		my $parts = null;
+		my $brackPos = strpos($ItemName, '[');
+		my $endBrackPos = strpos($ItemName, ']');
+		if ($brackPos != -1 && $endBrackPos != -1)
+		{
+			$usingParts = true;
+			my $partsString = trim(sub($ItemName, $brackPos + 1, $endBrackPos - 1));
+			$parts = split($partsString, ',');
+			for (my $i = 0; $i < count($parts); $i++)
+				$parts[$i] = trim($parts[$i]);
+			$ItemName = trim(substr($ItemName, 0, $brackPos));
+		}
+		return array($ItemName, $usingParts, $parts);
+	}
+	Function SanitizeItemName($ItemName)
+	{
+		my $brackPos;
+		while (($brackPos = strpos($ItemName, '[')) != -1 || ($brackPos = strpos($ItemName, '{')) != -1)
+		{
+			if ($brackPos != -1)
+				$ItemName = substr($ItemName, 0, $brackPos);
+		}
+		return $ItemName;
+	}
+	Function BuyItemForUser($user, $itemName, $amount, $isPart = false)
+	{
+		my $useQuality = false;
+		if ($isPart)
+			$useQuality = true;
+		my $defaultQuality = (int)Random((int)GetConfig('MinQuality'), (int)GetConfig('MaxQuality'), 0);
+		my $quality = $defaultQuality;
+		my $brackPos = strpos($ItemName, '{');
+		my $endBrackPos = strpos($ItemName, '}');
+		if ($brackPos != -1 && $endBrackPos != -1)
+		{
+			$useQuality = true;
+			my $qualityInfo = trim(sub($ItemName, $brackPos + 1, $endBrackPos - 1));
+			if (!IsEmptyOrNull($qualityInfo) && $qualityInfo != 'x')
+			{
+				if (strpos($qualityInfo, '-') != -1)
+				{
+					my $qualitySplit = split($qualityInfo, '-');
+					my $minQuality = (int)$qualitySplit[0];
+					my $maxQuality = (int)$qualitySplit[1];
+					$quality = (int)Random($minQuality, $maxQuality, 0);
+				}
+				else
+					$quality = (int)$qualityInfo;
+			}
+			if ($qualityInfo == 'x')
+				$useQuality = false;
+			$ItemName = trim(substr($ItemName, 0, $brackPos));
+		}
+		if ($useQuality)
+			GiveItemToUser($user, $itemName, $amount, $quality);
+		else
+			GiveItemToUser($user, $itemName, $amount);
+	}
+}
+Class extends Utils
+{
+	Function getBuyItemFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/BuyItems.txt'))
+			return $cashFileData;
+		my $itemFile = FileReadLines('./Variables/BuyItems.txt');
+		my $currentKey = null;
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			if ($lineTrim =~ m/^\[(.*?)\]$/)
+			{
+				$currentKey = trim($1);
+				$fileInfo[$currentKey] = array();
+				continue;
+			}
+			if ($currentKey == null)
+				continue;
+			my $split = split($lineTrim, '|');
+			if (count($split) != 3)
+				continue;
+			my List($ItemName, $Amount, $Cost) = $split;
+			$ItemName = trim($ItemName);
+			$Amount = trim($Amount);
+			$Cost = trim($Cost);
+			if (IsEmptyOrNull($ItemName))
+				continue;
+			if ((int)$Amount <= 0)
+				continue;
+			$fileInfo[$currentKey][] = array($ItemName, (int)$Amount, (int)$Cost);
+		}
+		return $fileInfo;
+	}
+}

@@ -1,0 +1,58 @@
+#<?
+Class PropBorderStyle extends Prop
+{
+	my $BorderSyle;
+	my $BorderStyles = array(	'None' => 0,
+								'Fixed Single' => 1,
+								'Fixed 3D' => 2,
+								'Fixed Dialog' => 3,
+								'Sizable' => 4,
+								'Fixed Tool Window' => 5
+							);
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, $PropDefault, $PropParentType);
+		$BorderSyle = 4;
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return IndexOfValue($BorderStyles, $BorderSyle);
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $StyleArray = array();
+		foreach($BorderStyles as my $key => my $value)
+			$StyleArray[$key] = $BorderSyle == $value;
+		my $Ret = ChoiceBox('BorderStyle', 
+							'Please select a BorderStyle type from the options below', 
+							$StyleArray
+							);
+		if($Ret === null)
+			return null;
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick a style!', $Title, 48);
+			return null;
+		}
+		$BorderSyle = $BorderStyles[$Ret];
+		return $Ret;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		$BorderSyle = (Int64)$Value;
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)$BorderSyle;
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		$Code .= "GUIWindow(\$$ObjName, '$Name', $BorderSyle);\r\n";
+		return $Code;
+	}
+};

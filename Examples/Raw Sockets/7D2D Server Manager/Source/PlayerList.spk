@@ -1,0 +1,96 @@
+﻿Class PlayerList
+{
+	my $players;
+	Function __construct()
+	{
+		$players = array();
+	}
+	Function VerifyPlayers()
+	{
+		my $newPlayers = array();
+		foreach($players as my $player)
+		{
+			if ($player IsNot Player)
+				continue;
+			$newPlayers[] = $player;
+		}
+		$players = $newPlayers;
+	}
+	Function AddPlayer($player)
+	{
+		$players[] = $player;
+	}
+	Function ClonePlayerList($playerList)
+	{
+		ClearPlayers();
+		foreach($playerList->$players as my $player)
+			AddPlayer($player);
+	}
+	Function ClearPlayers()
+	{
+		$players = array();
+	}
+	Function DelBySteamId($SteamId)
+	{
+		my $found = null;
+		foreach($players as my $player)
+		{
+			if ($player->$SteamId == $SteamId)
+			{
+				$found = $player;
+				break;
+			}
+		}
+		if ($found == null)
+			return;
+		RemoveValue($players, $found);
+		order($players);
+	}
+	Function FindById($id)
+	{
+		foreach($players as my $player)
+		{
+			if ($player->$Id == $id)
+				return $player;
+		}
+		return null;
+	}
+	Function FindBySteamId($SteamId)
+	{
+		foreach($players as my $player)
+		{
+			if ($player->$SteamId == $SteamId)
+				return $player;
+		}
+		return null;
+	}
+	Function FindByName($name)
+	{
+		foreach($players as my $player)
+		{
+			if ($player->$Name == $name)
+				return $player;
+		}
+		return null;
+	}
+	Function FindByPartialName($name)
+	{
+		my $count = 0;
+		my $found = null;
+		foreach($players as my $player)
+		{
+			if (Contains($player->$Name, $name, true))
+			{
+				$count++;
+				$found = $player;
+			}
+		}
+		if ($found != null && $count == 1)
+			return $found;
+		return null;
+	}
+	Function FindByIdOrPartialName($idOrName)
+	{
+		return FindByPartialName($idOrName) ?? FindById($idOrName);
+	}
+}

@@ -1,0 +1,1 @@
+This is the start of a Diablo 2 channel bot for PVPGN it can join channel and PM/Chat to users it is a good foundation to expand to do anything.

@@ -1,0 +1,23 @@
+##TEMPLATE-NAME 'Visual Basic - Constants Only'
+##LANGUAGE 'Visual Basic'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'bas'
+##NOTES
+This template creates to set of Visual Basic enumerated constants for the grammar's symbols and rules.
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+Public Enum SymbolConstants
+##SYMBOLS
+   %ID.Padded% = %Value.Padded% ' %Description%
+##END-SYMBOLS
+End Enum
+
+Public Enum RuleConstants
+##RULES
+   %ID.Padded% = %Value.Padded% ' %Description%
+##END-RULES
+End Enum

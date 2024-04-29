@@ -1,0 +1,22 @@
+#include-once
+#require-once
+DllImport(
+			array
+			(
+				'@AddBefore:w_', // Makes the APIs start with w_ so MessageBox = w_MessageBox
+				'API.dll', // Tells it to produce a DLL and the Source code to it
+				//'API.dll', // Tells it to produce only the dll
+				// User32.dll
+				array('User32.dll', 'MessageBox', 'Int32', 'ippi', 'Unicode'),
+				array('User32.dll', 'GetMessageExtraInfo', 'Int32', '', ''),
+				array('User32.dll', 'MapVirtualKey', 'UInt32', 'II', ''),
+				array('User32.dll', 'keybd_event', '', 'bbIi', ''),
+				array('User32.dll', 'VkKeyScan', 'Int16', 's', ''),
+				array('User32.dll', 'SendInput', 'UInt32', 'Iti', ''),
+				array('User32.dll', 'GetAsyncKeyState', 'Int16', 'I', ''),
+				array('User32.dll', 'GetKeyState', 'Int16', 'I', ''),
+				// Kernel32.dll
+				array('Kernel32.dll', 'GetTickCount', 'Int32', '', ''),
+				array('Kernel32.dll', 'GetTickCount64', 'Int64', '', '')
+			)
+);

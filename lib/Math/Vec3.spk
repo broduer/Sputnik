@@ -1,0 +1,576 @@
+#include-once
+#require-once
+// Vector3 Class ported to Sputnik by UberFoX
+// 
+// Function Key:
+// ! = Returns no return value
+// * = Returns a new Vector3
+// % = Returns a numeric value
+// " = Returns a string
+// @ = Returns an array
+// : = Returns numeric where higher than 0 is true
+// 
+// Function Argument Key:
+// * = Requires Vector3
+// % = Requires numeric value
+// 
+// Static Functions // To be called from anywhere like: vec3::FunctionName()
+// 	* CrossProduct(*, *) // Determine the cross product of two Vectors
+// 	% DotProduct(*, *) // Determine the dot product of two Vectors
+// 	% MixedProduct(*, *, *) // Determine the mixed product of three Vectors
+// 	* Normalize(*) // Get the normalized vector of a vector
+// 	% Multiply(*, *) //  Returns the dot product: vector1.X * vector2.X + vector1.Y*vector2.Y 
+// 	% Determinant(*, *) // Returns the determinant det(vector1, vector2)
+// 	* SumComponentSqrs(*) // The sum of a Vector3's squared components
+// 	* SqrComponents(*) // A Vector3's components squared
+// 	% SumComponents(*) // The sum of a Vector3's components
+// 	% Distance(*, *) // Find the distance between two Vectors
+// 	% Angle(*, *) // Find the angle between two Vectors
+//  % AngleBetween(*, *) // The angle in degrees between 2 vectors
+// 	* Max(*, *) // Compares the magnitude of two Vectors and returns the greater Vector3
+// 	* Min(*, *) // Compares the magnitude of two Vectors and returns the lesser Vector3
+// 	! Yaw(*, %) // Rotates a Vector3 around the Y axis
+// 	! Pitch(*, %) // Rotates a Vector3 around the X axis
+// 	! Roll(*, %) // Rotates a Vector3 around the Z axis
+// 	% Abs(*) // Find the absolute value of a Vector3
+// 	* PowComponents(*, %) // The individual multiplication to a power of a Vector3's components
+// 	: IsBackFace(*, *) // Checks if a face normal vector represents back face
+// 	: IsUnitVector(*) // Checks if a vector is a unit vector
+// 	: IsPerpendicular(*, *) // Checks if two Vectors are perpendicular
+//  * MinValue() // Retuns the smallest vector possible (based on the double precision floating point structure) for you to use
+//  * MaxValue() // Retuns the largest vector possible (based on the double precision floating point structure) for you to use
+//  * Zero() // Retuns an empty Vector3 (0, 0, 0) object for you to use
+// 
+// Internal Functions // To be called from a new vector3 object like: $Vec1->FunctionName()
+// 	@ GetArray() // Return a 3 element array of this Vector3
+// 	% Magnitude() // Magnitude (aka. length or absolute value) of the Vector3
+// 	% Length() // Magnitude (aka. length or absolute value) of the Vector3
+// 	% LengthSquared() // The squared length of this Vector
+// 	* CrossProduct(*) // Determine the cross product of this Vector3 and another
+// 	% DotProduct(*) // Determine the dot product of this Vector3 and another
+// 	% MixedProduct() // Determine the mixed product of this and 2 other Vectors
+// 	! Normalize() // Get the normalized vector
+// 	* SumComponentSqrs() // The sum of this Vector3's squared components
+// 	* SqrComponents() // The individual square root of this Vector3's components
+// 	% SumComponents() // The sum of this Vector3's components
+// 	% Distance(*) // Find the distance between this vector and another
+// 	" toString() // Return a string of all the vectors variables to print or so
+// 	% Angle(*) // Find the angle between this Vector3 and another
+//  % AngleBetween(*) // The angle in degrees between this and another vector
+// 	* Max(*) // Compares the magnitude of this and another and returns the greater Vector3
+// 	* Min(*) // Compares the magnitude of this and another and returns the lesser Vector3
+// 	! Yaw(%) // Rotates this Vector3 around the Y axis
+// 	! Pitch(%) // Rotates this Vector3 around the X axis
+// 	! Roll(%) // Rotates this Vector3 around the Z axis
+// 	% Abs() // Find the absolute value of this Vector3
+// 	* PowComponents(%) // The individual multiplication to a power of this Vector3's components
+// 	: IsBackFace(*) // Checks if a face normal vector represents back face
+// 	: IsUnitVector() // Checks if this vector is a unit vector
+// 	: IsPerpendicular(*) // Checks this and another Vector are perpendicular
+// 	
+// Overloaded Operators // To be called like: $vec1 += $vec2
+// 		Supported (If the operator aint on this list then its not supported so dont use it)
+// 		+
+// 		-
+// 		*
+// 		/
+// 		**
+// 		%
+// 		+=
+// 		-=
+// 		*=
+// 		/=
+// 		**=
+// 		%=
+// 		==
+// 		!=
+// 		<
+// 		>
+// 		<=
+// 		>=
+// 		<>
+Class Vec3
+{
+	my $x = 0;
+	my $y = 0;
+	my $z = 0;
+	// The constructor can either clone a Vector3 or create a new one example
+	// $v2 = new Vec3( $v1 ) // Will clone a vector $v1 but only if theres only 1 param
+	// If theres more than 1 param it will simply create a new vector using whatever variables it can find or use defaults
+	[Args("true")]
+	Function __construct($x = 0, $y = 0, $z = 0)
+	{
+		If( Count(@args) == 1 && isVarClass($x, 'vec3' ) )
+		{
+			$this->$x = $x->$x;
+			$this->$y = $x->$y;
+			$this->$z = $x->$z;
+		}
+		else
+		{
+			$this->$x = (double)$x;
+			$this->$y = (double)$y;
+			$this->$z = (double)$z;
+		}
+	}
+	// Return a string of all the vectors variables to print or so
+	Function toString()
+	{
+		return "($x, $y, $z)";
+	}
+	// Return a 3 element array of this Vector3
+	Function GetArray()
+	{
+		return array($x, $y, $z);
+	}
+    // Magnitude (aka. length or absolute value) of the Vector3
+	Function Magnitude()
+	{
+		return Sqrt ( SumComponentSqrs() );
+	}
+    // The length of this Vector  
+	Function Length()
+    {
+		return Sqrt($x * $x + $y * $y);
+    }
+    // The squared length of this Vector  
+	Function LengthSquared()
+    {
+		return ($x * $x + $y * $y);
+    }
+	// Find the distance between two Vectors
+	// Pythagoras theorem on two Vectors
+	Static Function Distance(Vec3 $v1, Vec3 $v2)
+	{
+		return Sqrt
+		(
+			($v1->$x - $v2->$x) * ($v1->$x - $v2->$x) +
+			($v1->$y - $v2->$y) * ($v1->$y - $v2->$y) +	
+			($v1->$z - $v2->$z) * ($v1->$z - $v2->$z) 
+		);
+	}
+	// Find the distance between this vector and another
+	Function Distance(Vec3 $other)
+	{
+		return self::Distance($this, $other);
+	}
+    // Determine the cross product of two Vectors
+    // Determine the vector product
+    // Determine the normal vector (Vector3 90° to the plane)
+	Static Function CrossProduct(Vec3 $v1, Vec3 $v2)
+    {
+        return new Vec3( $v1->$y * $v2->$z - $v1->$z * $v2->$y,
+						 $v1->$z * $v2->$x - $v1->$x * $v2->$z,
+						 $v1->$x * $v2->$y - $v1->$y * $v2->$x);
+    }
+    // Determine the cross product of this Vector3 and another
+	Function CrossProduct(Vec3 $other)
+    {
+        return self::CrossProduct($this, $other);
+    }
+    // Determine the dot product of two Vectors
+	Static Function DotProduct(Vec3 $v1, Vec3 $v2)
+    {
+        return ( $v1->$x * $v2->$x + $v1->$y * $v2->$y + $v1->$z * $v2->$z );
+    }
+    // Determine the dot product of this Vector3 and another
+	Function DotProduct(Vec3 $other)
+    {
+        return self::DotProduct($this, $other);
+    }
+    // Determine the mixed product of three Vectors
+	Static Function MixedProduct(Vec3 $v1, Vec3 $v2, Vec3 $v3)
+    {
+        return DotProduct(CrossProduct($v1, $v2), $v3);
+    }
+    // Determine the mixed product of this and 2 other Vectors
+	Function MixedProduct(Vec3 $other_v1, Vec3 $other_v2)
+    {
+        return self::DotProduct(self::CrossProduct($this, $other_v1), $other_v2);
+    }
+    // The individual multiplication to a power of a Vector3's components
+	Static Function PowComponents(Vec3 $v1, $power)
+    {
+        return
+        (
+            new Vec3
+                (
+                    Pow($v1->$X, $power),
+                    Pow($v1->$Y, $power),
+                    Pow($v1->$Z, $power)
+                )
+        );
+    }
+    // The individual multiplication to a power of this Vector3's components
+	Function PowComponents($power)
+    {
+        my $v1 = self::PowComponents($this, $power);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+    }
+	// Get the normalized vector of a vector
+	// Get the unit vector
+	// Scale a Vector3 so that the magnitude is 1
+	Static Function Normalize(Vec3 $v1)
+	{
+		// Check for divide by zero errors
+		if ( $v1->Magnitude() == 0 ) 
+		{
+			throw new exception("DivideByZeroException @ _Normalize");
+		}
+		else
+		{
+			// find the inverse of the vectors magnitude
+            $inverse = 1 / $v1->Magnitude();
+			return new Vec3($v1->$x * $inverse, $v1->$y * $inverse, $v1->$z * $inverse);
+		}
+	}
+	// Get the normalized vector
+	Function Normalize()
+	{
+        my $v1 = self::Normalize($this);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+	}
+    // Multiply - Returns the dot product: vector1.X*vector2.X + vector1.Y*vector2.Y  
+	Static Function Multiply(Vec3 $vector1, Vec3 $vector2)
+    {
+        return $vector1->$x * $vector2->$x + $vector1->$y * $vector2->$y;
+    }
+    // Determinant - Returns the determinant det(vector1, vector2) 
+	Static Function Determinant(Vec3 $vector1, Vec3 $vector2)
+    {
+        return $vector1->$x * $vector2->$y - $vector1->$y * $vector2->$x;
+    }
+    // The sum of a Vector3's squared components
+	Static Function SumComponentSqrs(Vec3 $v1)
+    {
+        return self::SqrComponents($v1)->SumComponents();
+    }
+    // The sum of this Vector3's squared components
+	Function SumComponentSqrs()
+    {
+        return self::SumComponentSqrs($this);
+    }
+    // A Vector3's components squared
+	Static Function SqrComponents(Vec3 $v1)
+    {
+        return new Vec3($v1->$x * $v1->$x, $v1->$y * $v1->$y, $v1->$z * $v1->$z);
+    }
+    // The individual square root of this Vector3's components
+	Function SqrComponents()
+    {
+        my $v1 = self::SqrComponents($this);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+    }
+    // The sum of a Vector3's components
+	Static Function SumComponents(Vec3 $v1)
+    {
+        return ($v1->$x + $v1->$y + $v1->$z);
+    }
+    // The sum of this Vector3's components
+	Function SumComponents()
+    {
+        return self::SumComponents($this);
+    }
+    // The angle in degrees between 2 vectors
+	Static Function AngleBetween(Vec3 $vector1, Vec3 $vector2)
+    {
+        my $sin = $vector1->$x * $vector2->$y - $vector2->$x * $vector1->$y;
+        my $cos = $vector1->$x * $vector2->$x + $vector1->$y * $vector2->$y;
+        return Atan2($sin, $cos) * (180 / @PI);
+    }
+    // The angle in degrees between this and another vector
+	Function AngleBetween(Vec3 $vector1)
+    {
+        my $sin = $x * $vector1->$y - $vector1->$x * $y;
+        my $cos = $x * $vector1->$x + $y * $vector1->$y;
+        return Atan2($sin, $cos) * (180 / @PI);
+    }
+	// Find the angle between two Vectors
+	Static Function Angle(Vec3 $v1, Vec3 $v2)
+	{
+		return Acos(self::Normalize($v1)->DotProduct(self::Normalize($v2)));
+	}
+	// Find the angle between this Vector3 and another
+	Function Angle(Vec3 $other)
+	{
+		return self::Angle($this, $other);
+	}
+	// Rotates a Vector3 around the Y axis
+	Static Function Yaw(Vec3 $v1, $degree)
+	{
+		return new Vec3
+		(
+			($v1->$z * Sin($degree)) + ($v1->$x * Cos($degree)),
+			$v1->$y,
+			($v1->$z * Cos($degree)) - ($v1->$x * Sin($degree))
+		);
+	}
+	// Rotates this Vector3 around the Y axis
+	Function Yaw($degree)
+	{
+        my $v1 = self::Yaw($this, $degree);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+	}
+	// Rotates a Vector3 around the X axis
+	Static Function Pitch(Vec3 $v1, $degree)
+	{
+		return new Vec3
+		(
+			$v1->$x,
+			($v1->$y * Cos($degree)) - ($v1->$z * Sin($degree)),
+			($v1->$y * Sin($degree)) + ($v1->$z * Cos($degree))
+		);
+	}
+	// Rotates this Vector3 around the X axis
+	Function Pitch($degree)
+	{
+        my $v1 = self::Pitch($this, $degree);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+	}
+	// Rotates a Vector3 around the Z axis
+	Static Function Roll(Vec3 $v1, $degree)
+	{
+		return new Vec3
+		(
+			($v1->$x * Cos($degree)) - ($v1->$y * Sin($degree)),
+			($v1->$x * Sin($degree)) + ($v1->$y * Cos($degree)),
+			$v1->$z
+		);
+	}
+	// Rotates this Vector3 around the Z axis
+	Function Roll($degree)
+	{
+        my $v1 = self::Roll($this, $degree);
+		$x = $v1->$x;
+		$y = $v1->$y;
+		$z = $v1->$z;
+		unset($v1);
+	}
+	// Compares the magnitude of two Vectors and returns the greater Vector3
+	Static Function Max(Vec3 $v1, Vec3 $v2)
+	{
+		if ($v1 >= $v2){return $v1;}
+		return $v2;
+	}
+	// Compares the magnitude of this and another and returns the greater Vector3
+	Function Max(Vec3 $other)
+	{
+		return self::Max($this, $other);
+	}
+	// Compares the magnitude of two Vectors and returns the lesser Vector3
+	Static Function Min(Vec3 $v1, Vec3 $v2)
+	{
+		if ($v1 <= $v2){return $v1;}
+		return $v2;
+	}
+	// Compares the magnitude of this and another and returns the lesser Vector3
+	Function Min(Vec3 $other)
+	{
+		return self::Min($this, $other);
+	}
+    // Find the absolute value of a Vector3
+	Static Function Abs(Vec3 $v1)
+    {
+        return $v1->Magnitude();
+    }
+    // Find the absolute value of this Vector3
+	Function Abs()
+    {
+        return $this->Magnitude();
+    }
+	/// Checks if a vector is a unit vector
+	Static Function IsUnitVector(Vec3 $v1)
+	{
+        return Abs($v1->Magnitude() -1) <= @Double_Epsilon;
+	}
+	/// Checks if this vector is a unit vector
+	Function IsUnitVector()
+	{
+        return Abs($this->Magnitude() -1) <= @Double_Epsilon;
+	}
+	/// Checks if two Vectors are perpendicular
+	/// Checks if two Vectors are orthogonal
+	/// Checks if one Vector3 is the Normal of the other
+	Static Function IsPerpendicular(Vec3 $v1, Vec3 $v2)
+	{
+        return $v1->DotProduct($v2) == 0;
+	}
+	/// Checks this Vector and another are perpendicular
+	/// Checks this Vector and another  are orthogonal
+	/// Checks this Vector is the Normal of the other
+	Function IsPerpendicular(Vec3 $other)
+	{
+		return self::IsPerpendicular($this, $other);
+	}
+	/// Checks if a face normal vector represents back face
+	/// Checks if a face is visible, given the line of sight
+	Static Function IsBackFace(Vec3 $normal, Vec3 $lineOfSight)
+	{
+        return $normal->DotProduct($lineOfSight) < 0;
+	}
+	/// Checks if a face normal vector represents back face
+	/// Checks if a face is visible, given the line of sight
+	Function IsBackFace(Vec3 $lineOfSight)
+	{
+		return self::IsBackFace($this, $lineOfSight);
+	}
+    // Creates a look vector (Heading) of a given Yaw and Pitch
+	Static Function GetLookVector($Yaw, $Pitch)
+    {
+        return new Vec3(-Sin($Yaw) * Cos($Pitch), Sin($Pitch), -Cos($Yaw) * Cos($Pitch));
+    }
+    /// Retuns the smallest vector possible (based on the double precision floating point structure) for you to use
+	Static Function MinValue()
+    {
+        return new Vec3(@Double_Min, @Double_Min, @Double_Min);
+    }
+    /// Retuns the largest vector possible (based on the double precision floating point structure) for you to use
+	Static Function MaxValue()
+    {
+        return new Vec3(@Double_Max, @Double_Max, @Double_Max);
+    }
+    /// Retuns an empty Vector3 object for you to use
+	Static Function Zero()
+    {
+        return new Vec3(0.0, 0.0, 0.0);
+    }
+	Operator "+" ($vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x += $vec->$x; $this->$y += $vec->$y; $this->$z += $vec->$z; }
+		else
+		{ $this->$x += $vec; $this->$y += $vec; $this->$z += $vec; }
+	}
+	Operator "+=" ($vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x += $vec->$x; $this->$y += $vec->$y; $this->$z += $vec->$z; }
+		else
+		{ $this->$x += $vec; $this->$y += $vec; $this->$z += $vec; }
+	}
+	Operator "*" ($vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x *= $vec->$x; $this->$y *= $vec->$y; $this->$z *= $vec->$z; }
+		else
+		{ $this->$x *= $vec; $this->$y *= $vec; $this->$z *= $vec; }
+	}
+	Operator "*=" ($vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x *= $vec->$x; $this->$y *= $vec->$y; $this->$z *= $vec->$z; }
+		else
+		{ $this->$x *= $vec; $this->$y *= $vec; $this->$z *= $vec; }
+	}
+	Operator "/" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x /= $vec->$x; $this->$y /= $vec->$y; $this->$z /= $vec->$z; }
+		else
+		{ $this->$x /= $vec; $this->$y /= $vec; $this->$z /= $vec; }
+	}
+	Operator "/=" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x /= $vec->$x; $this->$y /= $vec->$y; $this->$z /= $vec->$z; }
+		else
+		{ $this->$x /= $vec; $this->$y /= $vec; $this->$z /= $vec; }
+	}
+	Operator "-" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x -= $vec->$x; $this->$y -= $vec->$y; $this->$z -= $vec->$z; }
+		else
+		{ $this->$x -= $vec; $this->$y -= $vec; $this->$z -= $vec; }
+	}
+	Operator "-=" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x -= $vec->$x; $this->$y -= $vec->$y; $this->$z -= $vec->$z; }
+		else
+		{ $this->$x -= $vec; $this->$y -= $vec; $this->$z -= $vec; }
+	}
+	Operator "**" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x **= $vec->$x; $this->$y **= $vec->$y; $this->$z **= $vec->$z; }
+		else
+		{ $this->$x **= $vec; $this->$y **= $vec; $this->$z **= $vec; }
+	}
+	Operator "**=" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x **= $vec->$x; $this->$y **= $vec->$y; $this->$z **= $vec->$z; }
+		else
+		{ $this->$x **= $vec; $this->$y **= $vec; $this->$z **= $vec; }
+	}
+	Operator "%" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x %= $vec->$x; $this->$y %= $vec->$y; $this->$z %= $vec->$z; }
+		else
+		{ $this->$x %= $vec; $this->$y %= $vec; $this->$z %= $vec; }
+	}
+	Operator "%=" (Vec3 $vec)
+	{
+		If ( isVarClass($vec, "vec3") )
+		{ $this->$x %= $vec->$x; $this->$y %= $vec->$y; $this->$z %= $vec->$z; }
+		else
+		{ $this->$x %= $vec; $this->$y %= $vec; $this->$z %= $vec; }
+	}
+	// Compare two Vectors for equality.
+	Operator "==" (Vec3 $vec)
+	{
+        return
+        (
+            Abs($this->$x - $vec->$x) <= @Double_Epsilon &&
+            Abs($this->$y - $vec->$y) <= @Double_Epsilon &&
+            Abs($this->$z - $vec->$z) <= @Double_Epsilon
+        );
+	}
+	// Compare two Vectors for not equality.
+	Operator "!=" (Vec3 $vec)
+	{
+		return !($this == $vec);
+	}
+	// Compare the magnitude of two Vectors (less than)
+	Operator "<" (Vec3 $vec)
+	{
+        return $this->SumComponentSqrs() < $vec->SumComponentSqrs();
+	}
+	// Compare the magnitude of two Vectors (greater than)
+	Operator ">" (Vec3 $vec)
+	{
+        return $this->SumComponentSqrs() > $vec->SumComponentSqrs();
+	}
+	// Compare the magnitude of two Vectors (less than or equal to)
+	Operator "<=" (Vec3 $vec)
+	{
+        return $this->SumComponentSqrs() <= $vec->SumComponentSqrs();
+	}
+	// Compare the magnitude of two Vectors (greater than or equal to)
+	Operator ">=" (Vec3 $vec)
+	{
+        return $this->SumComponentSqrs() >= $vec->SumComponentSqrs();
+	}
+	// Compare the magnitude of two Vectors (greater than or lower than)
+	Operator "<>" (Vec3 $vec)
+	{
+		return $this < $vec || $this > $vec;
+	}
+}

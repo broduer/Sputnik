@@ -1,0 +1,61 @@
+﻿// Include the console stuff for 'ConsoleWithInput'
+Include('Console.spk', true);
+
+// Create the Console handler and set it up
+Global $console = new ConsoleWithInput('My Program');
+$console->$ShowTime = false; // Make this true to show the time
+$console->$ShowDate = false; // Make this true to show the date
+$console->$CmdPrefix = '-- '; // You can do this to include a prefix on commands typed
+$console->$UserPrefix = 'You Typed: '; // You can do this to include a prefix on non-commands typed
+$console->$TypedFunc = 'UserTyped'; // You can place a function name here to send typed (non-command) stuff to it
+$console->AddCommand('exit', 'CmdExit'); // Add a command named "exit" to the console that will terminate the program
+$console->AddCommand('say', 'CmdSay'); // Add a command named "say"
+$console->AddCommand('test', 'CmdTest', 2, 2); // Add a command named "test" that needs 2 params
+$console->AddCommand('test2', 'CmdTest2', 1, 2); // Add a command named "test2" that needs 1 to 2 params
+$console->AddCommand('test3', 'CmdTest3'); // Add a command named "test3" that can have infinite params
+
+// Begin loop to process user input and show console text
+while (true)
+{
+	$console->Process();
+	sleep(1);
+}
+
+// Handle the user typing in the console and send it as chat
+Function UserTyped($Text)
+{
+	$console->AppendLine("UserTyped cmd says: $Text");
+}
+
+// Handle the SAy command
+Function CmdSay($args, $argCount, $cmdRest)
+{
+	$console->AppendLine("Say cmd says '$cmdRest'");
+}
+
+// Handle the Test command
+Function CmdTest($args, $argCount, $cmdRest, $something, $sometingElse)
+{
+	$console->AppendLine("Test cmd says '$something' and '$sometingElse'");
+}
+
+// Handle the Test2 command
+Function CmdTest2($args, $argCount, $cmdRest, $something, $sometingElse = 'isDefault')
+{
+	$console->AppendLine("Test2 cmd says '$something' and '$sometingElse'");
+}
+
+// Handle the Test3 command
+Function CmdTest3($args, $argCount, $cmdRest)
+{
+	$console->AppendLine("Test2 cmd says you typed the following params:");
+	foreach($args as my $c)
+		$console->AppendLine("Typed '$c'");
+}
+
+// Handle the Exit command
+Function CmdExit($args, $argCount, $cmdRest)
+{
+	unset($Socket);
+	exit;
+}

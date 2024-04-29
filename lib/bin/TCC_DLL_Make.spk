@@ -1,0 +1,75 @@
+﻿#include-once
+#require-once
+// Sputnik include to use TinyC Compiler DLL
+// This DLL allows the creation of C programs/dll etc
+// Note - This file is incomplete and will be improved later as Sputnik itself is improved
+// but for now it works and is good enough for use
+Global $TCC_DIR = @ExeDir . '\lib\bin\TCC';
+AddPath($TCC_DIR); // Make sure TCC is on the search path or else we wont find its DLL etc
+DllImport(
+			array
+			(
+				'TCC.dll', // Tells it to produce a DLL that we can use for speed instead of recmpiling each run
+				/* create a new TCC compilation context */
+				array('libtcc.dll', 'tcc_new', 'ptr', '', 'Ansi:Cdecl'),
+				/* free a TCC compilation context */
+				array('libtcc.dll', 'tcc_delete', 'void', 't', 'Ansi:Cdecl'),
+				/* set CONFIG_TCCDIR at runtime */
+				array('libtcc.dll', 'tcc_set_lib_path', 'void', 'tp', 'Ansi:Cdecl'),
+				/* set options as from command line (multiple supported) */
+				array('libtcc.dll', 'tcc_set_options', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* set error/warning display callback */
+				// (callback to functions needs adding to Sputnik.... later)
+				//LIBTCCAPI void tcc_set_error_func(TCCState *s, void *error_opaque,
+				//void (*error_func)(void *opaque, const char *msg));
+				/* ####### preprocessor ####### */
+				/* add include path */
+				array('libtcc.dll', 'tcc_add_include_path', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* add in system include path */
+				array('libtcc.dll', 'tcc_add_sysinclude_path', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* define preprocessor symbol 'sym'. Can put optional value */
+				array('libtcc.dll', 'tcc_define_symbol', 'void', 'tpp', 'Ansi:Cdecl'),
+				/* undefine preprocess symbol 'sym' */
+				array('libtcc.dll', 'tcc_undefine_symbol', 'void', 'tp', 'Ansi:Cdecl'),
+				/* ####### compiling ####### */
+				/* add a file (C file, dll, object, library, ld script). Return -1 if error. */
+				array('libtcc.dll', 'tcc_add_file', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* compile a string containing a C source. Return -1 if error. */
+				array('libtcc.dll', 'tcc_compile_string', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* linking commands */
+				/* set output type. MUST BE CALLED before any compilation */
+				array('libtcc.dll', 'tcc_set_output_type', 'int32', 'ti', 'Ansi:Cdecl'),
+				/* equivalent to -Lpath option */
+				array('libtcc.dll', 'tcc_add_library_path', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* the library name is the same as the argument of the '-l' option */
+				array('libtcc.dll', 'tcc_add_library', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* add a symbol to the compiled program */
+				array('libtcc.dll', 'tcc_add_symbol', 'int32', 'tpi', 'Ansi:Cdecl'),
+				// tcc_add_symbol is not really working since we have no function pointers to send it
+				/* output an executable, library or object file. DO NOT call tcc_relocate() before. */
+				array('libtcc.dll', 'tcc_output_file', 'int32', 'tp', 'Ansi:Cdecl'),
+				/* link and run main() function and return its value. DO NOT call tcc_relocate() before. */
+				// You can create new tcc_run functions to return any data type and accept any param types
+				// By default it just accepts 2 params first the int (size of array) then an array (arguments)
+				// this can be changed to anything of course
+				array('libtcc.dll', 'tcc_run', 'int32', 'ti*p', 'Ansi:Cdecl'), // Return int (default)
+				array('libtcc.dll', 'tcc_run:tcc_runv', 'int32', 't', 'Ansi:Cdecl'), // Return int (default) with no arguments
+				array('libtcc.dll', 'tcc_run:tcc_run_test', 'int32', 'ti', 'Ansi:Cdecl'), // Return int and accepts int param
+				array('libtcc.dll', 'tcc_run:tcc_run_str', 'string', 'ti%p', 'Ansi:Cdecl'), // Return string
+				array('libtcc.dll', 'tcc_run:tcc_run_int', 'int32', 'ti%p', 'Ansi:Cdecl'), // Return int
+				array('libtcc.dll', 'tcc_run:tcc_run_float', 'float', 'ti%p', 'Ansi:Cdecl'), // Return float
+				array('libtcc.dll', 'tcc_run:tcc_run_double', 'double', 'ti%p', 'Ansi:Cdecl'), // Return double
+				/* ####### linking commands ####### */
+				/* return symbol value or NULL if not found */
+				array('libtcc.dll', 'tcc_get_symbol', 'string', 'tp', 'Ansi:Cdecl'),
+				// not working yet needs Sputnik to handle the return symbol pointer and convert it into a function to call
+				/* do all relocations (needed before using tcc_get_symbol()) */
+				array('libtcc.dll', 'tcc_relocate', 'int32', 'ti', 'Ansi:Cdecl')
+				/* possible values for 'ptr':
+				   - TCC_RELOCATE_AUTO : Allocate and manage memory internally
+				   - NULL              : return required memory size for the step below
+				   - memory address    : copy code to memory passed by the caller
+				   returns -1 if error. */
+				#define TCC_RELOCATE_AUTO (void*)1
+			)
+);

@@ -1,0 +1,71 @@
+Class EntityMobInky extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $DeathSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$ID = EntityType->$Inky;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIWander = new AIWander($this);
+		$AIWander->$Enabled = false;
+		$AIWander->$AllowRandomMoves = true; // Inky moves slightly more random than a Creeper
+		$AIWander->$Enabled = true;
+		my $AIMoveDelay = new AIMoveDelay($this);
+		$AIMoveDelay->$MoveFor = 200;
+		$AIMoveDelay->$StopFor = 10;
+		$AIMoveDelay->$Enabled = true;
+		// Inky will try attack players that have a direct sight
+		my $AIAttackPlayersInSight = new AIAttackPlayersInSight($this);
+		$AIAttackPlayersInSight->$Enabled = true;
+		$AI->$AIList[] = $AIMoveDelay;
+		$AI->$AIList[] = $AIAttackPlayersInSight;
+		$AI->$AIList[] = $AIWander;
+		
+		$DeathSound = array(BinaryLoad('./Sounds/MonsterCrushed.wav'), 'MonsterCrushed.wav');
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Inky/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Inky/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Inky/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Inky/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Inky/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Inky/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Inky/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Inky/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Inky/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Inky/Spawn13.png');
+		$Respawn = false;
+	}
+	Function Death()
+	{
+		if($Disposed)
+			return;
+		PlaySound($DeathSound, false);
+		if($Respawn)
+			$Game->$Map->SpawnDelayed($ID);
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+			return;
+		$AI->Update();
+		AttackPlayers();
+	}
+};

@@ -1,0 +1,218 @@
+Enum Direction
+{
+	$Zero,
+	$Up,
+	$Down,
+	$Left,
+	$Right
+};
+Enum Facing
+{
+	$Left,
+	$Right,
+	$Center,
+	$LeftAttack,
+	$RightAttack
+};
+Class Entity
+{
+	Static $UniqueID = 0;
+	Static $DirectionOpposit = array(	Direction->$Zero => Direction->$Zero,
+										Direction->$Right => Direction->$Left,
+										Direction->$Left => Direction->$Right,
+										Direction->$Up => Direction->$Down,
+										Direction->$Down => Direction->$Up
+										);
+	my $Disposed;
+	my $Game;
+	my $AllowMoveCheck;
+	my $LastPosition;
+	my $LastDrawPosition;
+	my $DrawPosition;
+	my $MoveDirection;
+	my $Velocity;
+	my $VelocityMoves;
+	my $Health;
+	my $Name;
+	my $Facing;
+	my $Textures;
+	my $IsPlayer;
+	my $KeepsMoving;
+	my $VelocityValue;
+	my $VelocityMovesValue;
+	my $DefaultVelocityValue;
+	my $DefaultVelocityMovesValue;
+	my $DisallowedFacings;
+	my $CanDieFromBlocks;
+	my $ID;
+	my $ParentID;
+	my $NoClip;
+	my $UID;
+	Function __Construct( EngineMain $Engine, $EName )
+	{
+		$UID = Entity::$UniqueID++;
+		$NoClip = false;
+		$AllowMoveCheck = true;
+		$CanDieFromBlocks = true;
+		$DisallowedFacings = array();
+		$AI = array();
+		$DefaultVelocityValue = 4;
+		$DefaultVelocityMovesValue = 8;
+		$VelocityValue = 4;
+		$VelocityMovesValue = 8;
+		$KeepsMoving = false;
+		$Disposed = false;
+		$IsPlayer = false;
+		$Game = $Engine;
+		$Name = $EName;
+		$LastPosition = array(0, 0);
+		$DrawPosition = array(0, 0);
+		$LastDrawPosition = array();
+		$Health = 100;
+		$Velocity = 0;
+		$VelocityMoves = 0;
+		$MoveDirection = Direction->$Zero;
+		$Facing = Facing->$Center;
+		$Textures = array();
+		$ParentID = 0;
+		// Setup the Texture array
+		foreach( Enumerate('Facing') as $iFacing => $iID )
+			$Textures[$iID] = array();
+	}
+	Function FindClosestPlayer($AttackReady = false)
+	{
+		my $FoundPlayer = null;
+		my $CurDist = 5000000;
+		my List($X, $Y) = GetPosition();
+		foreach($Game->$Map->Players() as my $V)
+		@{
+			if(!$AttackReady || ($AttackReady && (!$V->$BeenHit && !$V->$Immortal)))
+			@{
+				my List($PX, $PY) = $V->GetPosition();
+				my $Dist = Utils::Distance2D($X, $Y, $PX, $PY);
+				if($Dist < $CurDist)
+				@{
+					$CurDist = $Dist;
+					$FoundPlayer = $V;
+				}
+			}
+		}
+		return $FoundPlayer;
+	}
+	Function SetTexture($Face, $Texture)
+	{
+		$Textures[$Face][] = $Texture;
+	}
+	Function AllStop($RevertPosition = false)
+	{
+		if($RevertPosition)
+			$DrawPosition = $LastDrawPosition;
+		$VelocityMoves = 0;
+		$Velocity = 0;
+	}
+	Function Stopped()
+	{
+		if($Velocity == 0 && $VelocityMoves == 0)
+			return true;
+		return false;
+	}
+	Function SetVelocity()
+	{
+		if($Velocity != 0)
+			return;
+		$Velocity = $VelocityValue;
+		SetVelocityMoves();
+	}
+	Function SetVelocityMoves()
+	{
+		if($VelocityMoves != 0)
+			return;
+		$VelocityMoves = $VelocityMovesValue;
+	}
+	Function GetPosition( )
+	{
+		my $DX = $DrawPosition[0];
+		my $DY = $DrawPosition[1];	
+		my $X = (int)(($DX - $Game->$Map->$MapOffsetX) / $Game->$Map->$MapTileSize);
+		my $Y = (int)(($DY - $Game->$Map->$MapOffsetY) / $Game->$Map->$MapTileSize);
+		return array($X, $Y);
+	}
+	Function CanMove( $Dir )
+	{
+		if($NoClip)
+			return true;
+		my List($X, $Y) = GetPosition();
+		if($Game->$Map->IsTileSolid($Game->$Map->$Level[$X][$Y], $this))
+			return false;
+		switch($Dir)
+		{
+			case Direction->$Up:
+				if($Game->$Map->IsTileSolid($Game->$Map->$Level[$X][$Y-1], $this))
+					return false;
+				break;
+			case Direction->$Down:
+				if($Game->$Map->IsTileSolid($Game->$Map->$Level[$X][$Y+1], $this))
+					return false;
+				break;
+			case Direction->$Left:
+				if($Game->$Map->IsTileSolid($Game->$Map->$Level[$X-1][$Y], $this))
+					return false;
+				break;
+			case Direction->$Right:
+				if($Game->$Map->IsTileSolid($Game->$Map->$Level[$X+1][$Y], $this))
+					return false;
+				break;
+		}
+		return true;
+	}
+	Function TryMove( $Dir )
+	{
+		if(!Stopped())
+			return false;
+		if($Dir == Direction->$Zero)
+			return false;
+		if(!InArray($DisallowedFacings, Facing->$Center))
+		@{
+			if($Dir == Direction->$Up || $Dir == Direction->$Down)
+				$Facing = Facing->$Center;
+		}
+		if($Dir == Direction->$Left && $Facing != Facing->$Left)
+			$Facing = $Attacking ? Facing->$LeftAttack : Facing->$Left;
+		if($Dir == Direction->$Right && $Facing != Facing->$Right)
+			$Facing = $Attacking ? Facing->$RightAttack : Facing->$Right;
+		$MoveDirection = $Dir;
+		if(!CanMove($Dir))
+			return false;
+		$LastDrawPosition = $DrawPosition;
+		SetVelocity();
+		return true;
+	}
+	Function GetFacingTile()
+	{
+		my List($X, $Y) = GetPosition();
+		return GetFacingTileFrom($X, $Y);
+	}
+	Function GetFacingTileFrom($X, $Y)
+	{
+		switch($MoveDirection)
+		{
+			case Direction->$Up:
+				if(IsSet($Game->$Map->$Level[$X][$Y-1]))
+					return array($X, $Y-1);
+				break;
+			case Direction->$Down:
+				if(IsSet($Game->$Map->$Level[$X][$Y+1]))
+					return array($X, $Y+1);
+				break;
+			case Direction->$Left:
+				if(IsSet($Game->$Map->$Level[$X-1][$Y]))
+					return array($X-1, $Y);
+				break;
+			case Direction->$Right:
+				if(IsSet($Game->$Map->$Level[$X+1][$Y]))
+					return array($X+1, $Y);
+				break;
+		}
+		return null;
+	}
+};

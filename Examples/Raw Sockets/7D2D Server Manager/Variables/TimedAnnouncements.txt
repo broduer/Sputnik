@@ -1,0 +1,9 @@
+#Day|Time|Message
+0|21:30|§116PvP time begins in 30 minutes at 22:00!
+0|22:00|§120It is PvP time! Feel free to KOS and loot or just bunker down!
+0|03:30|§116PvP is ending in 30 minutes at 04:00!
+0|04:00|§120PvP has ended it is now PvE time you must now stop shooting/looting any players!
+0|06:30|§116Good morning Zombie Slayers another day has come
+0|21:00|§116Don't forget the lottery is at 22:00 buy a ticket if you can (If 3 tickets are sold the lottery will take place)
+-7|08:00|§116Today is horde day! The day 7 horde will be coming tonight
+-7|21:00|§120The 7 day horde will come in 1 hour at 22:00!

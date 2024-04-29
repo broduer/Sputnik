@@ -1,0 +1,112 @@
+// Load the old GUI system
+// Since this an old GUI example
+PluginLoad('SputnikOldGUI.dll');
+
+// Create a new GUI
+Global $GUI = GUICreate("Window", "GUI", 640, 480);
+GUILoad( $GUI );
+ 
+// Create the GUI objects
+Global $obj_textbox = GUICreate("TextBoxEx", $GUI, "", 5, 15, 610,  370);
+Global $obj_RealSend = GUICreate("Button", $GUI, "Send", 505, 410);
+Global $obj_CMD = GUICreate("TextBoxEx", $GUI, "", 10, 405, 485,  25);
+ 
+// Add a few links
+GUILink($obj_RealSend, "Click", 'Send();');
+GUILink($obj_CMD, "KeyPress", 'KeyPress($arg);');
+ 
+// Allow the user to enter a name to use on the server
+my $Name = InputBox("Sputnik Client", "Enter a name to use on the chat", "MyName");
+ 
+// Join Server
+Global $Client = SSConnect("127.0.0.1", 5570, $Name);
+ 
+// Loop while GUI is active
+While ( GUIStatus( $GUI ) )
+{ 
+	DoEvents(); // DoEvents to keep the GUI working fine
+	While( my $Data = SSRecv($Client) ) // Check if we recieved a message from server
+	{
+		my $MSG = $Data[0]; // Get the message ID
+		Switch ($MSG) // CHeck what type of message it was
+		{
+			case @ssStatusChanged: // The message says we changed status
+			{
+				my $Status = SSClientStatus($Client); // Get our status
+				Switch ($Status) // Check our status
+				{
+					case @ssDisconnected: // We have been disconnected from the server
+					{
+						my $fread = SSRead($Client, "p");
+						AddText("Disconnected from server reason: $fread");
+					}
+					break;
+					case @ssConnected: // We have connected to the server
+					{
+						AddText("We have connected to the server");
+					}
+					break;
+					case @ssConnecting: // We are connecting to the server
+					case @ssReconnecting: // We are reconnecting to the server
+					case @ssDisconnecting: // We are disconnecting from the server
+					break;
+				}
+			}
+			break;
+			case @ssConnectionApproval: // Our connection has been approved on the server
+			{
+				AddText("Connected to server!");
+			}
+			break;
+			case @ssConnectionRejected: // Our connection has been rejected on the server
+			{
+				my $fread = SSRead($Client, "p"); // Read the reason why we was rejected
+				AddText("Server rejected our connection reason: $fread"); // Add it to display
+			}
+			break;
+			case @ssData: // We have recieved data from server
+			{
+				my $dCode = SSRead($Client, "i"); // Read the Int32 "i" code of the message
+				say "got msg id $dCode";
+				switch ($dCode)
+				{
+					case 1: // It is a Chat message
+					{
+						my $Text = SSRead($Client, "p"); // Read the string "p" from the message
+						say "got msg txt $Text";
+						AddText($Text); // Add it to the display
+					}
+					break;
+				}
+			}
+			break;
+		}
+	}
+}
+ 
+// When a key is presed on chat send box
+Function KeyPress($arg)
+{
+	if($arg == @LF || $arg == @CR) // Make sure its a valid enter key
+		Send(); // Send the message
+}
+ 
+// Function to add text to output display
+Function AddText($str)
+{
+	my $Text = GUIGetProp($obj_textbox, "Text"); // Read the current "Text"
+	$Text = $str . @CRLF . $Text; // Add new text to top
+	GUISetProp($obj_textbox, "Text", $Text); // Set the "Text"
+}
+ 
+// Send a message to server
+Function Send()
+{
+	my $Text = GUIGetProp($obj_CMD, "Text"); // Read current text to send
+	GUISetProp($obj_CMD, "Text", ""); // Clear the send box
+	my $sBuf = SSBufferNew($Client); // Create a new buffer to send a message with
+	SSBufferPut($sBuf, "i", 1); // Add the code using an Int32
+	SSBufferPut($sBuf, "p", $Text); // Add the string to send
+	SSSend($Client, $sBuf); // Send the message to the server
+	unset($sBuf); // Free up resources/ram by wiping the buffer
+}

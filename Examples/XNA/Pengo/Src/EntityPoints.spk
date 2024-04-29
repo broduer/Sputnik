@@ -1,0 +1,119 @@
+Class EntityPoints extends Entity
+{
+	Static $UniqueID = 0;
+	my $Tex;
+	my $Size;
+	my $EntityTickCount;
+	my $EntityTickInterval;
+	my $FlashingStage;
+	my $Flashing;
+	my $Counter;
+	my $DeathCounter;
+	my $LinkedEntity;
+	my $Points;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y, $Point)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$LinkedEntity = null;
+		$ID = EntityType->$Points;
+		$CanDieFromBlocks = false;
+		my List ($DX, $DY) = $Engine->$Map->$LevelPositions[$X][$Y];
+		$DrawPosition = array($DX, $DY);
+		$Size = $Engine->$Map->$MapTileSize;
+		$DeathCounter = 30;
+		$Counter = 0;
+		$FlashingStage = 6;
+		$Flashing = false;
+		$EntityTickCount = 0;
+		$EntityTickInterval = 20;
+		$Tex = array();
+		$Tex[5] = XNAPng('./Images/Entities/Points/Points5.png');
+		$Tex[25] = XNAPng('./Images/Entities/Points/Points25.png');
+		$Tex[50] = XNAPng('./Images/Entities/Points/Points50.png');
+		$Tex[75] = XNAPng('./Images/Entities/Points/Points75.png');
+		$Tex[100] = XNAPng('./Images/Entities/Points/Points100.png');
+		$Tex[250] = XNAPng('./Images/Entities/Points/Points250.png');
+		$Tex[500] = XNAPng('./Images/Entities/Points/Points500.png');
+		$Tex[1000] = XNAPng('./Images/Entities/Points/Points1000.png');
+		$Points = $Point;
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function AddPoints($GainedScore)
+	{
+		if($Disposed)
+			return;
+		$Points += $GainedScore;
+		$DeathCounter += 10;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+	}
+	Function Draw()
+	{
+		if($Disposed)
+			return;
+		
+		my $Playing = $Game->$CurrentState == GameState->$Playing;
+		
+		if($LinkedEntity != null && !$LinkedEntity->$Disposed)
+			$DrawPosition = $LinkedEntity->$DrawPosition;
+			
+		my $DX = $DrawPosition[0];
+		my $DY = $DrawPosition[1];
+		
+		my $NewEntityTickCount = TickCount($EntityTickCount);
+		if($Playing && $NewEntityTickCount > $EntityTickInterval)
+		@{
+			$EntityTickCount = TickCount() + $EntityTickInterval;
+			$Counter--;
+			if(!$FlashingStage)
+			@{
+				$DeathCounter--;
+				if($DeathCounter == 0)
+				@{
+					Dispose();
+					return;
+				}
+			}
+			if($Counter <= 0)
+			@{
+				$Counter = 5;
+				$FlashingStage--;
+				if($FlashingStage)
+				@{
+					$Flashing = !$Flashing;
+				}
+			}
+		}
+		if($Flashing)
+		{
+			if($Points >= 1000)
+				XNADraw($Tex[1000], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 500)
+				XNADraw($Tex[500], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 250)
+				XNADraw($Tex[250], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 100)
+				XNADraw($Tex[100], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 75)
+				XNADraw($Tex[75], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 50)
+				XNADraw($Tex[50], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 25)
+				XNADraw($Tex[25], $DX, $DY, $ColWhite, $Size, $Size);
+			else if($Points >= 5)
+				XNADraw($Tex[5], $DX, $DY, $ColWhite, $Size, $Size);
+		}
+	}
+};

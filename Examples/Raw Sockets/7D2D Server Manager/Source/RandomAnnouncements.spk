@@ -1,0 +1,62 @@
+﻿$onServerInit[] = 'RandomAnnouncementsInit';
+$onServerProcess[] = 'RandomAnnouncementsProcess';
+Class extends ServerManager
+{
+	my $alreadyDone;
+	my $lastDone;
+	my $randomAnnouncementsCounter;
+	Function RandomAnnouncementsInit()
+	{
+		$randomAnnouncementsCounter = 0;
+		$alreadyDone = array();
+		$lastDone = null;
+	}
+	Function RandomAnnouncementsProcess()
+	{
+		$randomAnnouncementsCounter++;
+		if ($randomAnnouncementsCounter < GetConfig('RandomAnnouncementSeconds'))
+			return;
+		$randomAnnouncementsCounter = 0;
+		my $randomAnnouncements = $utils->getRandomAnnouncementsFile();
+		my $toAnnounce = null;
+		if (count($alreadyDone) >= count($randomAnnouncements))
+			$alreadyDone = array();
+		while (true)
+		{
+			my $rand = Random(0, count($randomAnnouncements), 0);
+			if ($lastDone == $rand && count($randomAnnouncements) > 1)
+				continue;
+			if (InArray($alreadyDone, $rand))
+				continue;
+			$alreadyDone[] = $rand;
+			if (!IsSet($randomAnnouncements[$rand]))
+				continue;
+			$toAnnounce = $randomAnnouncements[$rand];
+			$lastDone = $rand;
+			break;
+		}
+		if ($toAnnounce == null)
+			return;
+		SayToAll($toAnnounce);
+	}
+}
+
+Class extends Utils
+{
+	Function getRandomAnnouncementsFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/RandomAnnouncements.txt'))
+			return $cashFileData;
+		my $randomAnnouncementsFile = FileReadLines('./Variables/RandomAnnouncements.txt');
+		my $randomAnnouncements = array();
+		foreach($randomAnnouncementsFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (IsEmptyOrNull($lineTrim))
+				continue;
+			$randomAnnouncements[] = $line;
+		}
+		return $randomAnnouncements;
+	}
+}

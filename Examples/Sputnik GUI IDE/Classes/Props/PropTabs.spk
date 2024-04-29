@@ -1,0 +1,81 @@
+#<?
+Class PropTabs extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return '[TABS]';
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Container = $Object->GetContainer();
+		my $CurrentPages = array();
+		# Get the old tab pages so we know what to add/remove later
+		foreach($Container->$ObjectNames as my $PageKey => my $PageValue)
+			$CurrentPages[] = $PageKey;
+		my $Items = InputBoxEx('Edit Tabs', 'Tabs are seperated by lines (Must have at least one)' . @CRLF . 'To delete a tab just remove it from the list -- you may also reorder tabs', join($CurrentPages, @CRLF));
+		if($Items === null)
+			return null;
+		my $Tabs = Lines($Items);
+		if(Count($Tabs) < 1)
+		{
+			msgbox('Must have at least one Tab', $Title, 48);
+			return null;
+		}
+		else
+		{
+			my $TabPages = array();
+			# Get the new tab pages
+			foreach($Tabs as my $Tab)
+			{
+				$Tab = trim($Tab);
+				if(!IsEmptyOrNull($Tab))
+				{
+					my $PageName = Replace($Tab, ' ', '_');
+					$TabPages[] = $PageName;
+				}
+			}
+			# Remove any tab pages that the user didnt include
+			foreach($CurrentPages as my $CurPage)
+			{
+				if(!InArray($TabPages, $CurPage))
+				{
+					unset($Container->$Objects[$CurPage]);
+					unset($Container->$ObjectNames[$CurPage]);
+				}
+			}
+			# Add the new pages
+			foreach($TabPages as my $Page)
+			{
+				my $PageName = $Page;
+				if(!InArray($CurrentPages, $PageName))
+				{
+					$Container->$Objects[$PageName] = new TabPage($Object, $PageName, $Tab);
+					$Container->$ObjectNames[$PageName] = true;
+					GUISetProp($Container->$Objects[$PageName]->GetObject(), 'Text', $PageName);
+				}
+			}
+			GUITabSheet($Object->$Object, 'OrderTo', Lines($Items));
+		}
+		return null;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+	}
+	override Function SaveProp($Object)
+	{
+		return null;
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

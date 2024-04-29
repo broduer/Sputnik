@@ -1,0 +1,220 @@
+﻿$LoadCommands['top10'] = array('CmdTop10', 1, 1);
+Class extends ServerManager
+{
+	Function CmdTop10($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'View top 10 lists such as who has the most cash';
+		if ($args === 'help')
+			return 
+				array(
+						'View top 10 lists such as who has the most cash',
+						'Type ''/top10 cash'' show the show the richest 10 players in order',
+						'Type ''/top10 kills'' show the top 10 Zombie slaying players in order',
+						'Type ''/top10 pks'' show the top 10 PK score in order',
+						'Type ''/top10 deaths'' show the top 10 player deaths in order',
+						'Type ''/top10 levels'' show the top 10 highest level players in order',
+						'Type ''/top10 bounty'' show the top 10 highest bounties on player heads in order'
+						);
+		if ($commandUser == null)
+			return;
+		my $action = lc($args[0]);
+		switch ($action)
+		{
+			case 'cash':
+			{
+				my $cInfo = array();
+				my $cashFileData = $utils->getCashFile();
+				foreach($cashFileData as my $cashData)
+				{
+					my List($SteamId, $Cash) = $cashData;
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayer($SteamId);
+					if ($found == null)
+						continue;
+					$cInfo[] = array($found, (double)$Cash);
+				}
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has any cash");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' richest players are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $cash = $ci[1];
+					SayToUser($commandUser, "$i, $name, $cash cash");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			case 'kills':
+			{
+				my $cInfo = array();
+				foreach($offlinePlayers->$players as my $player)
+					$cInfo[] = array($player, (double)$player->$ZombieKills);
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has any Zombie kills");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' Zombie Slayers are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $kills = $ci[1];
+					SayToUser($commandUser, "$i, $name, $kills Zombie(s) slayed");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			case 'pks':
+			{
+				my $cInfo = array();
+				foreach($offlinePlayers->$players as my $player)
+					$cInfo[] = array($player, (double)$player->$PlayerKills);
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has any player kills");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' player killers are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $kills = $ci[1];
+					SayToUser($commandUser, "$i, $name, $kills player(s) slayed");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			case 'deaths':
+			{
+				my $cInfo = array();
+				foreach($offlinePlayers->$players as my $player)
+					$cInfo[] = array($player, (double)$player->$Deaths);
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has any deaths");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' dead players are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $kills = $ci[1];
+					SayToUser($commandUser, "$i, $name, $kills death(s)");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			case 'levels':
+			{
+				my $cInfo = array();
+				foreach($offlinePlayers->$players as my $player)
+					$cInfo[] = array($player, (double)$player->$Level);
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has any levels");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' highest level players are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $kills = $ci[1];
+					SayToUser($commandUser, "$i, $name, Level $kills");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			case 'bounty':
+			{
+				my $cInfo = array();
+				my $bountyData = $utils->getBountyFile();
+				foreach($bountyData as my $steamId => my $data)
+				{
+					my List($found, $isOnline) = FindOnlineOrOfflinePlayer($steamId);
+					if ($found == null)
+						continue;
+					my $total = 0;
+					foreach($data as my $bData)
+					{
+						my List($addedSteamId, $addedValue) = $bData;
+						$total += $addedValue;
+					}
+					$cInfo[] = array($found, $total);
+				}
+				my $count = count($cInfo);
+				if ($count <= 0)
+				{
+					SayToUser($commandUser, "Nobody has a bounty on their head");
+					return;
+				}
+				if ($count > 10)
+					$count = 10;
+				SayToUser($commandUser, "The top '$count' highest bounties are");
+				my $sortedcInfo = sort($cInfo, 0, $b[1] <=> $a[1]);
+				my $i = 1;
+				foreach($sortedcInfo as my $ci)
+				{
+					my $name = $ci[0]->$Name;
+					my $kills = $ci[1];
+					SayToUser($commandUser, "$i, $name, $kills cash");
+					$i++;
+					$count--;
+					if ($count == 0)
+						break;
+				}
+			}
+			break;
+			default:
+				SayToUser($commandUser, "Invalid action '$action' for top10");
+				break;
+		}
+	}
+}

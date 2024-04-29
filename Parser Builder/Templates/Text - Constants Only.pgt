@@ -1,0 +1,24 @@
+##TEMPLATE-NAME 'Text - Constants Only'
+##LANGUAGE 'Plain Text'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'txt'
+##NOTES
+This template creates a simple list the enumerated constants.
+##END-NOTES
+##ID-CASE Uppercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+Symbols
+=======
+##SYMBOLS
+%ID.Padded% = %Value.Padded%  %Description%
+##END-SYMBOLS
+
+Rules
+=====
+##RULES
+%ID.Padded% = %Value.Padded%  %Description%
+##END-RULES
+

@@ -1,0 +1,45 @@
+#<?
+# PropAccessType
+Enum PAT
+{
+	$BeginEdit,
+	$BeginEditRet,
+	$EndEdit
+};
+Class Prop
+{
+	my $Name;
+	my $AccessType;
+	my $Validation;
+	my $Default;
+	my $ParentType;
+	Function __Construct($PropName, $PropAccessType, $PropValidation, $PropDefault, $PropParentType)
+	{
+		$Name = $PropName;
+		$AccessType = $PropAccessType;
+		$Validation = $PropValidation;
+		$Default = $PropDefault;
+		$ParentType = $PropParentType;
+	}
+	Abstract Function GetDefault()
+	{
+	}
+	Abstract Function GetProp()
+	{
+	}
+	Abstract Function SetProp()
+	{
+	}
+	Abstract Function LoadProp()
+	{
+	}
+	Abstract Function SaveProp()
+	{
+	}
+	Abstract Function CodeGen()
+	{
+	}
+};
+Class PropVerificationError
+{
+};

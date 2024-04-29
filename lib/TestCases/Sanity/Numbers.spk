@@ -1,0 +1,6 @@
+#include-once
+#require-once
+say "Checking hex literals";
+assert(0x7fffffff == 2147483647, "broken hex literals");
+assert(0xffffffff == -1 | 0xffffffff == 2^32-1, "broken hex literals");
+say "Done checking hex literals";

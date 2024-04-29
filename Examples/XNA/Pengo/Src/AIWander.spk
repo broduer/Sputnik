@@ -1,0 +1,91 @@
+Class AIWander extends AI
+{
+	my $AllowRandomMoves; // Used only for non A*
+	my $GoRandomMove; // Used by $AllowRandomMoves when being called again
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+		$AllowRandomMoves = false;
+		$GoRandomMove = false;
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		// If we arent wandering then we must fix it
+		// Rules should be:
+		// 1. Try to avoid going back the way we came
+		// 2. Always try to go clockwise
+		// Very simple and basic for the lowest level monster
+		return WanderAround();
+	}
+	Function WanderAround( )
+	{
+		if($Entity->Stopped())
+		@{
+			// This random change of direction is not part of "$AllowRandomMoves"
+			// It is just something so the ghost can go places a bit better
+			if($Entity->CanMove($Entity->$MoveDirection))
+			@{
+				// 70% chance to continue on path
+				if(Utils::ChanceOf(0, 100, 0, 70)) // 70% chance to continue on path
+					return $Entity->TryMove($Entity->$MoveDirection);
+			}
+			my $AvoidDir = Entity::$DirectionOpposit[$Entity->$MoveDirection];
+			$GoRandomMove = false;
+			if(!DoMove($AvoidDir, false))
+				return DoMove($AvoidDir, true);
+			else
+				return true;
+		}
+	}
+	Function DoMove( $AvoidDir, $UseAvoidDir )
+	{
+		if(!$Enabled)
+			return false; 
+		if($Disposed)
+			return false;
+		if($AllowRandomMoves)
+		{
+			if($GoRandomMove || Utils::ChanceOf(0, 100, 20, 40)) // 20% chance to make a totally random move
+			@{
+				my $moved = false;
+				$GoRandomMove = true;
+				// But will still respect the avoid dir
+				switch((int)Random(0, 3))
+				{
+					case 0:
+						if($AvoidDir != Direction->$Up || $UseAvoidDir)
+							$moved = $Entity->TryMove(Direction->$Up);
+						break;
+					case 1:
+						if($AvoidDir != Direction->$Down || $UseAvoidDir)
+							$moved = $Entity->TryMove(Direction->$Down);
+						break;
+					case 2:
+						if($AvoidDir != Direction->$Left || $UseAvoidDir)
+							$moved = $Entity->TryMove(Direction->$Left);
+						break;
+					default:
+						if($AvoidDir != Direction->$Right || $UseAvoidDir)
+							$moved = $Entity->TryMove(Direction->$Right);
+						break;
+				}
+				return $moved;
+			}
+		}
+		if(($AvoidDir != Direction->$Up || $UseAvoidDir) && $Entity->TryMove(Direction->$Up))
+			return true;
+		if(($AvoidDir != Direction->$Right || $UseAvoidDir) && $Entity->TryMove(Direction->$Right))
+			return true;
+		if(($AvoidDir != Direction->$Down || $UseAvoidDir) && $Entity->TryMove(Direction->$Down))
+			return true;
+		if(($AvoidDir != Direction->$Left || $UseAvoidDir) && $Entity->TryMove(Direction->$Left))
+			return true;
+		return false;
+	}
+};

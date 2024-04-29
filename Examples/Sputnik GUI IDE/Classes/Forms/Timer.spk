@@ -1,0 +1,47 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$Timer] = true;
+Object::$Names[ObjectType->$Timer] = 'Timer';
+Object::$Props[ObjectType->$Timer] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, false),
+												new PropFakeInt('Interval', 1, null, null, 100, null, false)
+											);
+Object::$Events[ObjectType->$Timer] = array(
+												'Tick' => EventType->$Link
+											);
+Object::$ReadonlyProps[ObjectType->$Timer] = array('Width','Height');
+Object::$HiddenProps[ObjectType->$Timer] = array('Width','Height');
+Object::$MenuAdd[ObjectType->$Timer] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$Timer]);
+GUILink(Object::$MenuAdd[ObjectType->$Timer], "Click", 'CreateControl(ObjectType->$Timer);');
+Class Timer extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 25, $Height = 25)
+	{
+		CreateParent($myParent);
+		CreateParentOffset(0, 0);
+		SetType(ObjectType->$Timer);
+		SetName($Name);
+		SetObject(GUICreate('PictureBox', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		SetGrid();
+		SetZorder(ZorderType->$AlwaysTop);
+		if(@Compiled)
+			GUIPictureBox(GetObject(), 'Load', $TimerImg);
+		else
+			GUIPictureBox(GetObject(), 'Load', './Images/timer.ico');
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

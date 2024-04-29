@@ -1,0 +1,211 @@
+﻿$onServerInit[] = 'TelnetParserInit';
+Class extends ServerManager
+{
+	my $loggedIn;
+	Function TelnetParserInit()
+	{
+		$loggedIn = false;
+	}
+	Function OnProcessParser($line)
+	{
+		my $lineTrim = trim($line);
+		if (IsEmptyOrNull($lineTrim))
+			return;
+		if ($loggedIn)
+		{
+			my $find = 'INF GMSG:';
+			my $pos = StrPos($lineTrim, $find);
+			if ($pos != -1)
+			{
+				my $current = trim(substr($lineTrim, $pos + strlen($find)));
+				my $pos = StrPos($current, ':');
+				if ($pos == -1)
+				{
+					$find = 'eliminated';
+					my $pos = StrPos($current, $find);
+					if ($pos == -1)
+						return;
+					my $killer = trim(substr($current, 0, $pos));
+					my $killed = trim(substr($current, $pos + strlen($find)));
+					if (IsEmptyOrNull($killer))
+						return;
+					if (IsEmptyOrNull($killed))
+						return;
+					foreach($onPlayerSlayed as my $func)
+						Call(array($this, $func), $killer, $killed);
+					return;
+				}
+				my $userName = trim(substr($current, 0, $pos));
+				my $userMessage = trim(substr($current, $pos + 1));
+				if ($userName eqi 'Server')
+					return;
+				if (IsEmptyOrNull($userMessage))
+					return;
+				if ($userMessage[0] != '/')
+					return;
+				my $found = $currentPlayers->FindByName($userName);
+				if ($found == null)
+					return;
+				my $command = substr($userMessage, 1);
+				my $commandName = lc(match($command, "^%w+"));
+				if (IsEmptyOrNull($commandName) || !IsKeySet($LoadCommands, $commandName))
+				{
+					SayToUserByName($userName, "Invalid command '$commandName' try /help for a list of valid commands");
+					return;
+				}
+				my $cmdRank = Call(array($this, $LoadCommands[$commandName][0]), 'rank');
+				my $userRank = GetUserRank($found);
+				if (!IsRankOrAbove($userRank, $cmdRank))
+				{
+					my $cmdRankName = RankToName($cmdRank);
+					my $userRankName = RankToName($userRank);
+					SayToUserByName($userName, "The command '$commandName' requires a rank of '$cmdRankName' to use and you are only '$userRankName'");
+					return;
+				}
+				my $abort = false;
+				foreach($onPlayerCommandRecv as my $func)
+				{
+					if (Call(array($this, $func), $found, $command))
+						$abort = true;
+				}
+				if ($abort)
+					return;
+				$commandUser = $found;
+				my List($validCommand, $errorMessage) = $console->$_commandParser->ProcessCommand($command);
+				$commandUser = null;
+				if ($validCommand)
+				{
+					if ($errorMessage)
+					{
+						SayToUserByName($userName, $errorMessage);
+						return;
+					}
+				}
+				else
+					SayToUserByName($userName, "Invalid command '$commandName' try /help for a list of valid commands");
+				return;
+			}
+		}
+		my $skipInternalProcess = false;
+		foreach($onProcessTelnetLine as my $func)
+		{
+			if (Call(array($this, $func), $lineTrim, $line))
+				$skipInternalProcess = true;
+		}
+		if ($skipInternalProcess)
+			return;
+		if ($lineTrim == 'Please enter password:' && !$loggedIn)
+		{
+			SendToServer(GetConfig('Password'));
+			return;
+		}
+		if ($lineTrim == 'Logon successful.' && !$loggedIn)
+		{
+			$loggedIn = true;
+			AppendLine('-- Connected to server.');
+			if (GetConfig('ShowServerManagerConnected'))
+				SayToAll($appName . ' connected.');
+			return;
+		}
+		if ($lineTrim == 'Password incorrect, please enter password:' && !$loggedIn)
+		{
+			Die('Password server incorrect -- Check you Config and try again!');
+			return;
+		}
+		if ($loggedIn && $lineTrim =~ m/^Day (\d+), (\d+):(\d+)$/)
+		{
+			SetTime(trim($1), trim($2), trim($3));
+			return;
+		}
+		if ($loggedIn && $lineTrim =~ m/INF Player set to online: (.*)$/)
+		{
+			my $SteamId = trim($1);
+			$sendWelcomeTo[] = $SteamId;
+		}
+		if ($loggedIn && $lineTrim =~ m/INF Executing command '(.*?)' by Telnet from (.*)$/)
+		{
+			my $Command = trim($1);
+			my $FromIp = trim($2);
+			switch (lc($Command))
+			{
+				case 'lp':
+				case 'llp':
+				case 'gettime':
+					return;
+			}
+		}
+		if ($loggedIn && $findingUsers && $lineTrim =~ m/^\d+\. id=(\d+), (.*?),/)
+		{
+			my $playerId = trim($1);
+			my $playerName = trim($2);
+			my $playerX = 0;
+			my $playerY = 0;
+			my $playerZ = 0;
+			my $playerRotX = 0;
+			my $playerRotY = 0;
+			my $playerRotZ = 0;
+			my $playerRemote = 'True';
+			my $playerHealth = 0;
+			my $playerDeaths = 0;
+			my $playerZombieKills = 0;
+			my $playerSteamId = 0;
+			my $playerIp = 0;
+			my $playerPing = 0;
+			if ($lineTrim =~ m/pos=\((.*?), (.*?), (.*?)\)/)
+			{
+				$playerX = trim($1);
+				$playerY = trim($2);
+				$playerZ = trim($3);
+			}
+			if ($lineTrim =~ m/rot=\((.*?), (.*?), (.*?)\)/)
+			{
+				$playerRotX = trim($1);
+				$playerRotY = trim($2);
+				$playerRotZ = trim($3);
+			}
+			if ($lineTrim =~ m/remote=(True|False)/)
+				$playerRemote = $1 eqi 'True';
+			if ($lineTrim =~ m/health=(\d+)/)
+				$playerHealth = $1;
+			if ($lineTrim =~ m/deaths=(\d+)/)
+				$playerDeaths = $1;
+			if ($lineTrim =~ m/zombies=(\d+)/)
+				$playerZombieKills = $1;
+			if ($lineTrim =~ m/players=(\d+)/)
+				$playerPlayerKills = $1;
+			if ($lineTrim =~ m/score=(\d+)/)
+				$playerScore = $1;
+			if ($lineTrim =~ m/level=(\d+)/)
+				$playerLevel = $1;
+			if ($lineTrim =~ m/steamid=([\d\w]+)/)
+				$playerSteamId = $1;
+			if ($lineTrim =~ m/ip=(\d+\.\d+\.\d+\.\d+)/)
+				$playerIp = $1;
+			if ($lineTrim =~ m/ping=(\d+)/)
+				$playerPing = $1;
+			my $newPlayer = new Player(
+										$playerId, $playerName,
+										array($playerX, $playerY, $playerZ),
+										array($playerRotX, $playerRotY, $playerRotZ),
+										$playerRemote, $playerHealth, $playerDeaths,
+										$playerZombieKills, $playerPlayerKills, $playerLevel,
+										$playerSteamId, $playerIp, $playerPing
+										);
+			$foundPlayers->AddPlayer($newPlayer);
+			return;
+		}
+		if ($loggedIn && $findingUsers && $lineTrim =~ m/^Total of \d+ in the game$/)
+		{
+			foreach($onPlayerListChange as my $func)
+				Call(array($this, $func), $currentPlayers, $foundPlayers);
+			$currentPlayers->ClonePlayerList($foundPlayers);
+			$foundPlayers->ClearPlayers();
+			$findingUsers = false;
+			DebugMsg("Playerlist updated");
+			foreach($onPlayerListChangeFinished as my $func)
+				Call(array($this, $func));
+			return;
+		}
+		AppendLine($line);
+	}
+}

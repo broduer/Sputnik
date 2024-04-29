@@ -1,0 +1,104 @@
+#<?
+Class PropCodeBoxLang extends Prop
+{
+	my $Lang;
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, $PropDefault, $PropParentType);
+		$Lang = 'Custom';
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		switch($Lang)
+		{
+			case @LangCUSTOM:
+				return 'Custom';
+			case @LangCSHARP:
+				return 'CSharp';
+			case @LangVB:
+				return 'VisualBasic';
+			case @LangHTML:
+				return 'HTML';
+			case @LangSQL:
+				return 'SQL';
+			case @LangPHP:
+				return 'PHP';
+			case @LangJS:
+				return 'JS';
+			case @LangSPK:
+				return 'Sputnik';
+		}
+		return '';
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Arr = array(
+						'Custom' => (@LangCUSTOM == $Lang),
+						'CSharp' => (@LangCSHARP == $Lang),
+						'VisualBasic' => (@LangVB == $Lang),
+						'HTML' => (@LangHTML == $Lang),
+						'SQL' => (@LangSQL == $Lang),
+						'PHP' => (@LangPHP == $Lang),
+						'JS' => (@LangJS == $Lang),
+						'Sputnik' => (@LangSPK == $Lang)
+						);
+		my $Ret = ChoiceBox('Language', 
+							'Please select a Language type from the options below', 
+							$Arr
+							);
+		if($Ret === null)
+			return null;
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick a style!', $Title, 48);
+			return null;
+		}
+		switch($Ret)
+		{
+			case 'Custom':
+				$Lang = @LangCUSTOM;
+				return "Custom";
+			case 'CSharp':
+				$Lang = @LangCSHARP;
+				return "CSharp";
+			case 'VisualBasic':
+				$Lang = @LangVB;
+				return "VisualBasic";
+			case 'HTML':
+				$Lang = @LangHTML;
+				return "HTML";
+			case 'SQL':
+				$Lang = @LangSQL;
+				return "SQL";
+			case 'PHP':
+				$Lang = @LangPHP;
+				return "PHP";
+			case 'JS':
+				$Lang = @LangJS;
+				return "JS";
+			case 'Sputnik':
+				$Lang = @LangSPK;
+				return "Sputnik";
+		}
+		return $Ret;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		$Lang = $Value;
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)$Lang;
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Text = MakeText($Lang);
+		$Code .= "GUICodeBox(\$$ObjName, 'Lang', $Text);\r\n";
+		return $Code;
+	}
+};

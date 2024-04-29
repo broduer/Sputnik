@@ -1,0 +1,45 @@
+﻿$onServerInit[] = 'ZombieBountyInit';
+$onPlayerListChange[] = 'ZombieBountyOnPlayerListChange';
+Class extends ServerManager
+{
+	my $PlayerKillCounter;
+	Function ZombieBountyInit()
+	{
+		$PlayerKillCounter = array();
+	}
+	Function ZombieBountyOnPlayerListChange($oldList, $newListWillBe)
+	{
+		VarSet('ZombieBountyDebug', $PlayerKillCounter);
+		foreach($newListWillBe->$players as my $player)
+		{
+			my $SteamId = $player->$SteamId;
+			if (!IsKeySet($PlayerKillCounter, $SteamId))
+				$PlayerKillCounter[$SteamId] = 0;
+			else
+			{
+				my $found = $oldList->FindBySteamId($SteamId);
+				if ($found == null)
+					continue;
+				my $oldKills = (double)$found->$ZombieKills;
+				my $newKills = (double)$player->$ZombieKills;
+				my $actualKills = $newKills - $oldKills;
+				if ($actualKills <= 0)
+					continue;
+				my $cutOff = (double)GetConfig('ZombieBountyDepositAfter');
+				if ($actualKills > $cutOff)
+					continue; // bug fix on getting reward for killing every zombie
+				$PlayerKillCounter[$SteamId] += $actualKills;
+				my $total = $PlayerKillCounter[$SteamId];
+				if ($total < $cutOff)
+					continue;
+				$total -= $cutOff;
+				$PlayerKillCounter[$SteamId] = $total;
+				my $reward = (double)GetConfig('ZombieBountyValue') * $cutOff;
+				AddUserCash($found, $reward);
+				my $userCash = GetUserCash($found);
+				SayToUser($found, "You have killed '$cutOff' Zombie(s) and have now earned '$reward' cash your total cash is now '$userCash'");
+				DebugMsg($found->$Name . " earned '$reward' cash killing Zombies");
+			}
+		}
+	}
+}

@@ -1,0 +1,77 @@
+Class EntityRewardBoost extends EntityReward
+{
+	Static $UniqueID = 0;
+	my $RewardGiven;
+	my $BoostGiven;
+	my $RewardedPlayer;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$Boost;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/Boost/Boost.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 0;
+		$NoClip = true;
+		$RewardGiven = false;
+		$RewardedPlayer = null;
+		$BoostGiven = false;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		if($RewardGiven && $BoostGiven)
+		@{
+			$RewardedPlayer->$VelocityValue = $RewardedPlayer->$DefaultVelocityValue;
+			$RewardedPlayer->$VelocityMovesValue = $RewardedPlayer->$DefaultVelocityMovesValue;
+		}
+	}
+	Function GiveBoost( )
+	{
+		if($BoostGiven)
+			return;
+		if($RewardedPlayer->Stopped())
+		{
+			$BoostGiven = true;
+			$RewardedPlayer->$VelocityValue = $RewardedPlayer->$DefaultVelocityValue * 2;
+			$RewardedPlayer->$VelocityMovesValue = $RewardedPlayer->$DefaultVelocityMovesValue / 2;
+		}
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if($BoostGiven)
+			return;
+		if($RewardGiven)
+		{
+			GiveBoost();
+			return;
+		}
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			// Mark a done
+			$RewardGiven = true;
+			// Play Sound
+			PlayCollectionSound();
+			// Stop drawing the entity
+			$AllowDraw = false;
+			// Attach to player
+			$RewardedPlayer = $V;
+			// Try give boost
+			GiveBoost();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

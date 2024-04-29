@@ -1,0 +1,112 @@
+﻿include("Collections/Stack.spk");
+
+Global $DEBUG = false;
+
+Println("Enter an RPN expression");
+while(true)
+{
+	my $RPN = Input("RPN > ");
+	$Value = RPNParse($RPN);
+	println("Value is: " . $Value);
+}
+
+/*
+my $RPN = "1234+++";
+$Value = Parse($RPN);
+println($Value);
+*/
+
+Function RPNParse( $value )
+{
+	my $PStack = new Stack();
+	my $SPACE = false;
+	my $Temp = "";
+	foreach($value as my $c)
+	{
+		if ($c =~ m/[\+\*\-\/]/o)
+		{
+			unless(isEmpty($Temp))
+			{
+				if($SPACE)
+				{
+					$PStack->Push((string)$Temp);
+					if($DEBUG) println("Pushing '$Temp' to stack");
+					$Temp = "";
+				}
+				else
+				{
+					foreach($Temp as my $cc)
+					{
+						$PStack->Push((string)$cc);
+						if($DEBUG) println("Pushing '$cc' to stack");
+					}
+					$Temp = "";
+				}
+			}
+			
+			if($DEBUG) println("Found a + and stack size is:" . $PStack->Size());
+			
+			if($PStack->Size() >= 2)
+			{
+				my $OP2 = (double)($PStack->Pop());
+				my $OP1 = (double)($PStack->Pop());
+				my $newVal = 0.0;
+				switch($c)
+				{
+					case "*":
+					{
+						$newVal = $OP1 * $OP2;
+					}
+					break;
+					case "-":
+					{
+						$newVal = $OP1 - $OP2;
+					}
+					break;
+					case "/":
+					{
+						$newVal = $OP1 / $OP2;
+					}
+					break;
+					case "+":
+					{
+						$newVal = $OP1 + $OP2;
+					}
+					break;
+				}
+				$PStack->Push($newVal);
+				if($DEBUG) println("Op1 - $OP1 ($c) Op2 - $OP2");
+				if($DEBUG) println("New value - $newVal");
+				if($DEBUG) println($PStack->Index(2));
+			}
+			else
+			{
+				return 0;
+			}
+		}
+		else if ($c =~ m/\s/o)
+		{
+			$SPACE = true;
+			unless(isEmpty($Temp))
+			{
+				$PStack->PushStack($Temp);
+				if($DEBUG) println("Pushing '$Temp' to stack");
+				$Temp = "";
+			}
+		}
+		else
+		{
+			if($c =~ m/\d/)
+			{
+				$Temp .= $c;
+				if($DEBUG) println("Temp so far '$Temp'");
+			}
+			else
+			{
+				return 0;
+			}
+			$SPACE = false;
+		}
+	}
+	if(!$DEBUG) return $PStack->First();
+}

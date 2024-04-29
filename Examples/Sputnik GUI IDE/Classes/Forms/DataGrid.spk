@@ -1,0 +1,47 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$DataGrid] = false;
+Object::$Names[ObjectType->$DataGrid] = 'DataGrid';
+Object::$Props[ObjectType->$DataGrid] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$Events[ObjectType->$DataGrid] = array(
+												Object::$GenericEvents[<=>],
+												'CellBeginEdit' => EventType->$Link,
+												'CellEndEdit' => EventType->$Link,
+												'DeletingRow' => EventType->$Link,
+												'DeletedRow' => EventType->$Link
+											);
+Object::$MenuAdd[ObjectType->$DataGrid] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$DataGrid]);
+GUILink(Object::$MenuAdd[ObjectType->$DataGrid], 'Click', 'CreateControl(ObjectType->$DataGrid);');
+Class DataGrid extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 110, $Height = 25)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$DataGrid);
+		SetName($Name);
+		SetObject(GUICreate('DataGrid', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

@@ -1,0 +1,176 @@
+﻿$onServerInit[] = 'LandPPPInit';
+$onServerProcess[] = 'LandPPPProcess';
+$onProcessTelnetLine[] = 'LandPPPOnProcessTelnetLine';
+Class extends ServerManager
+{
+	my $landPPPProcessForce;
+	my $landPPPProcessCounter;
+	my $landPPPProcessCounterMax;
+	my $landPPPScanning;
+	my $landPPPCurrentSteamId;
+	my $landPPPDb;
+	my $landPPPDbComplete;
+	my $landPPPActions;
+	Function LandPPPInit()
+	{
+		$landPPPProcessForce = true;
+		$landPPPProcessCounter = 0;
+		$landPPPProcessCounterMax = 60;
+		$landPPPScanning = false;
+		$landPPPCurrentSteamId = -1;
+		$landPPPDb = array();
+		$landPPPDbComplete = array();
+		$landPPPActions = array();
+	}
+	Function LandPPPOnProcessTelnetLine($lineTrim, $line)
+	{
+		if (!$landPPPScanning)
+			return;
+		if ($loggedIn && $lineTrim =~ m/^Player "(.*?) \((.*?)\)" owns (\d+) keystones \((.*)\)$/)
+		{
+			my $playerName = $1;
+			my $playerSteamId = $2;
+			my $playerKeyStones = (int)$3;
+			my $playerIsProtected = true;
+			my $playerHardness = 4;
+			my $flags = trim($4);
+			foreach(split($flags, ',') as my $flagInfo)
+			{
+				if (strpos($flagInfo, ':') == -1)
+					continue;
+				my List($key, $value) = split($flagInfo, ':');
+				$key = trim($key);
+				$value = trim($value);
+				switch ($key)
+				{
+					case 'protected':
+						$playerIsProtected = lc($value) == 'true';
+						break;
+					case 'current hardness multiplier':
+						$playerHardness = (int)$value;
+						break;
+				}
+			}
+			$landPPPDb[$playerSteamId] = array($playerName, $playerIsProtected, $playerHardness, $playerKeyStones, array());
+			$landPPPCurrentSteamId = $playerSteamId;
+			return true;
+		}
+		if ($loggedIn && $landPPPCurrentSteamId != -1 && $lineTrim =~ m/^\((.*?),(.*?),(.*?)\)$/)
+		{
+			my $x = (double)trim($1);
+			my $y = (double)trim($2);
+			my $z = (double)trim($3);
+			$landPPPDb[$landPPPCurrentSteamId][4][] = array($x, $y, $z);
+			return true;
+		}
+		if ($loggedIn && $lineTrim =~ m/^Total of (\d+) keystones in the game$/)
+		{
+			my $qty = (double)trim($1);
+			$landPPPDbComplete = $landPPPDb;
+			$landPPPDb = array();
+			$landPPPScanning = false;
+			foreach($onLandProtectionDbUpated as my $func)
+				Call(array($this, $func), $landPPPDbComplete);
+			return true;
+		}
+	}
+	Function LandPPPProcess()
+	{
+		if (!GetConfig('UseLandPP'))
+			return;
+		LandPPPProcessGrab();
+		LandPPPProcessPwn();
+	}
+	Function LandPPPProcessPwn()
+	{
+		my $penaltyType = (int)GetConfig('LandPPPenalty');
+		my $portalName = GetConfig('LandPPPortal');
+		my $foundAny = false;
+		foreach($currentPlayers->$players as my $player)
+		{
+			my $steamId = $player->$SteamId;
+			my List($trespassing, $claimOwner) = IsPlayerTrespassingOnAClaim($player);
+			if (!$trespassing)
+				continue;
+			$foundAny = true;
+			if (!IsKeySet($landPPPActions, $steamId))
+				$landPPPActions[$steamId] = 1;
+			$landPPPActions[$steamId]--;
+			if ($landPPPActions[$steamId] > 0)
+				continue;
+			$landPPPActions[$steamId] = 30;
+			switch ($penaltyType)
+			{
+				case 0:
+					SayToUser($player, "You are trespassing on land owned by '$claimOwner' you will be sent through '$portalName' portal to remove you from this players land");
+					TryPopPlayerToPortal($player, $portalName);
+					break;
+				case 1:
+					SayToUser($player, "You are trespassing on land owned by '$claimOwner' you will now be executed");
+					KillUser($player);
+					break;
+			}
+		}
+		if (!$foundAny && count($landPPPActions) > 0)
+			$landPPPActions = array();
+	}
+	Function LandPPPProcessForceGrab()
+	{
+		$landPPPProcessForce = true;
+	}
+	Function LandPPPProcessGrab()
+	{
+		if ($landPPPProcessForce)
+		{
+			$landPPPProcessForce = false;
+			$landPPPProcessCounter = $landPPPProcessCounterMax;
+		}
+		$landPPPProcessCounter++;
+		if ($landPPPProcessCounter < $landPPPProcessCounterMax)
+			return;
+		$landPPPProcessCounter = 0;
+		$landPPPScanning = true;
+		$landPPPCurrentSteamId = -1;
+		$landPPPDb = array();
+		SendToServer('llp');
+	}
+	Function IsPlayerTrespassingOnAClaim($player)
+	{
+		if (IsUserAdmin($player) || IsUserModerator($player))
+			return array(false, null);
+		my $claimDist = (double)GetConfig('LandPPDist');
+		my $claimProtectedOnline = GetConfig('LandPPOnline');
+		my $claimProtectedOffline = GetConfig('LandPPOffline');
+		my $SteamId = $player->$SteamId;
+		my List($x, $y, $z) = $player->$Pos;
+		foreach($landPPPDbComplete as my $ppSteamId => my $ppData)
+		{
+			if ($SteamId == $ppSteamId)
+				continue;
+			my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+			if ($found == null)
+				continue;
+			if (AreBothFriends($found, $player))
+				continue;
+			my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+			if (!$isProtected)
+				continue;
+			if (!$claimProtectedOnline && $isOnline)
+				continue;
+			if (!$claimProtectedOffline && !$isOnline)
+				continue;
+			foreach($keyStoneList as my $keyStone)
+			{
+				my List($kx, $ky, $kz) = $keyStone;
+				if (Distance3D($kx, $ky, $kz, $x, $y, $z) > $claimDist)
+					continue;
+				return array(true, $ownerName);
+			}
+		}
+		return array(false, null);
+	}
+	Function GetLandClaimData()
+	{
+		return $landPPPDbComplete;
+	}
+}

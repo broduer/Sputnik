@@ -1,0 +1,7 @@
+#include-once
+#require-once
+// This will include all Parsing scripts in the library
+Include('Parsing/CommandSystem.spk');
+Include('Parsing/Loco.spk');
+Include('Parsing/RegexMatcher.spk');
+Include('Parsing/TextParser.spk');

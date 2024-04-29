@@ -1,0 +1,47 @@
+﻿Class CorePlugin extends D2BotPlugin
+{
+	my $Bot;
+	override Function OnPluginInit($BotInstance)
+	{
+		$Bot = $BotInstance;
+		$Bot->AppendLine("Plugin init");
+		$Bot->AddCommand('kick', array($this, 'CmdKick'), 1, 1);
+	}
+	override Function OnTick() 
+	{
+		if(TickDone('pTick', 3))
+		{
+			$Bot->AppendLine("Plugin Tick every 3 seconds");
+		}
+	}
+	override Function OnUserEnters($sAccountName) 
+	{
+		$Bot->AppendLine("Plugin OnUserEnters '$sAccountName'");
+	}
+	override Function OnUserIsHere($sAccountName) 
+	{
+		$Bot->AppendLine("Plugin OnUserIsHere '$sAccountName'");
+	}
+	override Function OnUserLeaves($sAccountName) 
+	{
+		$Bot->AppendLine("Plugin OnUserLeaves '$sAccountName'");
+	}
+	override Function OnUserChat($sAccountName, $sMessage) 
+	{
+		$Bot->AppendLine("Plugin OnUserChat '$sAccountName' '$sMessage'");
+	}
+	override Function OnBotChat($sAccountName, $sMessage) 
+	{
+		$Bot->AppendLine("Plugin OnBotChat '$sAccountName' '$sMessage'");
+	}
+	Function CmdKick($args, $argCount, $cmdRest, $IsBot, $sAccountName, $who)
+	{
+		if($Bot->IsHelp($args, $argCount))
+		{
+			$Bot->SendMsg($sAccountName, "This command kicks an account/char from chan example of usage:");
+			$Bot->SendMsg($sAccountName, ".kick UberFoX");
+			return;
+		}
+		$Bot->SendMsg($sAccountName, "You want me to kick $who?, Sorry function isnt finished yet!");
+	}
+}

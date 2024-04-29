@@ -1,0 +1,45 @@
+﻿$onServerInit[] = 'TimeInit';
+$onServerProcess[] = 'TimeProcess';
+Class extends ServerManager
+{
+	my $TimeCounter;
+	my $TimeCounterMax;
+	my $TimeIsReady;
+	my $TimeDay;
+	my $TimeHour;
+	my $TimeMinute;
+	Function TimeInit()
+	{
+		$TimeDay = 1;
+		$TimeHour = 0;
+		$TimeMinute = 0;
+		$TimeIsReady = false;
+		$TimeCounter = 0;
+		$TimeCounterMax = 5;
+	}
+	Function TimeProcess()
+	{
+		$TimeCounter++;
+		if ($TimeCounter < $TimeCounterMax)
+			return;
+		$TimeCounter = 0;
+		SendToServer('gettime');
+	}
+	Function SetTime($iDay, $iHour, $iMinute)
+	{
+		$TimeDay = (int)$iDay;
+		$TimeHour = (int)$iHour;
+		$TimeMinute = (int)$iMinute;
+		$TimeHour = TrimLeft($TimeHour, '0');
+		if (strlen($TimeHour) < 1)
+			$TimeHour = 0;
+		$TimeMinute = TrimLeft($TimeMinute, '0');
+		if (strlen($TimeMinute) < 1)
+			$TimeMinute = 0;
+		$TimeIsReady = true;
+	}
+	Function GetTime()
+	{
+		return array($TimeIsReady, $TimeDay, $TimeHour, $TimeMinute);
+	}
+}

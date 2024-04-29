@@ -1,0 +1,75 @@
+##TEMPLATE-NAME 'XML'
+##LANGUAGE 'XML'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'xml'
+##NOTES
+This template outputs the tables using XML format. This template basically performs the same duties as the Export to XML feature.
+##END-NOTES
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+<?GOLDParserTables version="1.0"?>
+<Tables>
+##PARAMETERS
+        <Parameters>
+                <Parameter Name="Name" Value="%Name.XML%"/>
+                <Parameter Name="Author" Value="%Author.XML%"/>
+                <Parameter Name="Version" Value="%Version.XML%"/>
+                <Parameter Name="About" Value="%About.XML%"/>
+                <Parameter Name="Case Sensitive" Value="%CaseSensitive%"/>
+                <Parameter Name="Start Symbol" Value="%StartSymbol%"/>
+        </Parameters>
+##END-PARAMETERS
+##SYMBOL-TABLE
+        <SymbolTable Count="%Count%">
+##SYMBOLS
+                <Symbol Index="%Index%" Name="%Name.XML%" Kind="%Kind%"/>
+##END-SYMBOLS
+        </SymbolTable>
+##END-SYMBOL-TABLE
+##RULE-TABLE
+        <RuleTable Count="%Count%">
+##RULES
+                <Rule Index="%Index%" NonTerminalIndex="%NonterminalIndex%" SymbolCount="%SymbolCount%">
+##RULE-SYMBOLS
+                        <RuleSymbol SymbolIndex="%SymbolIndex%"/>
+##END-RULE-SYMBOLS
+                </Rule>
+##END-RULES
+        </RuleTable>
+##END-RULE-TABLE
+##CHAR-SET-TABLE
+        <CharSetTable Count="%Count%">
+##CHAR-SETS        
+                <CharSet Index="%Index%" Count="%CharCount%">
+##CHARS                
+                        <Char UnicodeIndex="%UnicodeIndex%"/>
+##END-CHARS
+                </CharSet>
+##END-CHAR-SETS
+        </CharSetTable>
+##END-CHAR-SET-TABLE
+##DFA-TABLE
+        <DFATable Count="%Count%" InitialState="%InitialState%">
+##DFA-STATES
+                <DFAState Index="%Index%" EdgeCount="%EdgeCount%" AcceptSymbol="%AcceptIndex%">
+##DFA-EDGES
+                        <DFAEdge CharSetIndex="%CharSetIndex%" Target="%Target%"/>
+##END-DFA-EDGES
+                </DFAState>
+##END-DFA-STATES 
+        </DFATable>
+##END-DFA-TABLE
+##LALR-TABLE
+        <LALRTable Count="%Count%" InitialState="%InitialState%">
+##LALR-STATES
+                <LALRState Index="%Index%" ActionCount="%ActionCount%">
+##LALR-ACTIONS
+                        <LALRAction SymbolIndex="%SymbolIndex%" Action="%Action%" Value="%Value%"/>
+##END-LALR-ACTIONS        
+                </LALRState>
+##END-LALR-STATES  
+        </LALRTable>
+##END-LALR-TABLE
+</Tables>

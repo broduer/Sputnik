@@ -1,0 +1,29 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "Array:Pointers";
+println("[$CurrentName] Begins");
+ArrayPointersTest1();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function ArrayPointersTest1()
+{
+	println("$CurrentName Test 1");
+	my $array = array(2, 4, 6, 8, 10);
+	foreach($array as &$item)
+	{
+		*$item *= 2;
+	}
+	if(
+		$array == array(4, 8, 12, 16, 20)
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

@@ -1,0 +1,62 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$RichTextBox] = false;
+Object::$Names[ObjectType->$RichTextBox] = 'RichTextBox';
+Object::$Props[ObjectType->$RichTextBox] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropText('Text', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropBool('ReadOnly', null, null, null, null, null),
+												new PropBool('WordWrap', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$Events[ObjectType->$RichTextBox] = array(
+												Object::$GenericEvents[<=>]
+											);
+Object::$MenuAdd[ObjectType->$RichTextBox] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$RichTextBox]);
+GUILink(Object::$MenuAdd[ObjectType->$RichTextBox], 'Click', 'CreateControl(ObjectType->$RichTextBox);');
+Class RichTextBox extends Object
+{
+	Function __construct($myParent, $Name, $Text = 'New ' . Object::$Names[ObjectType->$RichTextBox], $Left = 8, $Top = 8, $Width = 110, $Height = 110)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$RichTextBox);
+		SetName($Name);
+		SetObject(GUICreate('RichTextBox', $myParent->GetObject(), $Text, $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		GUISetProp(GetObject(), 'Cursor', 'Arrow');
+		GUILink(GetObject(), 'GotFocus', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'Click', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'SelectionChanged', '$param->doHideCaret();', $this);
+		GUILink(GetObject(), 'KeyDown', 'return $param->onKeyDown();', $this);
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function doHideCaret()
+	{
+		GUISetProp(GetObject(), 'SelectionStart', 0);
+		GUISetProp(GetObject(), 'SelectionLength', 0);
+		GUIHideCaret(GetObject());
+	}
+	Function onKeyDown()
+	{
+		GUIHideCaret(GetObject());
+		return 1;
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

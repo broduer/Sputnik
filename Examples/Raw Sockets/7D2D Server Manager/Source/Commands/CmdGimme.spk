@@ -1,0 +1,122 @@
+﻿$onServerInit[] = 'GimmeInit';
+$LoadCommands['gimme'] = array('CmdGimme', 0, 0);
+Class extends ServerManager
+{
+	my $GimmePlayerEpochs;
+	Function GimmeInit()
+	{
+		$GimmePlayerEpochs = array();
+	}
+	Function CmdGimme($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Economy;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Gain a random food/drink/med item';
+		if ($args === 'help')
+		{
+			my $gimmeMinutes = GetConfig('GimmeMinutes');
+			return array(
+							"Gain a random food/drink/med item if it is allowed by the server",
+							"Can only be used once every '$gimmeMinutes' minutes"
+							);
+		}
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowGimme') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $gimmeItemsData = $utils->getGimmeItemsFile();
+		if ($gimmeItemsData == null || count($gimmeItemsData) <= 0)
+		{
+			SayToUser($commandUser, "Sorry there is nothing I can give you at this time");
+			return;
+		}
+		my $SteamId = $commandUser->$SteamId;
+		if (IsKeySet($GimmePlayerEpochs, $SteamId))
+		{
+			my $found = $currentPlayers->FindBySteamId($SteamId);
+			if ($found == null)
+				continue;
+			my $allowMinutes = GetConfig('GimmeMinutes');
+			my $currentDate = $GimmePlayerEpochs[$SteamId];
+			my $allowDate = $currentDate + ($allowMinutes * 60);
+			if ($allowDate >= @Epoch)
+			{
+				my $waitMins = (int)(($allowDate - @Epoch) / 60);
+				if ($waitMins < 0)
+					$waitMins = 0;
+				my $waitSecs = (int)(($allowDate - @Epoch) - ($waitMins * 60));
+				if ($waitSecs < 0)
+					$waitSecs = 0;
+				SayToUser($commandUser, "You must wait another '$waitMins' minute(s) and '$waitSecs' second(s) before you may use this command again");
+				return;
+			}
+		}
+		$GimmePlayerEpochs[$SteamId] = @Epoch;
+		my $toGive = null;
+		while (true)
+		{
+			my $rand = Random(0, count($gimmeItemsData), 0);
+			if (!IsSet($gimmeItemsData[$rand]))
+				continue;
+			$toGive = $gimmeItemsData[$rand];
+			break;
+		}
+		if ($toGive == null)
+		{
+			SayToUser($commandUser, "There was an error with this command please try again");
+			return;
+		}
+		my $ourName = $commandUser->$Name;
+		my List($ItemName, $Amount) = $toGive;
+		my $Cost = GetConfig('GimmeCost');
+		if ($Cost > 0)
+		{
+			my $userCash = GetUserCash($commandUser);
+			if ($userCash < $Cost)
+			{
+				SayToUser($commandUser, "You cannot afford to use gimme you have '$userCash' cash and need '$Cost'");
+				return;
+			}
+			DelUserCash($commandUser, $Cost);
+			$userCash = GetUserCash($commandUser);
+			SayToUser($commandUser, "You used gimme at a cost of '$Cost' cash you now have '$userCash' cash left");
+		}
+		SayToAll("$ourName received... $ItemName");
+		GiveItemToUser($commandUser, $ItemName, $Amount);
+	}
+}
+Class extends Utils
+{
+	Function getGimmeItemsFile()
+	{
+		my $fileInfo = array();
+		if (!FileExists('./Variables/GimmeItems.txt'))
+			return $fileInfo;
+		my $itemFile = FileReadLines('./Variables/GimmeItems.txt');
+		foreach($itemFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 2)
+				continue;
+			my List($ItemName, $Amount) = $split;
+			if (IsEmptyOrNull($ItemName))
+				continue;
+			if ($Amount <= 0)
+				continue;
+			$fileInfo[] = array($ItemName, (int)$Amount);
+		}
+		return $fileInfo;
+	}
+}

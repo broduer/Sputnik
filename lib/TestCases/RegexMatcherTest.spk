@@ -1,0 +1,114 @@
+#include-once
+#require-once
+Require('Parsing/RegexMatcher.spk', true);
+Global $SUCCESS = 0;
+Global $FAIL = 0;
+println("[RegexMatcherTest] Begins");
+RegexMatcherTest1();
+RegexMatcherTest2();
+RegexMatcherTest3();
+println("[RegexMatcherTest] Total success '$SUCCESS' fails '$FAIL'");
+Function RegexMatcherTest1()
+{
+	println("RegexMatcher Test 1");
+	if(_RegexMatcherTest1() == "STRING->\"Hehehe omg\"SPACE-> INT->777SPACE-> CHAR->'A'SPACE-> FLOAT->100.63")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function _RegexMatcherTest1()
+{
+	my $Ret = "";
+	my $tokenDefs = array(
+						new TokenDefinition(@"[-+]?\d*\.\d+([eE][-+]?\d+)?", "FLOAT", false),
+						new TokenDefinition(@"[-+]?\d+", "INT", false),
+						new TokenDefinition(@"\+", "ADD", false),
+						new TokenDefinition(@"\s", "SPACE", false),
+						new TokenDefinition(@"'\w'", "CHAR", false),
+						new TokenDefinition("\"[^\"\\\\\\r\\n]*(?:\\\\.[^\"\\\\\\r\\n]*)*\"", "STRING", false)
+						);
+	my $Reader = new TextParser("\"Hehehe omg\" 777 'A' 100.63");
+	my $Lexer = new Lexer($Reader, $tokenDefs);
+	while( $Lexer->Next() )
+	{
+		$Ret .= $Lexer->$Token . "->" . $Lexer->$TokenGroups[0];
+		//println( "Token: " . $Lexer->$Token . " | Text: " . $Lexer->$TokenGroups[0] );
+	}
+	return $Ret;
+}
+Function RegexMatcherTest2()
+{
+	println("RegexMatcher Test 2");
+	if(_RegexMatcherTest2() == "CHAR->PokeWS-> ADDRESS->411C88WS-> OPCODE->11WS-> OPCODE->22WS-> OPCODE->33WS-> OPCODE->44WS-> OPCODE->55WS-> OPCODE->66WS-> OPCODE->77WS-> OPCODE->88")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function _RegexMatcherTest2()
+{
+	my $Ret = "";
+	my $tokenDefs = array(
+						new TokenDefinition(@"Poke", "CHAR", true),
+						new TokenDefinition(@"[\s\t]+", "WS", false),
+						new TokenDefinition(@"[a-fA-F0-9]{3,}", "ADDRESS", false),
+						new TokenDefinition(@"[a-fA-F0-9]{2}", "OPCODE", false)
+						);
+	my $Reader = new TextParser("Poke 411C88 11 22 33 44 55 66 77 88");
+	my $Lexer = new Lexer($Reader, $tokenDefs);
+	while( $Lexer->Next() )
+	{
+		$Ret .= $Lexer->$Token . "->" . $Lexer->$TokenGroups[0];
+		//println( "Token: " . $Lexer->$Token . " | Text: " . $Lexer->$TokenGroups[0] );
+	}
+	return $Ret;
+}
+Function RegexMatcherTest3()
+{
+	println("RegexMatcher Test 3");
+	if(_RegexMatcherTest3() == "LEFT->(SPACE-> SYMBOL->oneSPACE-> LEFT->(SYMBOL->twoSPACE-> INT->456SPACE-> FLOAT->-43.2SPACE-> QUOTED-STRING->\"quoted\"SPACE-> RIGHT->)RIGHT->)")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function _RegexMatcherTest3()
+{
+	my $Ret = "";
+	my $tokenDefs = array(
+						new TokenDefinition("\"[^\"\\\\\\r\\n]*(?:\\\\.[^\"\\\\\\r\\n]*)*\"", "QUOTED-STRING", true),
+						new TokenDefinition(@"[-+]?\d*\.\d+([eE][-+]?\d+)?", "FLOAT", false),
+						new TokenDefinition(@"[-+]?\d+", "INT", false),
+						new TokenDefinition(@"#t", "TRUE", false),
+						new TokenDefinition(@"#f", "FALSE", false),
+						new TokenDefinition(@"[*<>\?\-+/A-Za-z->!]+", "SYMBOL", false),
+						new TokenDefinition(@"\.", "DOT", false),
+						new TokenDefinition(@"\(", "LEFT", false),
+						new TokenDefinition(@"\)", "RIGHT", false),
+						new TokenDefinition(@"\s", "SPACE", false)
+						);
+	my $Reader = new TextParser(@"( one (two 456 -43.2 ""quoted"" ))");
+	my $Lexer = new Lexer($Reader, $tokenDefs);
+	while( $Lexer->Next() )
+	{
+		$Ret .= $Lexer->$Token . "->" . $Lexer->$TokenGroups[0];
+		//println( "Token: " . $Lexer->$Token . " | Text: " . $Lexer->$TokenGroups[0] );
+	}
+	return $Ret;
+}

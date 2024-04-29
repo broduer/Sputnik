@@ -1,0 +1,41 @@
+﻿// Keep track of keys from TickDone() function
+Global $TickyTracker = array();
+// The constant of how many ticks exist per second
+Global $TickConstant = 20.0;
+// Check if a tick counter by NAME has passed xx seconds
+// This expects to get run every tick and it will let you
+// know if the number of seconds has passed
+Function TickDone($key, $secs)
+{
+	if (IsEmptyOrNull($key))
+		return false;
+	if (!IsKeySet($TickyTracker, $key))
+		$TickyTracker[$key] = 0;
+	$TickyTracker[$key]++;
+	if ($TickyTracker[$key] >= SecToTicks($secs))
+	{
+		$TickyTracker[$key] = 0;
+		return true;
+	}
+	return false;
+}
+// Convert ticks into seconds
+Function TickToSec($ticks)
+{
+	return (double)$ticks / (double)$TickConstant;
+}
+// Convert ticks into seconds but formatted
+// for easy reading
+Function TickToSecFormatted($ticks)
+{
+	my $result = TickToSec($ticks);
+	if ($result == 0.0)
+		return $result + ' seconds (every tick)';
+	else
+		return $result + ' seconds';
+}
+// Convert seconds into ticks
+Function SecToTicks($secs)
+{
+	return Round((double)$secs * (double)$TickConstant);
+}

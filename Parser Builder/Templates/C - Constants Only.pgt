@@ -1,0 +1,19 @@
+##TEMPLATE-NAME 'C (ANSI) - Constants Only'
+##LANGUAGE 'ANSI C'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'c'
+##NOTES
+This template creates to set of ANSI C constants for the grammar's symbols and rules.
+##END-NOTES
+##ID-CASE UPPERCASE
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+##SYMBOLS
+const int %ID.Padded% = %Value.Padded%; /* %Description% */
+##END-SYMBOLS
+
+##RULES
+const int %ID.Padded% = %Value.Padded%; /* %Description% */
+##END-RULES

@@ -1,0 +1,279 @@
+﻿$onLandProtectionDbUpated[] = 'PortalOnLandProtectionDbUpated';
+$LoadCommands['portal'] = array('CmdPortal', 1, 2);
+Class extends ServerManager
+{
+	Function CmdPortal($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Travel through portals or create them';
+		if ($args === 'help')
+			return array(
+							'This command can be used to travel to a defined location for example',
+							'If there is a location marked as ''hub'' typing',
+							'''/portal hub'' will teleport you there although it may cost you some cash',
+							'if you are the admin then you can create new portal locations by typing',
+							'''/portal create <name>'' where the <name> is the name you wish to define',
+							'for the current location you are standing at, To delete a portal type',
+							'if the portal name begins with @ it will be admin/mod only',
+							'''/portal delete <name>'' where the <name> is the name of the portal to delete',
+							"finally to see a list of all portals type ''/portal list''"
+			);
+		if ($commandUser == null)
+			return;
+		if ($argCount == 1 || $argCount == 2)
+		{
+			my $cType = $args[0];
+			my $portalFileData = $utils->getPortalFile();
+			switch ($cType)
+			{
+				case 'list':
+					if ($argCount != 1)
+					{
+						SayToUser($commandUser, "Portal 'list' action requires 1 param");
+						return;
+					}
+					SayToUser($commandUser, "Here is all portal locations");
+					my $count = 0;
+					foreach($portalFileData as my $portalData)
+					{
+						my List($Name, $X, $Y, $Z) = $portalData;
+						if (IsAdminPortal($Name) && !IsUserAdmin($commandUser))
+							continue;
+						if (IsModPortal($Name) && (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser)))
+							continue;
+						SayToUser($commandUser, $name);
+						$count++;
+					}
+					if ($count == 0)
+						SayToUser($commandUser, "Oh sorry there is none!");
+					return;
+				case 'create':
+					if (!IsUserAdmin($commandUser))
+					{
+						SayToUser($commandUser, "Only Admins may create a portal location");
+						return;
+					}
+					if ($argCount != 2)
+					{
+						SayToUser($commandUser, "Portal 'create' action requires 2 params");
+						return;
+					}
+					my $pName = $args[1];
+					if (IsEmptyOrNull($pName))
+					{
+						SayToUser($commandUser, "You must enter a portal name to be created");
+						return;
+					}
+					my List($x, $y, $z) = $commandUser->$pos;
+					PortalCreateLocation($pName, $x, $y, $z);
+					SayToUser($commandUser, "Your current location is X '$x' Y '$y' Z '$z'");
+					SayToUser($commandUser, "It can now be accessed using the portal name '$pName'");
+					return;
+				case 'delete':
+					if (!IsUserAdmin($commandUser))
+					{
+						SayToUser($commandUser, "Only Admins may delete a portal location");
+						return;
+					}
+					if ($argCount != 2)
+					{
+						SayToUser($commandUser, "Portal 'delete' action requires 2 params");
+						return;
+					}
+					my $pName = $args[1];
+					if (IsEmptyOrNull($pName))
+					{
+						SayToUser($commandUser, "You must enter a portal name to be deleted");
+						return;
+					}
+					if (!PortalLocationExists($pName))
+					{
+						SayToUser($commandUser, "There is no portal location named '$pName' to delete");
+						return;
+					}
+					PortalDeleteLocation($pName);
+					SayToUser($commandUser, "The portal named '$pName' has been deleted");
+					return;
+				default:
+					if ($argCount != 1)
+					{
+						SayToUser($commandUser, "Portal destinations requires 1 param");
+						return;
+					}
+					foreach($portalFileData as my $portalData)
+					{
+						my List($Name, $X, $Y, $Z) = $portalData;
+						if ($Name eqi $cType)
+						{
+							if (IsAdminPortal($Name) && !IsUserAdmin($commandUser))
+							{
+								SayToUser($commandUser, "Only Administrators may travel to '$Name'");
+								return;
+							}
+							if (IsModPortal($Name) && (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser)))
+							{
+								SayToUser($commandUser, "Only Administrators or Moderators may travel to '$Name'");
+								return;
+							}
+							my $tpCost = GetConfig('PortalCost');
+							if ($tpCost > 0)
+							{
+								SayToUser($commandUser, "Teleporting you to '$Name' costs '$tpCost' cash");
+								my $userCash = GetUserCash($commandUser);
+								if ($userCash < $tpCost)
+								{
+									SayToUser($commandUser, "You cannot afford to teleport you have '$userCash' cash and need '$tpCost'");
+									return;
+								}
+								DelUserCash($commandUser, $tpCost);
+								$userCash = GetUserCash($commandUser);
+								SayToUser($commandUser, "Teleporting you to '$Name' now for '$tpCost' cash you now have '$userCash' cash left");
+							}
+							else
+								SayToUser($commandUser, "Teleporting you to '$Name' now");
+							TeleportUserToXYZ($commandUser, $X, $Y, $Z);
+							return;
+						}
+					}
+					SayToUser($commandUser, "Invalid action '$cType' for the portal command it is also not the name of any portal");
+					return;
+			}
+		}
+	}
+	Function TryPopPlayerToPortal($player, $portalName)
+	{
+		my $portalFileData = $utils->getPortalFile();
+		foreach($portalFileData as my $portalData)
+		{
+			my List($Name, $X, $Y, $Z) = $portalData;
+			if ($Name eqi $portalName)
+			{
+				TeleportUserToXYZ($player, $X, $Y, $Z);
+				return;
+			}
+		}
+	}
+	Function IsAdminPortal($portalName)
+	{
+		return StartsWith($portalName, '@@');
+	}
+	Function IsModPortal($portalName)
+	{
+		return StartsWith($portalName, '@');
+	}
+	Function PortalCreateLocation($Name, $X, $Y, $Z)
+	{
+		PortalDeleteLocation($toFind);
+		my $portalFileData = $utils->getPortalFile();
+		$portalFileData[] = array($Name, (double)$X, (double)$Y, (double)$Z);
+		$utils->setPortalFile($portalFileData);
+	}
+	Function PortalDeleteLocation($toFind)
+	{
+		my $portalFileData = $utils->getPortalFile();
+		my $newPortalFileData = array();
+		for (my $i = 0; $i < count($portalFileData); $i++)
+		{
+			my List($Name, $X, $Y, $Z) = $portalFileData[$i];
+			if ($Name eqi $toFind)
+				continue;
+			$newPortalFileData[] = $portalFileData[$i];
+		}
+		$utils->setPortalFile($newPortalFileData);
+	}
+	Function PortalLocationExists($toFind)
+	{
+		my $portalFileData = $utils->getPortalFile();
+		foreach($portalFileData as my $portalData)
+		{
+			my List($Name, $X, $Y, $Z) = $portalData;
+			if ($Name eqi $toFind)
+				return true;
+		}
+		return false;
+	}
+	Function PortalOnLandProtectionDbUpated($landClaimData)
+	{	
+		if (!GetConfig('LandPPPortals'))
+			continue;
+		my $distKill = GetConfig('LandPPPortalDist');
+		my $portalFileData = $utils->getPortalFile();
+		foreach($portalFileData as my $portalData)
+		{
+			my List($Name, $X, $Y, $Z) = $portalData;
+			foreach($landClaimData as my $ppSteamId => my $ppData)
+			{
+				my List($found, $isOnline) = FindOnlineOrOfflinePlayer($ppSteamId);
+				if ($found == null)
+					continue;
+				if (IsUserAdmin($found))
+					continue;
+				my list($ownerName, $isProtected, $hardness, $keyStoneAmount, $keyStoneList) = $ppData;
+				if (!$isProtected)
+					continue;
+				my $claimCount = count($keyStoneList);
+				if ($claimCount <= 0)
+					continue;
+				foreach($keyStoneList as my $keyStone)
+				{
+					my List($kx, $ky, $kz) = $keyStone;
+					my $dist = (int)Distance3D($kx, $ky, $kz, $x, $y, $z);
+					if ($dist < $distKill)
+					{
+						SayToAll("Removing claim X:$kx, Y:$ky, Z:$kz owner $ownerName reason: It is too close to portal $Name");
+						KillLandClaim($kx, $ky, $kz);
+					}
+				}
+			}
+		}
+	}
+}
+Class extends Utils
+{
+	Function getPortalFile()
+	{
+		my $portalFileData = array();
+		if (!FileExists('./Variables/Portals.txt'))
+			return $portalFileData;
+		my $portalFile = FileReadLines('./Variables/Portals.txt');
+		foreach($portalFile as my $line)
+		{
+			my $lineTrim = $line;
+			if (StartsWith($lineTrim, '#'))
+				continue;
+			my $commentPos = StrPos($lineTrim, '#');
+			if ($commentPos != -1)
+				$lineTrim = trim(substr($lineTrim, 0, $commentPos));
+			my $split = split($lineTrim, '|');
+			if (count($split) != 4)
+				continue;
+			my List($Name, $X, $Y, $Z) = $split;
+			if (IsEmptyOrNull($Name))
+				continue;
+			if (IsEmptyOrNull($X))
+				$X = 0;
+			if (IsEmptyOrNull($Y))
+				$Y = 0;
+			if (IsEmptyOrNull($Z))
+				$Z = 0;
+			$portalFileData[] = array($Name, (double)$X, (double)$Y, (double)$Z);
+		}
+		return $portalFileData;
+	}
+	Function setPortalFile($portalFileData)
+	{
+		my $sb = sbNew();
+		sbAppendLine($sb, "#Name|X|Y|Z");
+		foreach($portalFileData as my $portalData)
+		{
+			my List($Name, $X, $Y, $Z) = $portalData;
+			sbAppendLine($sb, "$Name|$X|$Y|$Z");
+		}
+		FileSave('./Variables/Portals.txt', sbToString($sb));
+		unset($sb);
+	}
+}

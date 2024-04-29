@@ -1,0 +1,95 @@
+﻿my $Clients = array(); // Create an array to hold all clients that connect
+my $Port = 5570; // The port to listen on
+my $Serv = SSListen($Port); // Server a server on port 5500
+println("Begin listening on port $Port");
+println("Waiting for connections.....");
+While( True ) // Keep the server running forever
+{
+	While( my $Data = SSRecv($Serv) ) // Check if we got any messages from any clients
+	{
+		my $MSG = $Data[0]; // The message ID
+		my $CLIENT = $Data[1]; // The client object
+		my $ClientID = $Data[2]; // The clients unique ID
+		my $ClientIP = SSClientIP($CLIENT); // The clients IP
+		Switch ($MSG) // Check what type of message we just got
+		{
+			case @ssData: // The message is data usually text and chat etc
+			{
+				my $dCode = SSRead($Serv, "i"); // Read an Int32 "i" from the recieved message
+				say "got msg id $dCode";
+				switch ($dCode) // Check what type of code we got
+				{
+					case 1: // The code is a Chat message
+					{
+						my $Text = SSRead($Serv, "p"); // Read a string "p" from the recieved message
+						$Text = Trim($Text); // Remove any trailing @CR or @LF etc
+						my $Name = $Clients[$ClientID][0]; // Get client name
+						// Say what client sent it to ocnsole
+						println("Client ID '$ClientID' IP '$ClientIP' Name '$Name' Said '$Text'");
+						// Check is client is being abusive
+						if($Text =~ m/fuck/i) // Kick client for swearing
+						{
+							// Kick the client from server
+							SSDrop($CLIENT, "Profanity is not allowed here!");
+							unset($Clients[$ClientID]); // Remove the client from client list
+						}
+						else
+						{
+							my $senderClient = $Clients[$ClientID]; // Find current client the one who sent the message
+							// Create a message send buffer
+							my $sBuf = SSBufferNew($Serv); // Create the buffer
+							SSBufferPut($sBuf, "i", 1); // Add an Int32 with 1 for the ID (cast to make sure of int)
+							my $Time = "(" . @Hour . ":" . @Min . ":" . @Sec . ") "; // Time message recieved
+							SSBufferPut($sBuf, "p", $Time . $senderClient[0] . ": $Text"); // Add a string
+							// Loop through all clients
+							foreach($Clients as my $cID => my $cli) // Key Client ID, Value Client object
+							{
+								// Send the buffer we made above to this client if its still connected
+								if(SSClientStatus($cli[1]) == @ssConnected)
+									SSSend($Serv, $cli[1], $sBuf);
+							}
+							unset($sBuf); // Free up resources/ram by wiping the buffer
+						}
+					}
+					break;
+				}
+			}
+			break;
+			case @ssConnectionApproval: // A client is asking for permission to join our server
+			{
+				my $Name = SSRead($Serv, "p"); // Read the clients name from the connection string
+				// Show message on console
+				println("Client ID '$ClientID' IP '$ClientIP' Name '$Name' is asking permission to join the server");
+				//SSDisapprove($CLIENT, "We dont want you here"); // Use this to reject the client
+				SSApprove($CLIENT); // Approve the client
+				$Clients[$ClientID] = array($Name, $CLIENT); // Add the client to the client array list
+			}
+			break;
+			case @ssStatusChanged: // A client has changed its status
+			{
+				my $ClientStatus = SSClientStatus($CLIENT); // Find new status
+				Switch ($ClientStatus) // Check what type of status change
+				{
+					case @ssConnected: // The client reports its now fully connected to our server
+					{
+						my $Name = $Clients[$ClientID][0]; // Get client name
+						println("Client ID '$ClientID' IP '$ClientIP' Name '$Name' has joined the server");
+					}
+					break;
+					case @ssDisconnected: // The client reports its disconnected from the server
+					{
+						my $Name = $Clients[$ClientID][0]; // Get client name
+						println("Client ID '$ClientID' IP '$ClientIP' Name '$Name' has left the server");
+						unset($Clients[$ClientID]); // Remove the client from the client array list
+					}
+					break;
+					case @ssConnecting: // A client is connecting
+					case @ssReconnecting: // A client is reconnected
+					case @ssDisconnecting: // A client is disconnecting
+					break;
+				}
+			}
+			break;
+		}
+	}
+}

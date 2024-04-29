@@ -1,0 +1,1164 @@
+#include-once
+#require-once
+println("[BinaryTest] Begins");
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+BinaryTest1();
+BinaryTest2();
+BinaryTest3();
+BinaryTest4();
+BinaryTest5();
+BinaryTest6();
+BinaryTest7();
+BinaryTest8();
+BinaryTest9();
+BinaryTest10();
+BinaryTest11();
+BinaryTest12();
+BinaryTest13();
+BinaryTest14();
+BinaryTest15();
+BinaryTest16();
+BinaryTest17();
+BinaryTest18();
+BinaryTest19();
+BinaryTest20();
+BinaryTest21();
+BinaryTest22();
+BinaryTest23();
+BinaryTest24();
+BinaryTest25();
+BinaryTest26();
+BinaryTest27();
+BinaryTest28();
+BinaryTest29();
+BinaryTest30();
+BinaryTest31();
+BinaryTest32();
+BinaryTest33();
+BinaryTest34();
+BinaryTest35();
+BinaryTest36();
+BinaryTest37();
+BinaryTest38();
+BinaryTest39();
+BinaryTest40();
+BinaryTest41();
+BinaryTest42();
+BinaryTest43();
+BinaryTest44();
+BinaryTest45();
+BinaryTest46();
+println("[BinaryTest] Total success '$SUCCESS' fails '$FAIL'");
+Function BinaryTest1()
+{
+	println("Binary Test 1");
+	my $newBin = BinaryCreate(5);
+	if(
+		Count($newBin) == 5 &&
+		UBound($newBin) == 5 &&
+		LBound($newBin) == 0 &&
+		$newBin == Bin(0, 0, 0x00, 0, 0)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest2()
+{
+	println("Binary Test 2");
+	my $newBin = BinaryCreate(5);
+	BinaryPush($newBin, (byte)0x20);
+	BinaryUnshift($newBin, (byte)0x20);
+	if(
+		Count($newBin) == 7 &&
+		UBound($newBin) == 7 &&
+		LBound($newBin) == 0
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest3()
+{
+	println("Binary Test 3");
+	my $newBin = BinaryCreate(5);
+	BinaryPush($newBin, (byte)0x20);
+	BinaryUnshift($newBin, (byte)0x20);
+	BinaryPop($newBin);
+	BinaryShift($newBin);
+	if(
+		Count($newBin) == 5 &&
+		UBound($newBin) == 5 &&
+		LBound($newBin) == 0
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest4()
+{
+	println("Binary Test 4");
+	my $newBin = BinaryCreate(5);
+	BinaryPush($newBin, (byte)0x20);
+	BinaryUnshift($newBin, (byte)0x20);
+	BinaryPop($newBin);
+	BinaryShift($newBin);
+	$newBin[0] = @'A';
+	$newBin[1] = @'B';
+	$newBin[2] = @'C';
+	$newBin[3] = @'D';
+	$newBin[4] = @'E';
+	if(
+		Count($newBin) == 5 &&
+		UBound($newBin) == 5 &&
+		LBound($newBin) == 0 &&
+		$newBin == "ABCDE" &&
+		$newBin == Bin(65, 66, 67, 68, 69)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest5()
+{
+	println("Binary Test 5");
+	my $newBin = BinaryCreate(5);
+	BinaryPush($newBin, (byte)0x20);
+	BinaryUnshift($newBin, (byte)0x20);
+	BinaryPop($newBin);
+	BinaryShift($newBin);
+	$newBin[0] = @'A';
+	$newBin[1] = @'B';
+	$newBin[2] = @'C';
+	$newBin[3] = @'D';
+	$newBin[4] = @'E';
+	BinaryPadLeft($newBin, 3, @'-');
+	BinaryPadRight($newBin, 2, @';');
+	if(
+		Count($newBin) == 10 &&
+		UBound($newBin) == 10 &&
+		LBound($newBin) == 0 &&
+		$newBin == "---ABCDE;;" &&
+		$newBin == Bin(45, 45, 45, 65, 66, 67, 68, 69, 59, 59)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest6()
+{
+	println("Binary Test 6");
+	my $newBin = BinaryCreate(5, 65);
+	if(
+		Count($newBin) == 5 &&
+		UBound($newBin) == 5 &&
+		LBound($newBin) == 0 &&
+		$newBin == "AAAAA" &&
+		$newBin == Bin(65, 65, 65, 65, 65)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest7()
+{
+	println("Binary Test 7");
+	my $bin = Pack("A*", "Hello World!");
+	if(
+		$bin == "Hello World!" &&
+		Count($bin) == 12 &&
+		UBound($bin) == 12 &&
+		LBound($bin) == 0 &&
+		BinaryContains($bin, @'A') == false &&
+		BinaryContains($bin, @'W') == true &&
+		BinaryContains($bin, @' ') == true &&
+		BinaryContains($bin, @'@') == false &&
+		BinaryContains($bin, @'!') == true &&
+		BinaryContains($bin, 0x20) == true &&
+		BinaryContains($bin, 0x7F) == false &&
+		BinaryContains($bin, Pack("A*", "World")) == true &&
+		BinaryContains($bin, Pack("A*", "Cat")) == false
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest8()
+{
+	println("Binary Test 8");
+	my $bin = Pack("A*", "Hello World!");
+	if(
+		$bin == "Hello World!" &&
+		Count($bin) == 12 &&
+		UBound($bin) == 12 &&
+		LBound($bin) == 0 &&
+		BinaryCRC32($bin) == "472456355"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest9()
+{
+	println("Binary Test 9");
+	my $bin = Pack("A*", "Hello World!");
+	BinaryWipe($bin);
+	my $bin2 = Pack("A*", "Hello World!");
+	$bin2 = null;
+	my $bin3 = Pack("A*", "Hello World!");
+	unset($bin3);
+	if(
+		$bin === null &&
+		$bin2 === null &&
+		$bin3 === null
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest10()
+{
+	println("Binary Test 10");
+	my $newBin = BinaryCreate(5, 65);
+	BinaryFill($newBin, 66);
+	if(
+		Count($newBin) == 5 &&
+		UBound($newBin) == 5 &&
+		LBound($newBin) == 0 &&
+		$newBin == "BBBBB" &&
+		$newBin == Bin(66, 66, 66, 66, 66)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest11()
+{
+	println("Binary Test 11");
+	my $newBin = Pack("A*", "Hello World!");
+	if(
+		BinaryStr($newBin) == "48 65 6C 6C 6F 20 57 6F 72 6C 64 21" &&
+		BinaryStr($newBin, ",") == "48,65,6C,6C,6F,20,57,6F,72,6C,64,21"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest12()
+{
+	println("Binary Test 12");
+	my $newBin = BinaryHex("48656c6c6f20576f726c6421");
+	if(
+		BinaryStr($newBin, ",") == "48,65,6C,6C,6F,20,57,6F,72,6C,64,21" &&
+		BinaryLen($newBin) == 12 &&
+		unpack("A*", $newBin, 3) == "Hello World!"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest13()
+{
+	println("Binary Test 13");
+	my $a = Pack("A*", "Hello");
+	BinaryLen($a, 11);
+	$a[5] = @' ';
+	$a[6] = @'w';
+	$a[7] = @'o';
+	$a[8] = @'r';
+	$a[9] = @'l';
+	$a[10] = @'d';
+	if(
+		$a == bin(0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest14()
+{
+	println("Binary Test 14");
+	my $a = Pack("A*", "Hello");
+	BinaryLen($a, 11);
+	$a[5] = @' ';
+	$a[6] = @'w';
+	$a[7] = @'o';
+	$a[8] = @'r';
+	$a[9] = @'l';
+	$a[10] = @'d';
+	BinaryLen($a, 20, 0x4A);
+	if(
+		$a == "Hello worldJJJJJJJJJ"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest15()
+{
+	println("Binary Test 15");
+	my $a = BinaryHex("48656c");
+	if(
+		BinaryGet($a, 0) == 72 &&
+		BinaryGet($a, 1) == 101 &&
+		BinaryGet($a, 2) == 108
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest16()
+{
+	println("Binary Test 16");
+	my $binary = BinaryHex("48656c");
+	if(
+		BinaryGet($binary, 0) == 72 &&
+		BinaryGet($binary, 1) == 101 &&
+		BinaryGet($binary, 2) == 108
+	)
+	{
+		BinarySet($binary, 0, 67);
+		BinarySet($binary, 2, 44);
+		if(
+			BinaryGet($binary, 0) == 67 &&
+			BinaryGet($binary, 1) == 101 &&
+			BinaryGet($binary, 2) == 44
+		)
+		{
+			println("PASS");
+			$SUCCESS++;
+			return;
+		}
+	}
+	println("FAIL");
+	$FAIL++; inputc();
+}
+Function BinaryTest17()
+{
+	println("Binary Test 17");
+	$binary = Pack("A*", "Hello World!");
+	BinaryReverse($binary);
+	$binary2 = Pack("A*", "Hello World!");
+	BinaryReverse($binary2, 2);
+	$binary3 = Pack("A*", "Hello World!");
+	BinaryReverse($binary3, 6, 5);
+	if(
+		BinaryStr($binary, ",") == "21,64,6C,72,6F,57,20,6F,6C,6C,65,48" &&
+		UBound($binary) == 12 &&
+		Unpack("A*", $binary, 3) == "!dlroW olleH" &&
+		BinaryStr($binary2, ",") == "48,65,21,64,6C,72,6F,57,20,6F,6C,6C" &&
+		Unpack("A*", $binary2, 3) == "He!dlroW oll" &&
+		BinaryStr($binary3, ",") == "48,65,6C,6C,6F,20,64,6C,72,6F,57,21" &&
+		Unpack("A*", $binary3, 3) == "Hello dlroW!"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest18()
+{
+	println("Binary Test 18");
+	$binary = Pack("A*", "Hello World!");
+	BinaryRemove($binary, 2);
+	$binary2 = Pack("A*", "Hello World!");
+	BinaryRemove($binary2, 2, 3);
+	$binary3 = Pack("A*", "Hello World!");
+	BinaryRemove($binary3, -3);
+	if(
+		$binary == bin(0x48, 0x65) && 
+		$binary2 == bin(0x48, 0x65, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x21) &&
+		$binary3 == bin(0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest19()
+{
+	println("Binary Test 19");
+	my $bin1 = Pack("A*", "Hello world!");
+	my $bin2 = Pack("A*", "Hello");
+	if(
+		BinaryStartsWith($bin1, $bin2)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest20()
+{
+	println("Binary Test 20");
+	my $bin1 = Pack("A*", "Hello world!");
+	my $bin2 = Pack("A*", "world!");
+	if(
+		BinaryEndsWith($bin1, $bin2)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest21()
+{
+	println("Binary Test 21");
+	my $bin = Pack("A*", "Hello world!");
+	if(
+		BinaryRandom($bin) != $bin &&
+		BinaryRandom($bin, 7) == BinaryRandom($bin, 7) &&
+		BinaryRandom($bin, 7) != $bin
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest22()
+{
+	println("Binary Test 22");
+	my $bin = Pack("A*", "Hello world!");
+	if(
+		BinaryHash($bin) == "55230833"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest23()
+{
+	println("Binary Test 23");
+	my $bin = Pack("A*", "The quick brown FoX");
+	if(
+		BinaryMid($bin, 10) == "brown FoX" &&
+		BinaryMid($bin, 16, 3) == "FoX" &&
+		BinaryMid($bin, 16, 3) eqi "fox"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest24()
+{
+	println("Binary Test 24");
+	my $a = Pack("A*", "Hello World!");
+	my $b = Pack("A*", "CatDog");
+	my $aa = Pack("A*", "Hello World!");
+	my $bb = Pack("A*", "CatDog");
+	my $aaa = Pack("A*", "Hello World!");
+	my $bbb = Pack("A*", "CatDog");
+	my $aaaa = Pack("A*", "Test");
+	my $bbbb = Pack("A*", "CatDog");
+	my $aaaaa = Pack("A*", "Test");
+	my $bbbbb = Pack("A*", "CatDog");
+	BinaryMidReplace($a, $b, 2);
+	BinaryMidReplace($aa, $bb, 2, 3);
+	BinaryMidReplace($aaa, $bbb, -3);
+	BinaryMidReplace($aaaa, $bbbb, 4);
+	BinaryMidReplace($aaaaa, $bbbbb, 0);
+	if(
+		$a == "HeCatDog" &&
+		$aa == "HeCatDog World!" &&
+		$aaa == "Hello WorCatDog" &&
+		$aaaa == "TestCatDog" &&
+		$aaaaa == "CatDog"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest25()
+{
+	println("Binary Test 25");
+	my $a = Pack("A*", "Hello");
+	my $b = Pack("A*", "hehe");
+	my $c = Pack("A*", "Test");
+	my $d = Pack("A*", "Cat");
+	my $e = Pack("A*", "Dog");
+	BinaryConcat($a, $b, $c, $d, $e);
+	if(
+		$a == "HelloheheTestCatDog"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest26()
+{
+	println("Binary Test 26");
+	my $binary1 = Pack("A*", "The");
+	my $binary2 = Pack("A*", "quick");
+	my $binary3 = Pack("A*", "FoX");
+	my $binarySep = Pack("A*", " ");
+	if(
+		BinaryJoin($binarySep, array($binary1, $binary2, $binary3)) == "The quick FoX" &&
+		BinaryJoin(null, array($binary1, $binary2, $binary3)) == "ThequickFoX" &&
+		BinaryJoin(",", array($binary1, $binary2, $binary3)) == "The,quick,FoX" &&
+		BinaryJoin("?!", array($binary1, $binary2, $binary3)) == "The?!quick?!FoX"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest27()
+{
+	println("Binary Test 27");
+	my $binary = Pack("A*", "The quick brown FoX");
+	my $binary2 = Pack("A*", " jumps over the lazy dog");
+	my $b = Pack("A*", "The quick brown FoX");
+	my $b2 = Pack("A*", " jumps over the lazy dog");
+	BinaryAppend($binary, $binary2);
+	BinaryAppend($b, $b2, 0);
+	if(
+		$binary == "The quick brown FoX jumps over the lazy dog" &&
+		$b == " jumps over the lazy dogThe quick brown FoX"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest28()
+{
+	println("Binary Test 28");
+	my $binary1 = Pack("A*", "111 333");
+	my $binary2 = Pack("A*", " 222");
+	BinaryInsert($binary1, $binary2, 3);
+	my $b1 = Pack("A*", "123456");
+	my $b2 = Pack("A*", "abc");
+	BinaryInsert($b1, $b2, 3, 1);
+	if(
+		Unpack("A*", $binary1, 3) == "111 222 333" &&
+		Unpack("A*", $b1, 3) == "123abc"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest29()
+{
+	println("Binary Test 29");
+	my $binary = Pack("A*", "Hello World!");
+	BinaryResize($binary, 5);
+	my $binary2 = Pack("A*", "Hello World!");
+	BinaryResize($binary2, 20, Asc("!"));
+	if(
+		 Unpack("A*", $binary, 3) == "Hello" &&
+		 Unpack("A*", $binary2, 3) == "Hello World!!!!!!!!!"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest30()
+{
+	println("Binary Test 30");
+	my $binary = Pack("A*", "Hello world!!!");
+	if(
+		  BinarySHA1($Binary) == "6555AA9D245F6DC2B57AA13366CC6C6FCCCAB6AD"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest31()
+{
+	println("Binary Test 31");
+	my $binary = Pack("A*", "Hello World!");
+	my $binary2 = BinaryFromStr("ふふふ", "UTF8");
+	my $binary3 = BinaryFromStr("ふふふhehe", "UNICODE");
+	my $binary4 = BinaryFromStr("ふふふhehexd", "UTF7");
+	my $binary5 = BinaryFromStr("hiXD", "UTF32");
+	if(
+		BinaryToStr($binary) == "Hello World!" &&
+		BinaryToStr($binary2, "UTF8") =="ふふふ" &&
+		BinaryToStr($binary3, "UNICODE") =="ふふふhehe" &&
+		BinaryToStr($binary4, "UTF7") =="ふふふhehexd" &&
+		BinaryToStr($binary5, "UTF32") =="hiXD"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest32()
+{
+	println("Binary Test 32");
+	my $Binary = Pack("A*", "Hello world!!!");
+	if(
+		BinaryMD5($binary) == "87ee732d831690f45b8606b1547bd09e"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest33()
+{
+	println("Binary Test 33");
+	my $Binary1 = Pack("A*", "Hello world!!!");
+	my $Binary2 = Pack("A*", "Hello world!!!");
+	if(
+		 $Binary1 == $Binary2 &&
+		 $Binary1 === $Binary2 &&
+		 BinaryCompare($Binary1, 0, $Binary2) == 0 &&
+		 BinaryCompare($Binary1, 4, Pack("A*", "o world!!!")) == 0 &&
+		 BinaryCompare($Binary1, 0, Pack("A*", "He")) == 0 &&
+		 BinaryCompare($Binary1, 1, Pack("A*", "el")) == 0 &&
+		 BinaryCompare($Binary1, 2, Pack("A*", "ll")) == 0 &&
+		 BinaryCompare($Binary1, 3, Pack("A*", "lo")) == 0 &&
+		 BinaryCompare($Binary1, -3, Pack("A*", "!!!")) == 0 &&
+		 BinaryCompare($Binary1, -3, Pack("A*", "k!!"), 1, 2) == 0 &&
+		 BinaryCompare($Binary1, -3, Pack("A*", "k!!"), -2, 1) == 0 &&
+		 BinaryCompare($Binary1, 0, "Hello") == 0 &&
+		 BinaryCompare($Binary1, 4, Pack("A*", "o WORLD!!!"), 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 0, Pack("A*", "HE"), 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 1, Pack("A*", "EL"), 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 2, Pack("A*", "LL"), 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 3, Pack("A*", "LO"), 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 0, "HELLO", 0, 0, true) == 0 &&
+		 BinaryCompare($Binary1, 4, Pack("A*", "o WORLD!!!")) != 0 &&
+		 BinaryCompare($Binary1, 0, Pack("A*", "HE")) != 0 &&
+		 BinaryCompare($Binary1, 1, Pack("A*", "EL")) != 0 &&
+		 BinaryCompare($Binary1, 2, Pack("A*", "LL")) != 0 &&
+		 BinaryCompare($Binary1, 3, Pack("A*", "LO")) != 0 &&
+		 BinaryCompare($Binary1, 0, "HELLO") != 0
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest34()
+{
+	println("Binary Test 34");
+	my $binary = Pack("A*", "Hello World!\n" x 3);
+	if(
+		 BinaryLen($binary) == 39 &&
+		 BinaryCompress($binary) &&
+		 BinaryLen($binary) != 39
+	)
+	{
+		BinaryUncompress($binary);
+		if(
+			BinaryLen($binary) == 39 &&
+			$binary == "Hello World!\nHello World!\nHello World!\n" &&
+			BinaryCompare($Binary, 0, "Hello World!\nHello World!\nHello World!\n") == 0
+		)
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest35()
+{
+	println("Binary Test 35");
+	my $newBin = BinaryCreate(5);
+	BinaryPush($newBin, (byte)0x20);
+	BinaryUnshift($newBin, (byte)0x20);
+	BinaryPop($newBin);
+	BinaryShift($newBin);
+	$newBin[0] = @'A';
+	$newBin[1] = @'B';
+	$newBin[2] = @'C';
+	$newBin[3] = @'D';
+	$newBin[4] = @'E';
+	BinaryPadLeft($newBin, 3, @'-');
+	BinaryPadRight($newBin, 2, @';');
+	$newBin .= (byte)74;
+	$newBin ..= (byte)63;
+	if(
+		Count($newBin) == 12 &&
+		UBound($newBin) == 12 &&
+		LBound($newBin) == 0 &&
+		$newBin == "?---ABCDE;;J" &&
+		$newBin == Bin(63, 45, 45, 45, 65, 66, 67, 68, 69, 59, 59, 74)
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest36()
+{
+	println("Binary Test 36");
+	my $Binary = Pack("A*", "\x00\0Hello world!!!\x00\0");
+	my $Binary2 = Pack("A*", "Hello world!!!");
+	BinaryStripNull($Binary);
+	if(
+		 BinaryCompare($Binary, 0, Pack("A*", "Hello world!!!")) == 0 &&
+		 $Binary == "Hello world!!!" &&
+		 $Binary === (binary)"Hello world!!!" &&
+		 $Binary == $Binary2 &&
+		 $Binary === $Binary2
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest37()
+{
+	println("Binary Test 37");
+	my $Binary = Pack("A*", "Hello world!");
+	BinaryUUEncode($Binary);
+	if(
+		 $Binary == bin(	0x2C, 0x32, 0x26, 0x35, 0x4C, 0x3B, 0x26, 0x5C,
+							0x40, 0x3D, 0x56, 0x5D, 0x52, 0x3B, 0x26, 0x30,
+							0x41, 0x0A, 0x60, 0x0A)
+	)
+	{
+		BinaryUUDecode($Binary);
+		if(
+			BinaryCmp($Binary, 0, Pack("A*", "Hello world!")) == 0 &&
+			$Binary == bin(0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21) &&
+			$Binary == "Hello world!" &&
+			$Binary === (binary)"Hello world!"
+		)
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest38()
+{
+	println("Binary Test 38");
+	my $subject = Pack("A*", "Hello world!!!");
+	my $find = Pack("A*", "world");
+	my $replace = Pack("A*", "cat");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, $find, $replace);
+	if(
+		 $oldSubject == "Hello world!!!" && 
+		 $oldSubject === (binary)"Hello world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world!!!") &&
+		 $subject == "Hello cat!!!" && 
+		 $subject === (binary)"Hello cat!!!" &&
+		 $subject === Pack("A*", "Hello cat!!!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest39()
+{
+	println("Binary Test 39");
+	my $subject = Pack("A*", "Hello world!!!");
+	my $find = Pack("A*", "world");
+	my $replace = Pack("A*", "frogblast");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, $find, $replace);
+	if(
+		 $oldSubject == "Hello world!!!" && 
+		 $oldSubject === (binary)"Hello world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world!!!") &&
+		 $subject == "Hello frogblast!!!" && 
+		 $subject === (binary)"Hello frogblast!!!" &&
+		 $subject === Pack("A*", "Hello frogblast!!!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest40()
+{
+	println("Binary Test 40");
+	my $subject = Pack("A*", "Hello world ok world hehe world!!!");
+	my $find = Pack("A*", "world");
+	my $replace = Pack("A*", "Sputnik");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, $find, $replace, 0, 1);
+	if(
+		 $oldSubject == "Hello world ok world hehe world!!!" && 
+		 $oldSubject === (binary)"Hello world ok world hehe world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world ok world hehe world!!!") &&
+		 $subject == "Hello Sputnik ok world hehe world!!!" && 
+		 $subject === (binary)"Hello Sputnik ok world hehe world!!!" &&
+		 $subject === Pack("A*", "Hello Sputnik ok world hehe world!!!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest41()
+{
+	println("Binary Test 41");
+	my $subject = Pack("A*", "Hello world ok world hehe world!!!");
+	my $find = Pack("A*", "world");
+	my $replace = Pack("A*", "Sputnik");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, $find, $replace, 0, 2);
+	if(
+		 $oldSubject == "Hello world ok world hehe world!!!" && 
+		 $oldSubject === (binary)"Hello world ok world hehe world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world ok world hehe world!!!") &&
+		 $subject == "Hello Sputnik ok Sputnik hehe world!!!" && 
+		 $subject === (binary)"Hello Sputnik ok Sputnik hehe world!!!" &&
+		 $subject === Pack("A*", "Hello Sputnik ok Sputnik hehe world!!!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest42()
+{
+	println("Binary Test 42");
+	my $subject = Pack("A*", "Hello world ok world hehe world!!!");
+	my $find = Pack("A*", "world");
+	my $replace = Pack("A*", "Sputnik");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, $find, $replace, 10, 1);
+	if(
+		 $oldSubject == "Hello world ok world hehe world!!!" && 
+		 $oldSubject === (binary)"Hello world ok world hehe world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world ok world hehe world!!!") &&
+		 $subject == "Hello world ok Sputnik hehe world!!!" && 
+		 $subject === (binary)"Hello world ok Sputnik hehe world!!!" &&
+		 $subject === Pack("A*", "Hello world ok Sputnik hehe world!!!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest43()
+{
+	println("Binary Test 43");
+	my $subject = Pack("A*", "Hello world!!!");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, (byte)@'!', (byte)@'?');
+	if(
+		 $oldSubject == "Hello world!!!" && 
+		 $oldSubject === (binary)"Hello world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world!!!") &&
+		 $subject == "Hello world???" && 
+		 $subject === (binary)"Hello world???" &&
+		 $subject === Pack("A*", "Hello world???")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest44()
+{
+	println("Binary Test 44");
+	my $subject = Pack("A*", "Hello world!!!");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, (byte)@'!', (byte)@'?', 12);
+	if(
+		 $oldSubject == "Hello world!!!" && 
+		 $oldSubject === (binary)"Hello world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world!!!") &&
+		 $subject == "Hello world!??" && 
+		 $subject === (binary)"Hello world!??" &&
+		 $subject === Pack("A*", "Hello world!??")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest45()
+{
+	println("Binary Test 45");
+	my $subject = Pack("A*", "Hello world!!!");
+	my $oldSubject = BinaryClone($subject);
+	BinaryReplace($subject, (byte)@'!', (byte)@'?', 12, 1);
+	if(
+		 $oldSubject == "Hello world!!!" && 
+		 $oldSubject === (binary)"Hello world!!!" &&
+		 $oldSubject === Pack("A*", "Hello world!!!") &&
+		 $subject == "Hello world!?!" && 
+		 $subject === (binary)"Hello world!?!" &&
+		 $subject === Pack("A*", "Hello world!?!")
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function BinaryTest46()
+{
+	println("Binary Test 46");
+	my $a = Pack("A*", "Hello");
+	my $b = Pack("A*", "Hehe");
+	my $c = Pack("A*", "Test");
+	my $d = Pack("A*", "Cat");
+	my $e = Pack("A*", "Dog");
+	my $f = Pack("A*", ", ");
+	BinaryConcat(array(&$a, $f), $b, $c, $d, $e);
+	if(
+		$a == "Hello, Hehe, Test, Cat, Dog"
+	)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

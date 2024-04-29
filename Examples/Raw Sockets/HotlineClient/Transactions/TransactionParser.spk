@@ -1,0 +1,190 @@
+Class TransactionParser
+{
+	my $HLSocket;
+	my $CurrentTransaction;
+	Function __Construct( HLSocket $H )
+	{
+		$HLSocket = $H;
+		$CurrentTransaction = null;
+	}
+	Function TParse( $Data ) 
+	{
+		$HLSocket->DebugPrint('Parsing size (' . $Data[0] . '):');
+		if($HLSocket->$ShowParsePackets)
+			$HLSocket->DebugPrint(BinaryExpand($Data[1]));
+		if($Data[0] > 20)
+		{
+			my $Flags = Unpack('c', $Data[1], 2);
+			my $IsReply = Unpack('x1/c', $Data[1], 2);
+			my $Type = Unpack('x2/n', $Data[1], 2);
+			my $TypeName = EnumKey('myTran', $Type);
+			my $ID = Unpack('x6/n', $Data[1], 2);
+			my $ErrorCode = Unpack('x10/n', $Data[1], 2);
+			my $TotalSize = Unpack('x14/n', $Data[1], 2);
+			my $DataSize = Unpack('x18/n', $Data[1], 2);
+			my $ValidTransaction =	 $Flags == 0 &&
+									($IsReply == 0 || $IsReply == 1) &&
+									$ID > 0 &&
+									($Type >= 0 && $Type <= myTran->$DelNewsArt);
+			if($ValidTransaction)
+			{
+				$HLSocket->DebugPrint('### New Transaction ###');
+				$HLSocket->DebugPrint('Type: ' . $TypeName .  ' (' . $Type . ', ' . Hex($Type, 4) . ')');
+				my $LogginIn = $HLSocket->GetStatus(HLSocketStatus->$LoggingIn);
+				if(!IsEmptyOrNull($TypeName) || ($LogginIn))
+				{
+					if($CurrentTransaction == null)
+					{
+						$CurrentTransaction = new Transaction();
+						$CurrentTransaction->SetFlags($Flags);
+						$CurrentTransaction->SetIsReply($IsReply);
+						$CurrentTransaction->SetType($Type);
+						$CurrentTransaction->SetID($ID);
+						$CurrentTransaction->SetErrorCode($ErrorCode);
+						$CurrentTransaction->SetDataSize($DataSize);
+						$CurrentTransaction->SetTotalSize($TotalSize);
+						$CurrentTransaction->SetData(BinaryCreate($TotalSize));
+						$CurrentTransaction->SetDataPos(0);
+					}
+					my $ParamData = $CurrentTransaction->GetDataRaw();
+					my $DataNum = $CurrentTransaction->GetDataPos();
+					for(my $i = 20; $i < $Data[0]; $i++)
+					{
+						if($DataNum == $DataSize)
+							break;
+						$ParamData[$DataNum] = $Data[1][$i];
+						$DataNum++;
+					}
+					$CurrentTransaction->SetDataPos($DataNum);
+					if($CurrentTransaction->GetDataPos() == $TotalSize)
+					{
+						$CurrentTransaction->ParseData();
+						ResolveTransaction($CurrentTransaction);
+						$CurrentTransaction = null;
+					}
+					my $NewData = BinaryMid( $Data[1], 20 +  $DataSize);
+					my $ParseRemainer = false;
+					foreach($NewData as my $B)
+					{
+						if($B != 0x00)
+						{
+							$ParseRemainer = true;
+							break;
+						}
+					}
+					if($ParseRemainer)
+						TParse( array( Count($NewData), $NewData ) );
+				}
+			}
+			else if($CurrentTransaction != null)
+			{
+				my $ParamData = $CurrentTransaction->GetDataRaw();
+				my $DataNum = $CurrentTransaction->GetDataPos();
+				my $TotalSize = $CurrentTransaction->GetTotalSize();
+				for(my $i = 0; $i < $Data[0]; $i++)
+				{
+					if($DataNum == $TotalSize)
+						break;
+					$ParamData[$DataNum] = $Data[1][$i];
+					$DataNum++;
+				}
+				$CurrentTransaction->SetDataPos($DataNum);
+				if($CurrentTransaction->GetDataPos() == $TotalSize)
+				{
+					$CurrentTransaction->ParseData();
+					ResolveTransaction($CurrentTransaction);
+					$CurrentTransaction = null;
+				}
+			}
+		}
+	}
+	Function ResolveTransaction( $Transaction )
+	{
+		my $Params = $Transaction->$Params;
+		if($Transaction->GetIsReply())
+		{
+			if( $Params->Exists(FieldID->$UserNameWithInfo) )
+				$HLSocket->$UserList->ParseUserNameWithInfo($Params);
+			if( $Params->Exists(FieldID->$Vers) )
+			{
+				$HLSocket->$ServerVersion = $Params->GetInteger(FieldID->$Vers);
+				$HLSocket->DebugPrint('Version: ' . $HLSocket->$ServerVersion);
+			}
+			if( $Params->Exists(FieldID->$CommunityBannerID) )
+			{
+				$HLSocket->$CommunityBannerID = $Params->GetInteger(FieldID->$CommunityBannerID);
+				$HLSocket->DebugPrint('Server Banner ID: ' . $HLSocket->$CommunityBannerID);
+			}
+			if( $Params->Exists(FieldID->$ServerName) )
+			{
+				$HLSocket->$ServerName = $Params->GetString(FieldID->$ServerName);
+				$HLSocket->DebugPrint('Server Name: ' . $HLSocket->$ServerName);
+				$HLSocket->$Client->OnGetServerName($HLSocket->$ServerName);
+			}
+			return;
+		}
+		switch( $Transaction->GetType() )
+		{
+			case myTran->$ShowAgreement:
+				my $Agreement = $Params->GetString(FieldID->$Data);
+				my $NoAgreement = $Params->GetInteger(FieldID->$NoServerAgreement);
+				if(!$NoAgreement)
+				{
+					msgbox $Agreement;
+				}
+				$HLSocket->AcceptAgreement();
+				break;
+			case myTran->$NotifyChangeUser:
+				$HLSocket->$UserList->ParseNotifyChangeUser($Params);
+				break;
+			case myTran->$NotifyDeleteUser:
+				$HLSocket->$UserList->ParseNotifyDeleteUser($Params);
+				break;
+			case myTran->$ServerBanner:
+				if( $Params->Exists(FieldID->$ServerBannerType) )
+				{
+					$HLSocket->$ServerBannerType = $Params->GetInteger(FieldID->$ServerBannerType);
+					$HLSocket->$ServerBannerTypeStr = $Params->GetString(FieldID->$ServerBannerType);
+					$HLSocket->DebugPrint('BannerType: ' .  $HLSocket->$ServerBannerType);
+				}
+				if( $Params->Exists(FieldID->$ServerBannerUrl) )
+				{
+					$HLSocket->$ServerBannerUrl = $Params->GetString(FieldID->$ServerBannerUrl);
+					$HLSocket->DebugPrint('BannerURl: ' .  $HLSocket->$ServerBannerUrl);
+				}
+				break;
+			case myTran->$ChatMsg:
+				my $Message = $Params->GetString(FieldID->$Data);
+				if( $Params->Exists(FieldID->$ChatID) )
+				{
+					my $ChatID = $Params->GetInteger(FieldID->$ChatID);
+					if($HLSocket->$Client)
+						$HLSocket->$Client->OnChatMessage($Message, $ChatID);
+				}
+				else
+				{
+					if($HLSocket->$Client)
+						$HLSocket->$Client->OnChatMessage($Message, null);
+					$HLSocket->DebugPrint("Chat '$Message'");
+				}
+				break;
+			case myTran->$ServerMsg:
+				if( $Params->Exists(FieldID->$UserID) )
+				{
+					my $UserID = $Params->GetInteger(FieldID->$UserID);
+					my $UserName = $Params->GetString(FieldID->$UserName);
+					my $Options = $Params->GetInteger(FieldID->$UserID);
+					my $Message = $Params->GetString(FieldID->$Data);
+					my $QuotingMessage = $Params->GetString(FieldID->$QuotingMsg);
+					$HLSocket->DebugPrint("Message from ($UserID) $UserName: $Message");
+				}
+				else
+				{
+					my $Message = $Params->GetString(FieldID->$Data);
+					my $Options = $Params->GetInteger(FieldID->$ChatOptions);
+					$HLSocket->DebugPrint("Message from ($Options): $Message");
+				}
+				break;
+		}
+	}
+}

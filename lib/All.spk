@@ -1,0 +1,10 @@
+#include-once
+#require-once
+// This will include all almost every script in the library
+include('Console.spk', true);
+include('Collections.spk', true);
+include('Math.spk', true);
+include('Net.spk', true);
+include('String.spk', true);
+include('Parsing.spk', true);
+include('w.spk', true);

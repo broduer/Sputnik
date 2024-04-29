@@ -1,0 +1,62 @@
+﻿say 'Loading the file...';
+Global $Lines = FileReadLines('MonStats.txt');
+say 'Finished loading the file.';
+say 'Making the output file...';
+Global $Columns = Split(Shift($Lines), "\t");
+Global $ColumnID = array();
+Global $ID = 0;
+Global $sb = sbNew();
+sbSetNewline($sb, "\r\n");
+sbAppendLine($sb, join($Columns, "\t"));
+foreach($Columns as my $ColumnName)
+	$ColumnID[trim($ColumnName)] = $ID++;
+foreach($Lines as my $Line)
+{
+	my $Row = Split($Line, "\t");
+	# Boost Health
+	my $Bonus = 4;
+	$Row[GetColumnID('minHP')] *= $Bonus;
+	$Row[GetColumnID('maxHP')] *= $Bonus;
+	$Row[GetColumnID('MinHP(N)')] *= $Bonus;
+	$Row[GetColumnID('MaxHP(N)')] *= $Bonus;
+	$Row[GetColumnID('MinHP(H)')] *= $Bonus;
+	$Row[GetColumnID('MaxHP(H)')] *= $Bonus;
+	# Boost Exp
+	my $Bonus = 8;
+	$Row[GetColumnID('Exp')] *= $Bonus;
+	$Row[GetColumnID('Exp(N)')] *= $Bonus;
+	$Row[GetColumnID('Exp(H)')] *= $Bonus;
+	# Boost AC
+	my $Bonus = 2;
+	$Row[GetColumnID('AC')] *= $Bonus;
+	$Row[GetColumnID('AC(N)')] *= $Bonus;
+	$Row[GetColumnID('AC(H)')] *= $Bonus;
+	# Boost Damage
+	my $Bonus = 2;
+	$Row[GetColumnID('A1MinD')] *= $Bonus;
+	$Row[GetColumnID('A1MaxD')] *= $Bonus;
+	$Row[GetColumnID('A1MinD(N)')] *= $Bonus;
+	$Row[GetColumnID('A1MaxD(N)')] *= $Bonus;
+	$Row[GetColumnID('A1MinD(H)')] *= $Bonus;
+	$Row[GetColumnID('A1MaxD(H)')] *= $Bonus;
+	$Row[GetColumnID('A2MinD')] *= $Bonus;
+	$Row[GetColumnID('A2MaxD')] *= $Bonus;
+	$Row[GetColumnID('A2MinD(N)')] *= $Bonus;
+	$Row[GetColumnID('A2MaxD(N)')] *= $Bonus;
+	$Row[GetColumnID('A2MinD(H)')] *= $Bonus;
+	$Row[GetColumnID('A2MaxD(H)')] *= $Bonus;
+	sbAppendLine($sb, join($Row, "\t"));
+}
+say 'Finished making the output file...';
+FileSave("MonStats_changed.txt", sbToString($sb));
+say 'Finished saving the output file...';
+unset($sb);
+say 'All done!.';
+
+Function GetColumnID($Name)
+{
+	if (IsKeySet($ColumnID, $Name))
+		return $ColumnID[$Name];
+	say "Error cant find ID for '$Name'";
+	pause();
+}

@@ -1,0 +1,43 @@
+#<?
+Class PropComboBoxItems extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEdit, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return '[ITEMS]';
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $CurItems = GUIComboBox( $Object->GetObject(), 'GetItems' );
+		my $Items = InputBoxEx('Edit Items', 'Items are seperated by lines', join($CurItems, @CRLF));
+		if($Items === null)
+			return null;
+		GUIComboBox( $Object->GetObject(), 'Clear' );
+		GUIComboBox( $Object->GetObject(), 'SetItems', Lines($Items) );
+		return null;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		my $Items = Unserialize($Value);
+		if($Items ~~ Array)
+			GUIComboBox( $Object->GetObject(), 'SetItems', $Items);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)Serialize(GUIComboBox( $Object->GetObject(), 'GetItems' ));
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Items = Str2Hex(StrCompress(Serialize(GUIComboBox( $Object->GetObject(), "GetItems" ))));				
+		$Code .= "GUIComboBox( \$$ObjName, 'SetItems', Unserialize(StrUncompress(Hex2Str('$Items'))));\r\n";
+		return $Code;
+	}
+};

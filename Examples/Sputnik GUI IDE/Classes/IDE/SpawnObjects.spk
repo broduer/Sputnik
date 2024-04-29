@@ -1,0 +1,183 @@
+#<?
+Function AttachControl( Object $Obj )
+{
+	if($CurrentWindow === null)
+		return;
+	$Windows[$CurrentWindow]->$Gripper->Attach($Obj);
+}
+
+Function UnAttachControl( )
+{
+	if($CurrentWindow === null)
+		return;
+	$Windows[$CurrentWindow]->$Gripper->UnAttach();
+}
+
+Function CreateControl( $Type )
+{
+	my $Container;
+	my $FoundContainer = false;
+	my $ContainerObject;
+	if($Windows[$CurrentWindow]->$Gripper->$Attached)
+	{
+		if($Windows[$CurrentWindow]->$Gripper->$Object->HasContainer())
+		{
+			$Container = $Windows[$CurrentWindow]->$Gripper->$Object->GetContainer();
+			$FoundContainer = true;
+			$ContainerObject = $Windows[$CurrentWindow]->$Gripper->$Object;
+		}
+	}
+	if(!$FoundContainer)
+	{
+		// Default to current window
+		$Container = $Windows[$CurrentWindow]->GetContainer();
+	}
+	if($Status != Status->$Design)
+	{
+		MsgBox('Must be in design mode', $Title, 48);
+		return;
+	}
+	if(IsEmpty($CurrentWindow))
+	{
+		MsgBox('Must be editing a window', $Title, 48);
+		return;
+	}
+	if($FoundContainer)
+	{
+		my $ObjType = $ContainerObject->GetType();
+		switch($ObjType)
+		{
+			case ObjectType->$TabSheet:
+			@{
+				if($Type != ObjectType->$TabPage)
+				{
+					my $TabName = EnumKey('ObjectType', ObjectType->$TabSheet);
+					my $TabPageName = EnumKey('ObjectType', ObjectType->$TabPage);
+					msgbox("Only object type '$TabPageName' can be placed into object type '$TabName'", $Title, 48);
+					return;
+				}
+			}
+			break;
+		}
+	}
+	my $Name = InputBox($Title, "Enter the 'Name' for new object", "");
+	if($Name === null)
+		return;
+	if(IsEmpty($Name))
+	{
+		msgbox('The name must be at least 1 char', $Title, 48);
+		return;
+	}
+	if(!ValidName($Name, false))
+	{
+		msgbox("A control named '$Name' already exists", $Title, 48);
+		return;
+	}
+	If(!isAlphaNumeric($Name))
+	{
+		msgbox('Invalid name! Alpha numeric only', $Title, 48);
+		return;
+	}
+	my $Object = CreateObject($Container, $Type, $Name);
+	$Container->$Objects[$Name] = $Object;
+	$Container->$ObjectNames[$Name] = true;	
+	AttachControl($Object);
+	$Windows[$CurrentWindow]->ZOrder();
+}
+
+Function CreateObject($Container, $TYPE, $Name)
+{
+	switch($TYPE)
+	{
+		case ObjectType->$Button:
+		{
+			return new Button($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$TextBox:
+		{
+			return new TextBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$TextBoxEx:
+		{
+			return new TextBoxEx($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$RichTextBox:
+		{
+			return new RichTextBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$CodeBox:
+		{
+			return new CodeBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$Label:
+		{
+			return new Label($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$GroupBox:
+		{
+			return new GroupBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$ComboBox:
+		{
+			return new ComboBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$ListBox:
+		{
+			return new ListBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$TabSheet:
+		{
+			return new TabSheet($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$RadioButton:
+		{
+			return new RadioButton($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$CheckBox:
+		{
+			return new CheckBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$HotkeyBox:
+		{
+			return new HotkeyBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$DataGrid:
+		{
+			return new DataGrid($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$PictureBox:
+		{
+			return new PictureBox($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$TabPage:
+		{
+			return new TabPage($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$Timer:
+		{
+			return new Timer($Container->$Owner, $Name);
+		}
+		break;
+		case ObjectType->$Hotkey:
+		{
+			return new Hotkey($Container->$Owner, $Name);
+		}
+		break;
+	}
+}

@@ -1,0 +1,143 @@
+Class AIChase extends AI
+{
+	my $Path;
+	my $AIWanderAStar;
+	my $Chasing;
+	my $ChaseCount;
+	my $TryChasePlayer;
+	my $TryChasePlayerDist;
+	my $TryChasePlayerLock;
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+		// Create a wander ai to use when not chasing a player
+		// Act like Slime when not chasing a player
+		$AIWanderAStar = new AIWanderAStar($E);
+		$AIWanderAStar->$Enabled = true;
+		// A few chase things
+		$Chasing = false;
+		$ChaseCount = 0;
+		// Keep the path in class for ref access
+		$Path = array();
+		// Saves having to resolve a ton of ->
+		$PathFinder = $Entity->$Game->$Map->$PathFinder;
+		$Map = $Entity->$Game->$Map;
+		// Try chase?
+		$TryChasePlayer = false;
+		$TryChasePlayerDist = 0;
+		$TryChasePlayerLock = false;
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		// Find a player to chase after
+		my $Player = $Entity->FindClosestPlayer(true);
+		if($TryChasePlayer) // Try chase a player that got too close first
+		{
+			if($Player != null)
+				return TryChasePlayer($Player, $TryChasePlayerDist, $TryChasePlayerLock);
+			else
+				return false;
+		}
+		if($Player == null)
+			// If we have nothing to attack just behave like a Wander
+			return $AIWanderAStar->ASTarWanderAround();
+		return ChasePlayer($Player, true);
+	}
+	Function ChasePlayer( $Player, $AllowWander )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		// If its possible to move begin organizing the chase
+		if($Entity->Stopped())
+		{
+			// Get our current position
+			my List($X, $Y) = $Entity->GetPosition();			
+			// Get player position
+			my List($PX, $PY) = $Player->GetPosition();
+			// Plot a path to the players position
+			$Path = array();
+			$PathFinder->FindPath($Path, $X, $Y, $PX, $PY);
+			my $Pos = $Path[0];
+			if($Pos ~~ Array && count($Pos) == 2)
+			@{
+				// Turn to face player
+				if($X > $PX)
+					$Entity->$Facing = Facing->$Left;
+				if($X < $PX)
+					$Entity->$Facing = Facing->$Right;
+				// Get the postion we must move to
+				my $MX = $Pos[0];
+				my $MY = $Pos[1];
+				// Move to new postion
+				my $Moved = false;
+				if(!$Moved && $MX > $X)
+					$Moved = $Entity->TryMove(Direction->$Right);
+				if(!$Moved && $MX < $X)
+					$Moved = $Entity->TryMove(Direction->$Left);
+				if(!$Moved && $MY > $Y)
+					$Moved = $Entity->TryMove(Direction->$Down);
+				if(!$Moved && $MY < $Y)
+					$Moved = $Entity->TryMove(Direction->$Up);
+				if(!$Moved && $AllowWander)
+					return $AIWanderAStar->ASTarWanderAround();
+			}
+			else if($AllowWander)
+				return $AIWanderAStar->ASTarWanderAround();
+		}
+		return false;
+	}
+	Function TryChasePlayer($Player, $ChaseRange, $UseChaseLocker = false)
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		// We should chase the player?
+		if($Entity->Stopped())
+		@{
+			if($AIChase == null)
+			@{
+				$AIChase = new AIChase($Entity);
+				$AIChase->$Enabled = true;
+			}
+			my List($X, $Y) = $Entity->GetPosition();
+			my List ($PX, $PY) = $Player->GetPosition();
+			my $Dist = Utils::Distance2D($X, $Y, $PX, $PY);
+			if($Dist <= $ChaseRange || $Chasing)
+			@{
+				if(!$Chasing)
+				@{
+					$Chasing = true;
+					$ChaseCount = $ChaseRange + 1;
+				}
+				else
+					$ChaseCount--;
+				if($ChaseCount > 0)
+				@{
+					if($Dist <= $ChaseRange && $ChaseCount == 1)
+						$ChaseCount++; // Keep up the chase
+					$AIChase->ChasePlayer($Player, false);
+					return !$Entity->Stopped(); // Stopped means chase AI didnt move us
+				}
+				else
+				@{
+					$ChaseCount = 0;
+					$Chasing = false;
+				}
+			}
+		}
+		return false;
+	}
+};

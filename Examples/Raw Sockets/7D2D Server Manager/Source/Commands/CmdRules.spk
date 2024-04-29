@@ -1,0 +1,23 @@
+﻿$LoadCommands['rules'] = array('CmdRules', 0, 0);
+Class extends ServerManager
+{
+	Function CmdRules($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Get the rules for this server';
+		if ($args === 'help')
+			return array('Get the rules for this server');
+		if ($commandUser == null)
+			return;
+		my $fileLines = array();
+		if (FileExists('./Variables/Rules.txt'))
+			$fileLines = FileReadLines('./Variables/Rules.txt');
+		SayToUser($commandUser, 'The server rules are:');
+		foreach($fileLines as my $line)
+			SayToUser($commandUser, $line);
+	}
+}

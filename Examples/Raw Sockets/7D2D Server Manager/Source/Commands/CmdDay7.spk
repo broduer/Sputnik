@@ -1,0 +1,52 @@
+﻿$LoadCommands['day7'] = array('CmdDay7', 0, 0);
+Class extends ServerManager
+{
+	Function CmdDay7($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Learn about the next/last Day 7 Horde time';
+		if ($args === 'help')
+			return array('Learn about the next/last Day 7 Horde time');
+		if ($commandUser == null)
+			return;
+		my list($TimeIsReady, $TimeDay, $TimeHour, $TimeMinute) = GetTime();
+		if (!$TimeIsReady || $TimeDay <= 0)
+		{
+			SayToUser($commandUser, "Try again new a few seconds (could not get server time)");
+			return;
+		}
+		my $i = 0;
+		my $lastDay7 = -1;
+		my $nextDay7 = -1;
+		while (true)
+		{
+			$i += 7;
+			if ($i < $TimeDay)
+				$lastDay7 = $i;
+			if ($i > $TimeDay)
+			{
+				$nextDay7 = $i;
+				break;
+			}
+		}
+		if (($TimeDay % 7) == 0)
+		{
+			my $dist = $nextDay7 - $TimeDay;
+			SayToUser($commandUser, "Today is the day 7 horde day!");
+		}
+		if ($nextDay7 != -1)
+		{
+			my $dist = $nextDay7 - $TimeDay;
+			SayToUser($commandUser, "The next day 7 horde will be on day $nextDay7 ('$dist' day(s) from now)");
+		}
+		if ($lastDay7 != -1)
+		{
+			my $dist = $TimeDay - $lastDay7;
+			SayToUser($commandUser, "The last day 7 horde was on day $lastDay7 ('$dist' day(s) ago)");
+		}
+	}
+}

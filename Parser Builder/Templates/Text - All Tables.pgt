@@ -1,0 +1,132 @@
+##TEMPLATE-NAME 'Text - All Tables'
+##LANGUAGE 'Plain Text'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'txt'
+##NOTES
+This template outputs all the tables using formatted text. The examples used in the documentation were made using this template.
+##END-NOTES
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+=============================================== 
+PARAMETERS
+===============================================
+##PARAMETERS
+Name             : %Name%
+Version          : %Version%
+Author           : %Author%
+About            : %About%
+Case Sensitive   : %CaseSensitive%
+Start Symbol     : %StartSymbol%
+
+Output File Path : %OutputFilePath%
+Output Path      : %OutputPath%
+Output File      : %OutputFile%
+Output File Base : %OutputFileBase%
+##END-PARAMETERS
+
+
+=============================================== 
+SYMBOL CONSTANTS
+===============================================
+##SYMBOLS
+%ID.Padded% = %Value%
+##END-SYMBOLS
+
+=============================================== 
+RULE CONSTANTS
+===============================================
+##RULES
+%ID.Padded% = %Value%
+##END-RULES
+
+=============================================== 
+SYMBOL TABLE
+===============================================
+##SYMBOL-TABLE
+Table Count: %Count%
+##SYMBOLS
+   Symbol %Index%
+      Name: %Name%
+      ID: %ID%
+      Value: %Value%
+      Type: %Kind%
+
+##END-SYMBOLS
+##END-SYMBOL-TABLE
+
+=============================================== 
+RULE TABLE
+===============================================
+##RULE-TABLE
+Table Count: %Count%
+##RULES
+   Rule %Index%
+      Value: %Value%
+      Nonterminal: %NonterminalIndex%
+      Description: %Description%
+      Symbol Count: %SymbolCount%
+      Rule Symbols:
+##RULE-SYMBOLS   
+         %SymbolIndex%
+##END-RULE-SYMBOLS
+
+##END-RULES
+##END-RULE-TABLE
+
+=============================================== 
+CHARACTER SET TABLE
+===============================================
+##CHAR-SET-TABLE
+Table Count: %Count%
+##DELIMITER ','
+##RANGE-CHARS '..'
+##CHAR-SETS
+   Set %Index% 
+      Char Count    : %CharCount% 
+      Chars (XML)   : %Chars.XML% 
+      Chars (List)  : %Chars.List%
+      Chars (Range) : %Chars.RangeList%
+      Individual Characters:
+##CHARS
+         %UnicodeIndex%
+##END-CHARS
+
+##END-CHAR-SETS
+##END-CHAR-SET-TABLE
+
+=============================================== 
+DFA TABLE
+===============================================
+##DFA-TABLE
+Table Count: %Count%
+Initial State: %InitialState%
+##DFA-STATES
+   State %Index%
+      Accept: %AcceptIndex%
+      Edge Count: %EdgeCount%
+      Edges:
+##DFA-EDGES
+         Set %CharSetIndex% : Goto %Target%
+##END-DFA-EDGES
+
+##END-DFA-STATES
+##END-DFA-TABLE
+
+=============================================== 
+LALR TABLE
+===============================================
+##LALR-TABLE
+Table Count: %Count%
+Initial State: %InitialState%
+##LALR-STATES
+   State %Index%   
+      Action Count: %ActionCount%
+      Actions:
+##LALR-ACTIONS
+         Symbol %SymbolIndex% : %Action.Name% (%Action%) : Target %Value%
+##END-LALR-ACTIONS
+
+##END-LALR-STATES
+##END-LALR-TABLE

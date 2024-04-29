@@ -1,0 +1,47 @@
+﻿$LoadCommands['admin'] = array('CmdAdmin', 0, 0);
+Class extends ServerManager
+{
+	Function CmdAdmin($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'View the list of Administrators/Moderators';
+		if ($args === 'help')
+			return array('View the list of Administrators/Moderators');
+		if ($commandUser == null)
+			return;
+		my $list = array();
+		foreach($offlinePlayers->$players as my $player)
+		{
+			my $isAdmin = IsUserAdmin($player);
+			my $isMod = IsUserModerator($player);
+			if (!$isAdmin && !$isMod)
+				continue;
+			my $SteamId = $player->$SteamId;
+			my $isOnline = IsUserOnline($player);
+			$list[] = array($player, $isOnline);
+		}
+		my $count = count($list);
+		SayToUser($commandUser, "This server has '$count' Admin(s)/Mod(s)");
+		my $i = 1;
+		foreach($list as my $data)
+		{
+			my List($player, $isOnline) = $data; 
+			my $isAdmin = IsUserAdmin($player);
+			my $isMod = IsUserModerator($player);
+			if (!$isAdmin && !$isMod)
+				continue;
+			my $Name = $player->$Name;
+			my $onlineStatus = $isOnline ? 'Online' : 'Offline';
+			my $Status = $isAdmin ? 'Administrator' : 'Moderator';
+			if ($isOnline)
+				SayToUser($commandUser, "$prefix$i, $Name, $Status, §73$onlineStatus");
+			else
+				SayToUser($commandUser, "$prefix$i, $Name, $Status, §120$onlineStatus");
+			$i++;
+		}
+	}
+}

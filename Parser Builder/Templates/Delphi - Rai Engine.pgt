@@ -1,0 +1,185 @@
+##TEMPLATE-NAME 'Delphi - Alexandre Rai Engine (With Separate Procedure)'
+##LANGUAGE 'Delphi'
+##ENGINE-NAME 'Delphi 5 Engine by Alexandre Rai'
+##AUTHOR 'Joern Bungartz' 
+##FILE-EXTENSION 'pas'
+##NOTES
+Skeleton program for Delphi (tested with Version 5)
+Uses the GOLD Parser Delphi Engine by Alexandre Rai
+
+Can load compiled syntax from resource compiled into
+the program (see method LoadGrammarFromResource)
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+
+(****************************************************
+   change unitname to filename
+****************************************************)   
+unit XXX; 
+
+interface
+
+uses
+  classes, GrammarReader, GOLDParser, Symbol, Token;
+
+type
+  TOutputEvent = procedure (aMessage : String) of object;
+  TXXXParser = class
+    private
+      FOnError: TOutputEvent;
+      (* To use LoadGrammarFromResource, create a file with extension ".rc"
+         and put the following line into it:
+         
+         GRAMMAR RCDATA "XXX.cgt"
+         
+         where XXX.cgt is your compiled grammar. Put the .cgt-File in the same
+         directory the .rc-File is in. In Delphi use Menu "Project/Add to project", 
+         to add the .rc-File. 
+         
+         Then in Method Execute uncomment the call to LoadGrammarFromResource 
+         and comment the one to TGoldParser.LoadCompiledGrammar
+      *)
+      function LoadGrammarFromResource(aGoldParser : TGOLDParser) : Boolean;
+      procedure ReplaceReduction (aParser : TGOLDParser);
+    public
+      procedure Execute(aSource : String);
+      // Set OnError to receive ErrorMessages
+      property  OnError : TOutputEvent read FOnError write FOnError;
+  end;
+
+implementation
+
+uses
+  forms,
+  sysutils,
+  windows;
+
+// constant definitions - this is Delphi <= 5 compatible!
+// Symbols
+
+const
+##SYMBOLS
+  %ID.Padded% = %Value.Padded%; // %Description%
+##END-SYMBOLS
+
+// Rules
+const
+##RULES
+  %ID.Padded% = %Value.Padded%; // %Description%
+##END-RULES
+
+
+{ TXXXParser }
+
+procedure TXXXParser.Execute(aSource : String);
+var
+   lParser    : TGOLDParser;
+   lResponse  : Integer;
+   lDone      : Boolean;
+   zToken     : Integer;
+   lError     : String;
+
+begin
+   lParser := TGOLDParser.Create;
+   try
+(************************************************************
+  change filename of compiled grammar or load from resource
+************************************************************)
+     if lParser.LoadCompiledGrammar(ExtractFilePath(Application.ExeName)+'XXX.cgt') then begin
+//     if LoadGrammarFromResource(lParser) then begin
+        lParser.OpenTextString(aSource);
+        lParser.TrimReductions := TRUE;
+        lDone := False;
+        while not lDone do begin
+           lResponse := lParser.Parse;
+           case lResponse of
+             gpMsgLexicalError: begin
+               if Assigned(FOnError) 
+                 then FOnError('Line ' + IntToStr(lParser.CurrentLineNumber) + 
+                               ': Lexical Error: Cannot recognize token: ' + 
+                               lParser.CurrentToken.DataVar);
+               lDone := True;
+             end;
+             gpMsgSyntaxError: begin
+               if Assigned(FOnError) then begin
+                 lError := '';
+                 for zToken := 0 to lParser.TokenTable.Count - 1 do
+                 lError := lError + ' ' + lParser.TokenTable[zToken].Name;
+                 FOnError('Line ' + IntToStr(lParser.CurrentLineNumber) + 
+                          ': Syntax Error: Expecting the following tokens: ' + 
+                          Trim(lError));
+               end; // if Assigned(FOnError)
+               lDone := True;
+             end;
+             gpMsgReduction: begin
+               ReplaceReduction(lParser);
+               // Record linenumber for error messages in semantics check
+               if lParser.CurrentReduction <> nil
+                 then lParser.CurrentReduction.Tag := lParser.CurrentLineNumber;
+             end;
+             gpMsgAccept: begin
+               //=== Success!
+               (******************************************************************
+                  enter code here
+               *******************************************************************)   
+               lDone := True;
+             end;
+             gpMsgInternalError,
+             gpMsgNotLoadedError: begin
+               if Assigned(FOnError) then FOnError('Internal Parser error! Aborting!');
+               lDone := True;
+             end;
+             gpMsgCommentError: begin
+               if Assigned(FOnError) 
+                 then FOnError('Line ' + IntToStr(lParser.CurrentLineNumber) + 
+                               ': Syntax Error: Unexpected end of file!');
+               lDone := True;
+             end;
+           end;
+        end;
+     end else if Assigned(FOnError) then FOnError('Grammar could not be loaded!');
+   finally
+     lParser.Free;
+   end; // try .. finally
+end; // TXXXParser.Execute
+
+function TXXXParser.LoadGrammarFromResource(aGoldParser: TGOLDParser) : Boolean;
+var
+  lMemStream : TMemoryStream;
+  lResource : Pointer;
+  lHandle   : Cardinal;
+
+begin
+  Result := TRUE;
+  try
+    lHandle := FindResource(0, 'GRAMMAR', RT_RCDATA);
+    lResource := LockResource(LoadResource(0, lHandle));
+    if lResource = nil then abort;
+    lMemStream := TMemoryStream.Create;
+    try
+      lMemStream.WriteBuffer(lResource^, SizeofResource(0, lHandle));
+      lMemStream.Position := 0;
+      if not aGoldParser.LoadCompiledGrammar(lMemStream) then abort;
+    finally
+      lMemStream.Free;
+    end; // try .. finally
+  except
+    Result := FALSE;
+  end; // try .. except
+end; // TXXXParser.LoadGrammarFromResource
+
+procedure TXXXParser.ReplaceReduction(aParser: TGOLDParser);
+begin
+  case aParser.CurrentReduction.ParentRule.TableIndex of
+##RULES
+    %ID% : begin
+      
+    end; // %Description%                  
+##END-RULES                   
+  end; // case aParser.CurrentReduction.ParentRule.TableIndex
+end; // TXXXParser.ReplaceReduction
+
+end.

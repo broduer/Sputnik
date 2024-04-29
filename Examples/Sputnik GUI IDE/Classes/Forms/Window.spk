@@ -1,0 +1,220 @@
+﻿#<?
+DLLStructCreateDef('WindowPos',
+							'
+							ptr hwnd;
+							ptr hwndInsertAfter;
+							int x;
+							int y;
+							int cx;
+							int cy;
+							uint flags
+							');
+Object::$MDIAllowed[ObjectType->$Window] = false;
+Object::$Names[ObjectType->$Window] = 'Window';
+Object::$Props[ObjectType->$Window] = array(
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropString('Text', null, null, null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null),
+												new PropFakeBool('MinimizeBox', null, true, null),
+												new PropFakeBool('MaximizeBox', null, true, null),
+												new PropFakeBool('TopMost', null, false, null),
+												new PropFakeInt('HotkeyTimerSpeed', 1, null, null, 100, null, false),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null),
+												new PropBorderStyle('BorderStyle', null, null, null),
+                                                new PropMDIParent('MDIParent', null, null)
+											);
+Object::$Events[ObjectType->$Window] = array(
+												'Activated' => EventType->$Link,
+												'Deactivate' => EventType->$Link,
+												'Initialize' => EventType->$Ignore,
+												'Load' => EventType->$Ignore,
+												'Unload' => EventType->$Ignore,
+												'Show' => EventType->$Ignore,
+												'Hide' => EventType->$Ignore,
+												'EventTick' => EventType->$Ignore,
+												Object::$GenericEvents[<=>]
+											);
+Class Window extends Object
+{
+	my $Gripper;
+	my $Editor;
+	my $Source;
+	my $MDI;
+	Function __construct($Name, $MDI = false)
+	{
+		$this->$MDI = $MDI;
+		$Source = '';
+		$Editor = null;
+		CreateContainer();
+		SetName($Name);
+		SetType(ObjectType->$Window);
+		SetObject(GUICreate('Window', 'New Window', 320, 240, 0, 0));
+		SetObjectName();
+		#SetLinkMouseDown();
+		CreateContextMenu(true);
+		SetGrid();
+		GUIMDIParent(GetObject(), $GUI);
+		$Gripper = new Gripper(GetObject());
+		GUIWndProc(GetObject(), '$param->DesignWndProc($hwnd, $lparam, $wparam, $msg);', $this);
+		if(!$MDI)
+		{
+			GUILink(GetObject(), 'Activated', '$param->OnActivated();', $this);
+			GUILink($Object, 'MouseDown', '$param->onMouseDownW();', $this);
+			GUILink($Object, 'MouseUp', '$param->onMouseUpW();', $this);
+		}
+		else
+			GUISetProp(GetObject(), 'BackColor', RGB(171, 171, 171));
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		my $WName = GetName();
+		# Remove MDI that were linked to this window...
+		foreach($Windows as my $Name => my $Window)
+		{
+			if($Window->GetProp('MDIParent') == $WName)
+			{
+				my $PClass = $Window->GetPropClass('MDIParent');
+				$PClass->LoadProp($PClass->GetDefault());
+			}
+		}
+		# Begin disposal
+		GUIUnload( GetObject() );
+		parent::Object::__destruct();
+		unset($Gripper);
+	}
+	Function Show()
+	{
+		GUILoad( GetObject() );
+	}
+	Function Hide()
+	{
+		GUIUnload( GetObject() );
+	}
+	Function DesignWndProc($hwnd, $lparam, $wparam, $msg)
+	{
+		switch($MSG)
+		{
+			case 0x0046: # WM_WINDOWPOSCHANGING
+				# This temp during the *single window* phase of development
+				my $Struct = PTRToDLLStruct('WindowPos', $LParam);
+				DLLStructSetData($Struct, 'x', 0);
+				DLLStructSetData($Struct, 'y', 0);
+				break;
+		}
+		return 0;
+	}
+	Function onMouseDownW()
+	{
+		onMouseDown();
+		GUISetProp(GetObject(), 'Cursor', 'Cross');
+	}
+	Function onMouseUpW()
+	{
+		GUISetProp(GetObject(), 'Cursor', 'Arrow');
+	}
+	Function OnActivated()
+	{
+		UnAttachControl();
+		$CurrentWindow = GetName();
+	}
+	Function ZOrder( )
+	{
+		foreach(GetControls() as my list($ObjName, $Obj))
+		{
+			my $objZorder = $Obj->GetZorder();
+			if($objZorder !== null)
+			{
+				if($Obj->GetZorder() == ZorderType->$AlwaysTop)
+					GUIBringToFront($Obj->GetObject());
+				if($Obj->GetZorder() == ZorderType->$AlwaysBottom)
+					GUISendToBack($Obj->GetObject());
+			}
+		}
+	}
+	Function GetControls( )
+	{
+		my $Arr = array();
+		GetControlsInContainer($Arr, GetContainer());
+		return $Arr;
+	}
+	Function GetControlsInContainer( &$Arr, $Container )
+	{
+		foreach($Container->$Objects as my $ObjName => my $Obj)
+		{
+			push($Arr, array($ObjName, $Obj));
+			if($Obj->HasContainer())
+				GetControlsInContainer($Arr, $Obj->GetContainer());
+		}
+	}
+	Function GetControlNameArray( )
+	{
+		my $Names = array();
+		foreach(GetControls() as my list($ObjName, $Obj))
+			push($Names, $ObjName);
+		return $Names;
+	}
+	Function GetControl( $ControlName )
+	{
+		foreach(GetControls() as my list($ObjName, $Obj))
+		{
+			if($ObjName eqi $ControlName)
+				return $Obj;
+		}
+	}
+	Function OpenEditor( )
+	{
+		my $oName = GetName();
+		if(!IsSet($Editor) || $Editor !~ SourceEditor)
+		{
+			if(isEmpty($Source))			
+			{
+				$Source = "# Add your Form Variables here\r\n";
+				$Source .= "\r\n";
+				$Source .= "# Add your Form Functions here\r\n";
+			}
+			$Editor = new SourceEditor(true, &$Source, "Window $oName", GetName(), true, true, false, $GUI);
+		}
+		GUIWindow($Editor->$Window, 'Focus');
+		$Editor->Focus();
+	}
+	Function OpenEditorOnLink( $Key, $Obj )
+	{
+		my $oName = $Obj->GetType() == ObjectType->$Window ? 'Form' : $Obj->GetName();
+		my $NameLink = $oName . "_$Key";
+		my $LinkExists = DoesLinkExist($Key, $Obj);
+		if(!$LinkExists)
+		{
+			if(!isEmptyOrNull($Source))
+				$Source .= "\r\n";
+			my $Parentheses = GenerateLinkParentheses($Key);
+			$Source .= "Function $NameLink$Parentheses\r\n";
+			$Source .= "\{\r\n";
+			my $Init = GenerateLinkInit($Key);
+			if($Init !== null)
+			{
+				$Init =~ s/^(?=[^\n\r])/\t/gm;
+				$Source .= $Init;
+			}
+			$Source .= "\t#ToDo -- Place code here\r\n";
+			$Source .= "} # $NameLink\r\n";
+		}
+		if($Editor != null)
+			$Editor->Refresh();
+		OpenEditor();
+		$Editor->MoveToFunction($NameLink);
+	}
+	Function DoesLinkExist( $Key, $Obj )
+	{
+		my $oName = $Obj->GetType() == ObjectType->$Window ? 'Form' : $Obj->GetName();
+		my $NameLink = $oName . "_$Key";
+		if($Source =~ m/^\s*Function[\s\n\r]+$NameLink/im)
+			return true;
+		else
+			return false;
+	}
+};

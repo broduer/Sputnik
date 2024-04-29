@@ -1,0 +1,758 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "String:Find";
+println("[$CurrentName] Begins");
+StringFindTest1();
+StringFindTest2();
+StringFindTest3();
+StringFindTest4();
+StringFindTest5();
+StringFindTest6();
+StringFindTest7();
+StringFindTest8();
+StringFindTest9();
+StringFindTest10();
+StringFindTest11();
+StringFindTest12();
+StringFindTest13();
+StringFindTest14();
+StringFindTest15();
+StringFindTest16();
+StringFindTest17();
+StringFindTest18();
+StringFindTest19();
+StringFindTest20();
+StringFindTest21();
+StringFindTest22();
+StringFindTest23();
+StringFindTest24();
+StringFindTest25();
+StringFindTest26();
+StringFindTest27();
+StringFindTest28();
+StringFindTest29();
+StringFindTest30();
+StringFindTest31();
+StringFindTest32();
+StringFindTest33();
+StringFindTest34();
+StringFindTest35();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function StringFindTest1()
+{
+	println("$CurrentName Test 1");
+	my $ret = Find("the quick brown fox", "quick");
+	printr $ret;
+	if(
+		$ret == array(4, 8) &&
+		$ret == [4, 8] &&
+		$ret == qw(4, 8) &&
+		count($ret) == 2 &&
+		$ret[0] == 4 &&
+		$ret[1] == 8
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest2()
+{
+	println("$CurrentName Test 2");
+	my $ret = Find("the quick brown fox", "(%a+)");
+	if(
+		$ret == array(0, 2, "the") &&
+		$ret == [0, 2, "the"] &&
+		$ret == qw(0 2 the) &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 2 &&
+		$ret[2] == "the"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest3()
+{
+	println("$CurrentName Test 3");
+	my List ($Pos, $Len, $Text) = Find("the quick brown fox", "(%a+)", 10);
+	if(
+		$Text == "brown" &&
+		$Pos == 10 &&
+		$Len == 14
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest4()
+{
+	println("$CurrentName Test 4");
+	my $ret = Find("the quick brown fox", "fruit");
+	my $ret2 = Find("the quick brown fox", "(fruit)");
+	if(
+		$ret == null &&
+		$ret === null &&
+		$ret2 == null &&
+		$ret2 === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest5()
+{
+	println("$CurrentName Test 5");
+	my $ret = Find("the quick brown fox", "");
+	if(
+		$ret == array(0, 0) &&
+		$ret == [0, 0] &&
+		$ret == qw(0 0) &&
+		count($ret) == 2 &&
+		$ret[0] == 0 &&
+		$ret[1] == 0
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest6()
+{
+	println("$CurrentName Test 6");
+	my $ret = Find("roblox and lua", "(%w+) and %w+");
+	if(
+		$ret == array(0, 13, "roblox") &&
+		$ret == [0, 13, "roblox"] &&
+		$ret == qw(0 13 roblox) &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 13 &&
+		$ret[2] == "roblox"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest7()
+{
+	println("$CurrentName Test 7");
+	my $ret = Find("I see %a here", "%a", 1, true);
+	if(
+		$ret == array(6, 7) &&
+		$ret == [6, 7] &&
+		$ret == qw(6 7) &&
+		count($ret) == 2 &&
+		$ret[0] == 6 &&
+		$ret[1] == 7
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest8()
+{
+	println("$CurrentName Test 8");
+	my $Test = "the quick brown fox";
+	my List ($Pos, $Len) = Find("I see %a here", "%a");
+	if(
+		$Pos == 0 &&
+		$Len == 0
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest9()
+{
+	println("$CurrentName Test 9");
+	my $Test = "the quick brown fox";
+	my $ret = Find($Test, "fruit");
+	if(
+		$ret === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest10()
+{
+	println("$CurrentName Test 10");
+	my $Test = "the quick brown fox";
+	my $ret = Find($Test, "fruit", 0, true);
+	if(
+		$ret === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest11()
+{
+	println("$CurrentName Test 11");
+	my $Test = "You see dogs and dogs";
+	my $ret = Find($Test, "You see (.*)");
+	if(
+		$ret == array(0, 20, "dogs and dogs") &&
+		$ret == [0, 20, "dogs and dogs"] &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 20 &&
+		$ret[2] == "dogs and dogs"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest12()
+{
+	println("$CurrentName Test 12");
+	my $Test = "You see dogs and dogs";
+	my $ret = Find("mend both legs at once", "(l..s)");
+	if(
+		$ret == array(10, 13, "legs") &&
+		$ret == [10, 13, "legs"] &&
+		$ret == qw(10 13 legs) &&
+		count($ret) == 3 &&
+		$ret[0] == 10 &&
+		$ret[1] == 13 &&
+		$ret[2] == "legs"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest13()
+{
+	println("$CurrentName Test 13");
+	my $Test ="You see dogs and cats";
+	my $ret = Find($Test, "You see (.*) and %1");
+	if(
+		$re === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest14()
+{
+	println("$CurrentName Test 14");
+	my $Test = "You sir see dogs and dogs = sir";
+	my $ret = Find($Test, "You (.*) see (.*) and %2 = %1");
+	if(
+		$ret == array(0, 30, "sir", "dogs") &&
+		$ret == [0, 30, "sir", "dogs"] &&
+		count($ret) == 4
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest15()
+{
+	println("$CurrentName Test 15");
+	my $ret = Find("sword hits Nick", "(%a+) hits (%a+)");
+	if(
+		$ret == array(0, 14, "sword", "Nick") &&
+		$ret == [0, 14, "sword", "Nick"] &&
+		count($ret) == 4
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest16()
+{
+	println("$CurrentName Test 16");
+	my $ret = Find("You are struck (glancing)", "(%b())");
+	if(
+		$ret == array(15, 24, "(glancing)") &&
+		$ret == [15, 24, "(glancing)"] &&
+		count($ret) == 3
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest17()
+{
+	println("$CurrentName Test 17");
+	my $ret = Find("mend both legs at once", "l..s");
+	if(
+		$ret == array(10, 13) &&
+		$ret == [10, 13] &&
+		count($ret) == 2
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest18()
+{
+	println("$CurrentName Test 18");
+	my $ret = Find("balls bells bills", "b.+s");
+	if(
+		$ret == array(0, 16) &&
+		$ret == [0, 16] &&
+		count($ret) == 2
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest19()
+{
+	println("$CurrentName Test 19");
+	my $ret = Find("balls bells bills", "b.-s");
+	if(
+		$ret == array(0, 4) &&
+		$ret == [0, 4] &&
+		count($ret) == 2
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest20()
+{
+	println("$CurrentName Test 20");
+	my $ret = Find("You see dogs and cats", "You .* ()dogs .*");
+	if(
+		$ret == array(0, 20, 8) &&
+		$ret == [0, 20, 8] &&
+		count($ret) == 3
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest21()
+{
+	println("$CurrentName Test 21");
+	my $ret = Find("I see a (big fish (swimming) in the pond) here", "%b()");
+	if(
+		$ret == array(8, 40) &&
+		$ret == [8, 40] &&
+		count($ret) == 2
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest22()
+{
+	println("$CurrentName Test 22");
+	my $ret = Find("letter 	LETTER cat 1337 3FEBA", "(%a+)(%s+)(%u+) (%l+) (%d+) (%x+)");
+	if(
+		$ret == array(0, 28, "letter", " 	", "LETTER", "cat", 1337, "3FEBA") &&
+		$ret == [0, 28, "letter", " 	", "LETTER", "cat", 1337, "3FEBA"] &&
+		count($ret) == 8
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest23()
+{
+	println("$CurrentName Test 23");
+	my $ret = Find("letter 	LETTER cat 1337 3FEBA", "(%a+)(%s+)(%u+) (%l+) (%d+) (%x+)");
+	if(
+		$ret == array(0, 28, "letter", " 	", "LETTER", "cat", 1337, "3FEBA") &&
+		$ret == [0, 28, "letter", " 	", "LETTER", "cat", 1337, "3FEBA"] &&
+		count($ret) == 8
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest24()
+{
+	println("$CurrentName Test 24");
+	my $ret = Find("abc", "(%a+)", -1);
+	if(
+		$ret == array(2, 2, "c") &&
+		$ret == [2, 2, "c"] &&
+		count($ret) == 3 &&
+		$ret[0] == 2 &&
+		$ret[1] == 2 &&
+		$ret[2] == "c"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest25()
+{
+	println("$CurrentName Test 25");
+	my $ret = Find("abc", "(%a+)", -2);
+	if(
+		$ret == array(1, 2, "bc") &&
+		$ret == [1, 2, "bc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 1 &&
+		$ret[1] == 2 &&
+		$ret[2] == "bc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest26()
+{
+	println("$CurrentName Test 26");
+	my $ret = Find("abc", "(%a+)", -3);
+	if(
+		$ret == array(0, 2, "abc") &&
+		$ret == [0, 2, "abc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 2 &&
+		$ret[2] == "abc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest27()
+{
+	println("$CurrentName Test 27");
+	my $ret = Find("abc", "(%a+)", -4);
+	if(
+		$ret == array(0, 2, "abc") &&
+		$ret == [0, 2, "abc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 2 &&
+		$ret[2] == "abc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest28()
+{
+	println("$CurrentName Test 28");
+	my $ret = Find("abc", "(%a+)", -100);
+	if(
+		$ret == array(0, 2, "abc") &&
+		$ret == [0, 2, "abc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 2 &&
+		$ret[2] == "abc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest29()
+{
+	println("$CurrentName Test 29");
+	my $ret = Find("abc", "(%a+)", 0);
+	if(
+		$ret == array(0, 2, "abc") &&
+		$ret == [0, 2, "abc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 0 &&
+		$ret[1] == 2 &&
+		$ret[2] == "abc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest30()
+{
+	println("$CurrentName Test 30");
+	my $ret = Find("abc", "(%a+)", 1);
+	if(
+		$ret == array(1, 2, "bc") &&
+		$ret == [1, 2, "bc"] &&
+		count($ret) == 3 &&
+		$ret[0] == 1 &&
+		$ret[1] == 2 &&
+		$ret[2] == "bc"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest31()
+{
+	println("$CurrentName Test 31");
+	my $ret = Find("abc", "(%a+)", 2);
+	if(
+		$ret == array(2, 2, "c") &&
+		$ret == [2, 2, "c"] &&
+		count($ret) == 3 &&
+		$ret[0] == 2 &&
+		$ret[1] == 2 &&
+		$ret[2] == "c"
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest32()
+{
+	println("$CurrentName Test 32");
+	my $ret = Find("abc", "(%a+)", 3);
+	if(
+		$ret == null &&
+		$ret === null
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest33()
+{
+	println("$CurrentName Test 33");
+	my $s = "Quick-Silver77-hehe";
+	my List( $Start, $End ) =  $s->>find("(%a+%d+)");
+	my $ret = $s->>sub($Start, $End);
+	if(
+		$ret == "Silver77" &&
+		$ret == 'Silver77'
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest34()
+{
+	println("$CurrentName Test 34");
+	my List ($Pos, $Len, $Text) = find("the quick brown fox", "(%a+)", -9);
+	if(
+		$Text == "brown" &&
+		$Pos == 10 &&
+		$Len == 14
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function StringFindTest35()
+{
+	println("$CurrentName Test 35");
+	my List ($Pos, $Len, $Text) = find("the quick brown fox", "(%a+)", -8);
+	if(
+		$Text == "rown" &&
+		$Pos == 11 &&
+		$Len == 14
+		)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

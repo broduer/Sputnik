@@ -1,0 +1,48 @@
+Class EntityRewardOneUp extends EntityReward
+{
+	Static $UniqueID = 0;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$OneUp;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/OneUp/OneUp.png');
+		$DeathCounter = (int)Random(20, 40);
+		$RewardValue = 0;
+		if(Utils::ChanceOf(0, 100, 60, 70)) // 10% chance
+		{
+			$DeathCounter = 50; // Full cycle
+			SetFalling();
+			$NoClip = true;
+		}
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		{
+			// Add Life to player
+			$V->AddLives(1);
+			// Play Sound
+			PlayCollectionSound();
+			// Remove this OneUp entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

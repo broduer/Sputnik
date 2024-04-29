@@ -1,0 +1,53 @@
+#<?
+Class PropHotkey extends Prop
+{
+	my $Hotkey;
+	my $Parent;
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, $PropDefault, $PropParentType);
+		$Hotkey = array('None', 0, 0);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return $Hotkey[0];
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Ret = HotkeyBox('HotKey', 
+							'The hotkey you wish to use here',
+							$Hotkey,
+							$Object->GetProp('AllowShiftKeys'),
+							$Object->GetProp('AllowClear')
+							);
+		if($Ret === null)
+			return null;
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick a style!', $Title, 48);
+			return null;
+		}
+		my List ( $HText, $HKey, $HMod ) = $Ret;
+		$Hotkey[0] = $HText;
+		$Hotkey[1] = $HKey;
+		$Hotkey[2] = $HMod;
+		return $HText;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		$Hotkey = Unserialize($Value);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)Serialize($Hotkey);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

@@ -1,0 +1,92 @@
+#include-once
+#require-once
+Require('Parsing/TextParser.spk', true);
+Class RegexMatcher
+{
+	my $Regex;
+	my $ignoreCase;
+	my $Groups;
+	Function __Construct($Regex, $ignoreCase)
+	{
+		$this->$Regex = "(^$Regex)";
+		$this->$ignoreCase = $ignoreCase;
+	}
+	Function MatchGroups()
+	{
+		return $this->$Groups;
+	}
+	Function Match($text)
+	{
+		if($ignoreCase)
+			$text =~ m/$Regex/gdi;
+		else
+			$text =~ m/$Regex/gd;		
+		$this->$Groups = array();
+		for(my $i = 0; $i < @Groups; $i++)
+			$this->$Groups[] = $_rg[$i];
+		return StrLen($_rg[0]);
+	}
+}
+Class TokenDefinition
+{
+	my $Matcher;
+	my $Token;
+	my $ignoreCase;
+	Function __Construct($Regex, $Token, $ignoreCase)
+	{
+		$this->$Matcher = new RegexMatcher($Regex, $ignoreCase);
+		$this->$Token = $Token;
+		$this->$ignoreCase = $ignoreCase;
+	}
+}
+Class Lexer
+{
+	my $reader;
+	my $tokenDefinitions;
+	my $lineRemaining;
+	my $LineNumber = 0;
+	my $Position = 0;
+	my $Token;
+	my $TokenContents;
+	my $TokenGroups;
+	Function __Construct(TextParser $reader, $tokenDefinitions)
+	{
+		$this->$reader = $reader;
+		$this->$tokenDefinitions = $tokenDefinitions;
+		nextLine();
+	}
+	Function nextLine()
+	{
+		Do
+		{
+			my $start = $reader->$Position;
+			$reader->MoveToEndOfLine();
+            $lineRemaining = $reader->Extract($start, $reader->$Position);
+            ++$LineNumber;
+            $Position = $reader->$Position;
+			$reader->MovePastWhitespace();
+		}
+		While( !isEmpty($lineRemaining) && StrLen($lineRemaining) == 0 )
+	}
+	Function Next()
+	{
+		if (isEmpty($lineRemaining))
+			return false;
+		foreach ($tokenDefinitions as $def)
+		{
+			my $matched = $def->$Matcher->Match($lineRemaining);
+			if ($matched > 0)
+			{
+				$TokenGroups = $def->$Matcher->MatchGroups();
+				$Position += $matched;
+				$Token = $def->$Token;
+				$TokenContents = SubStr($lineRemaining, 0, $matched);
+				$lineRemaining = SubStr($lineRemaining, $matched);
+				if (StrLen($lineRemaining) == 0)
+					nextLine();
+				return true;
+			}
+		}
+		throw new Exception("Unable to match against any tokens at line $LineNumber position $Position \"$lineRemaining\"");
+	}
+}

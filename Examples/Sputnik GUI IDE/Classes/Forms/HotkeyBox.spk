@@ -1,0 +1,66 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$HotkeyBox] = false;
+Object::$Names[ObjectType->$HotkeyBox] = 'HotkeyBox';
+Object::$Props[ObjectType->$HotkeyBox] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropString('Text', null, null, null, null, null),
+												new PropInt('Hotkey', null, null, null, null, null),
+												new PropInt('HotkeyModifiers', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null)
+											);
+Object::$ReadonlyProps[ObjectType->$HotkeyBox] = array('Text','Hotkey','HotkeyModifiers');
+Object::$Events[ObjectType->$HotkeyBox] = array(
+												Object::$GenericEvents[<=>],
+												'TextChanged' => EventType->$Link
+											);
+Object::$MenuAdd[ObjectType->$HotkeyBox] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$HotkeyBox]);
+GUILink(Object::$MenuAdd[ObjectType->$HotkeyBox], 'Click', 'CreateControl(ObjectType->$HotkeyBox);');
+Class HotkeyBox extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 110, $Height = 25)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$HotkeyBox);
+		SetName($Name);
+		SetObject(GUICreate('HotkeyBox', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		GUILink(GetObject(), 'TextChanged', '$param->onTextChanged();', $this);
+		// ContextMenu
+		my $MenuClear = GUICreate('MenuItem', GetContextMenu(), 'Clear Hotkey');
+		GUISetProp(GetObject(), 'ContextMenu', GetContextMenu());
+		GUILink($MenuClear, 'Click', '$param->onClickContextClearHotkey();', $this);
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function onTextChanged()
+	{
+		SetChanged('Hotkey');
+		SetChanged('HotkeyModifiers');
+		if($Windows[$CurrentWindow]->$Gripper->$Object == $this)
+			AttachControl($this);
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+	Function onClickContextClearHotkey()
+	{
+		GUIHotkeyBox(GetObject(), 'Hotkey', 0);
+		GUIHotkeyBox(GetObject(), 'HotkeyModifiers', 0);
+		GUISetProp(GetObject(), 'Text', 'None');
+	}
+};

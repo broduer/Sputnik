@@ -1,0 +1,251 @@
+﻿// This file is incomplete and still under construction however it will work if executed it just lacks stuff
+
+// Imports the DLL functions at runtime but making a DLL from DLLImport and using that instead would be alot faster
+DllImport(
+			array
+			(
+				// Objects
+				array('test.dll', 'SendBool', 'void', 'b', 'Ansi:Cdecl'),
+				array('test.dll', 'SendChar', 'void', 'c', 'Ansi:Cdecl'),
+				array('test.dll', 'SendByte', 'void', 'B', 'Ansi:Cdecl'),
+				array('test.dll', 'SendSByte', 'void', 'b', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt16', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt32', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt64', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt16', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt32', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt64', 'void', 'L', 'Ansi:Cdecl'),
+				array('test.dll', 'SendFloat', 'void', 'f', 'Ansi:Cdecl'),
+				array('test.dll', 'SendDouble', 'void', 'd', 'Ansi:Cdecl'),
+				array('test.dll', 'SendString', 'void', 'p', 'Ansi:Cdecl'),
+				// Objects using return value
+				array('test.dll', 'ReturnString', 'string', '', 'Ansi:Cdecl'),
+				// Object using return value as pointer
+				array('test.dll', 'ReturnStringPTR', '*string', '', 'Ansi:Cdecl'),
+				// Objects as pointer (so the $variable is modifed in the DLL directly)
+				array('test.dll', 'SendStringPTR', 'void', '*p', 'Ansi:Cdecl'),
+				// Arrays
+				array('test.dll', 'SendBoolArray', 'void', '%bi', 'Ansi:Cdecl'),
+				array('test.dll', 'SendCharArray', 'void', '%ci', 'Ansi:Cdecl'),
+				array('test.dll', 'SendByteArray', 'void', '%Bi', 'Ansi:Cdecl'),
+				array('test.dll', 'SendSByteArray', 'void', '%bi', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt16Array', 'void', '%si', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt32Array', 'void', '%ii', 'Ansi:Cdecl'),
+				array('test.dll', 'SendInt64Array', 'void', '%li', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt16Array', 'void', '%Si', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt32Array', 'void', '%Ii', 'Ansi:Cdecl'),
+				array('test.dll', 'SendUInt64Array', 'void', '%Li', 'Ansi:Cdecl'),
+				array('test.dll', 'SendFloatArray', 'void', '%fi', 'Ansi:Cdecl'),
+				array('test.dll', 'SendDoubleArray', 'void', '%di', 'Ansi:Cdecl'),
+				array('test.dll', 'SendStringArray', 'void', '%pi', 'Ansi:Cdecl')
+			)
+);
+SendSingleObjects();
+ReturningObjects();
+ReturningObjectsAsPointers();
+ObjectsAsPointers();
+SendingArrays();
+Function SendSingleObjects()
+{
+	inputc("Press any key to do singles objects");
+	cls();
+	// Single objects
+	{ // Send a Bool to the DLL
+		say "Sending a Bool";
+		my $Value = true;
+		SendBool( $Value );
+		say "";
+	}
+	{ // Send a Char to the DLL
+		say "Sending a Char";
+		my $Value = 'S';
+		SendChar( $Value );
+		say "";
+	}
+	{ // Send a Byte to the DLL
+		say "Sending a Byte";
+		my $Value = 77;
+		SendByte( $Value );
+		say "";
+	}
+	{ // Send a SByte to the DLL
+		say "Sending a SByte";
+		my $Value = 100;
+		SendSByte( $Value );
+		say "";
+	}
+	{ // Send a Int16 to the DLL
+		say "Sending a Int16";
+		my $Value = 300;
+		SendInt16( $Value );
+		say "";
+	}
+	{ // Send a Int32 to the DLL
+		say "Sending a Int32";
+		my $Value = 400;
+		SendInt32( $Value );
+		say "";
+	}
+	{ // Send a Int64 to the DLL
+		say "Sending a Int64";
+		my $Value = 500;
+		SendInt64( $Value );
+		say "";
+	}
+	{ // Send a UInt16 to the DLL
+		say "Sending a UInt16";
+		my $Value = 600;
+		SendUInt16( $Value );
+		say "";
+	}
+	{ // Send a UInt32 to the DLL
+		say "Sending a UInt32";
+		my $Value = 700;
+		SendUInt32( $Value );
+		say "";
+	}
+	{ // Send a UInt64 to the DLL
+		say "Sending a UInt64";
+		my $Value = 777;
+		SendUInt64( $Value );
+		say "";
+	}
+	{ // Send a Float to the DLL
+		say "Sending a Float";
+		my $Value = @PI / 2;
+		SendFloat( $Value );
+		say "";
+	}
+	{ // Send a Double to the DLL
+		say "Sending a Double";
+		my $Value = @PI;
+		SendDouble( $Value );
+		say "";
+	}
+	{ // Send a String to the DLL
+		say "Sending a String";
+		my $Value = "My String";
+		SendString( $Value );
+		say "";
+	}
+}
+Function ReturningObjects()
+{
+	inputc("Press any key to do returning objects");
+	cls();
+	// Using return value
+	{ // Return a String from the DLL
+		say "Returning a String";
+		my $value = ReturnString( );
+		say "Return value: $value";
+		say "";
+	}
+}
+Function ReturningObjectsAsPointers()
+{
+	inputc("Press any key to do returning objects as pointers");
+	cls();
+	{ // Return a String PTR from the DLL
+		say "Returning a String PTR";
+		my $value = ReturnStringPTR( );
+		say "Return value: $value";
+		say "";
+	}
+}
+Function ObjectsAsPointers()
+{
+	inputc("Press any key to do objects as pointer");
+	cls();
+	// Objects as pointer (so the $variable is modifed in the DLL directly)
+	{ // Send a String PTR to the DLL
+		say "Sending a String pointer";
+		my $Value = "My String";
+		SendStringPTR( $Value );
+		say "String after modifed by DLL: $Value";
+		say "";
+	}
+}
+Function SendingArrays()
+{
+	inputc("Press any key to do sending arrays to the DLL");
+	cls();
+	// Arrays
+	{ // Send an array of Bools to the DLL
+		say "Sending Bool Array";
+		my $Value = array(true, false, true);
+		SendBoolArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Chars to the DLL
+		say "Sending Char Array";
+		my $Value = array('a', 'B', 'c');
+		SendCharArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Byte to the DLL
+		say "Sending Byte Array";
+		my $Value = array(80, @ByteMin, @ByteMax);
+		SendByteArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of SByte to the DLL
+		say "Sending SByte Array";
+		my $Value = array(70, @SByteMin, @SByteMax);
+		SendSByteArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Int16 to the DLL
+		say "Sending Int16 Array";
+		my $Value = array(90, @Int16Min, @Int16Max);
+		SendInt16Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Int32 to the DLL
+		say "Sending Int32 Array";
+		my $Value = array(90, @Int32Min, @Int32Max);
+		SendInt32Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Int64 to the DLL
+		say "Sending Int64 Array";
+		my $Value = array(100, @Int64Min, @Int64Max);
+		SendInt64Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of UInt16 to the DLL
+		say "Sending UInt16 Array";
+		my $Value = array(101, @UInt16Min, @UInt16Max);
+		SendUInt16Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of UInt32 to the DLL
+		say "Sending UInt32 Array";
+		my $Value = array(102, @UInt32Min, @UInt32Max);
+		SendUInt32Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of UInt64 to the DLL
+		say "Sending UInt64 Array";
+		my $Value = array(103, @UInt64Min, @UInt64Max);
+		SendUInt64Array( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Floats to the DLL
+		say "Sending Float Array";
+		my $Value = array(1.2, @FloatMin, @FloatMax);
+		SendFloatArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Doubles to the DLL
+		say "Sending Double Array";
+		my $Value = array(@PI, @DoubleMin, @DoubleMax);
+		SendDoubleArray( $Value, uBound($Value) );
+		say "";
+	}
+	{ // Send an array of Strings to the DLL
+		say "Sending String Array";
+		my $Value = array("One", "Two", "Three");
+		SendStringArray( $Value, uBound($Value) );
+		say "";
+	}
+}

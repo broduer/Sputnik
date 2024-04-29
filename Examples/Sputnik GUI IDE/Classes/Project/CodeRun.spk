@@ -1,0 +1,32 @@
+#<?
+Global $CodeTesterActive = true;
+Global $mProjectTestCode = GUICreate("MenuItem", $mProject, "Run");
+GUILink($mProjectTestCode, "Click", 'CodeRun();');
+
+Function CodeRun()
+{
+	if($CodeGenActive)
+	{
+		//Cls();
+		if(SyntaxCheck() === false)
+			return;
+		Save();
+		my $Path = CombinePath(@TEMPDIR, "TMP.spk");
+		FileSave($Path, GenCodeSrc());
+		gc(true);
+		Run(CombinePath(@ExeDir, @ExeName), $Path);
+		/*
+		Try
+		{
+			Cls();
+			my $EvalSpk = EvalCreate();
+			Eval(GenCodeSrc(), $EvalSpk);
+			unset($EvalSpk);
+		}
+		Catch ( Exception $e )
+		{
+			println("An exception occurred while running the code:");
+			println("Message: " . $e->getMessage()); // Gets the default or new message
+		}*/
+	}
+}

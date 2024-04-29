@@ -1,0 +1,61 @@
+#include-once
+#require-once
+Global $FAIL = 0;
+Global $SUCCESS = 0;
+Global $CurrentName = "String:IntToFromRoman";
+println("[$CurrentName] Begins");
+StringIntToFromRomanTest1();
+StringIntToFromRomanTest2();
+println("[$CurrentName] Total success '$SUCCESS' fails '$FAIL'");
+Function StringIntToFromRomanTest1()
+{
+	println("$CurrentName Test 1");
+	Global $romData = unserialize(FileLoad("./lib/TestCases/RomanSer.dat"));
+	my $done = 0;
+	my $first = -1;
+	my $last = -1;
+	foreach($romData as my $rom => my $int)
+	{
+		if ($rom != IntToRom($int))
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+			return;
+		}	
+		if ($int != RomToInt($rom))
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+			return;
+		}
+		$done++;
+		if ($first == -1)
+			$first = $int;
+		$last = $int;
+	}
+	if ($first != 1 && $last != 3999 && $done != 3999)
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+		return;
+	}
+	println("PASS");
+	$SUCCESS++;
+}
+Function StringIntToFromRomanTest2()
+{
+	println("$CurrentName Test 2");
+	my $total = 0;
+	foreach($romData as my $rom => my $int)
+	{
+		$total += $int;
+	}
+	if ($total != 7998000)
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+		return;
+	}
+	println("PASS");
+	$SUCCESS++;
+}

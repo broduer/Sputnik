@@ -1,0 +1,92 @@
+#include-once
+#require-once
+class CommandSystem
+{
+	my $_commands;
+	my $_splitAt;
+	my $_quot;
+	Function __Construct($SplitAt = ' ', $Quot = '"')
+	{
+		$_commands = array();
+		$_splitAt = $SplitAt;
+		$_quot = $Quot;
+	}
+	Function AddCommand($name, $command, $minArgs = -1, $maxArgs = -1)
+	{
+		$_commands[$name] = array($command, $minArgs, $maxArgs);
+	}
+	Function DelCommand($name)
+	{
+		$_commands[$name] = null;
+		unset($_commands[$name]);
+	}
+	Function CommandSegmentParse($segment)
+	{
+		my $parsed = CSV($segment, $_splitAt, $_quot)[0];
+		if (count($parsed) > 1)
+			return $_quot . $segment . $_quot;
+		else
+			return $segment;
+	}
+	Function ProcessCommand($input, $extraParams = null)
+	{
+		my $parsed = CSV($input, $_splitAt, $_quot)[0];
+		if (count($parsed) < 1)
+			return array(false, null);
+		my $cmdName = lc(shift($parsed));
+		my $cmdRest = trimLeft(substr($input, strlen($cmdName)));
+		my $addedExtra = false;
+		if (IsArray($extraParams))
+		{
+			foreach(Rev($extraParams) as my $segment)
+			{
+				my $hasLen = strlen($cmdRest) > 0;
+				if ($hasLen)
+					$cmdRest ..= $_splitAt;
+				$cmdRest ..= CommandSegmentParse($segment);
+			}
+			$addedExtra = true;
+		}
+		else if (!IsEmptyOrNull($extraParams))
+		{
+			my $hasLen = strlen($cmdRest) > 0;
+			if ($hasLen)
+				$cmdRest ..= $_splitAt;
+			$cmdRest ..= CommandSegmentParse($extraParams);
+			$addedExtra = true;
+		}
+		my $argCount = count($parsed);
+		my $args = clone($parsed);
+		order($args);
+		if ($addedExtra)
+			$parsed = CSV($cmdRest, $_splitAt, $_quot)[0];
+		foreach($_commands as my $name => $cmd)
+		{
+			my List($command, $minArgs, $maxArgs) = $cmd;
+			if ($name == $cmdName)
+			{
+				if ($minArgs >= 0 && $argCount < $minArgs)
+					return array(true, "'$name' requires at least '$minArgs' arg(s) got '$argCount'.");
+				if ($maxArgs >= 0 && $argCount > $maxArgs)
+					return array(true, "'$name' requires at most '$maxArgs' arg(s) got '$argCount'.");
+				unshift($parsed, $cmdRest);
+				unshift($parsed, $argCount);
+				unshift($parsed, $args);
+				order($parsed);
+				if (IsArray($command))
+				{
+					if (!FunctionExists($command[1], $command[0]))
+						return array(true, "'$name' function '$command[1]' cannot be found.");
+				}
+				else
+				{
+					if (!FunctionExists($command))
+						return array(true, "'$name' function '$command' cannot be found.");
+				}
+				CallArray($command, $parsed);
+				return array(true, null);
+			}
+		}
+		return array(false, null);
+	}
+}

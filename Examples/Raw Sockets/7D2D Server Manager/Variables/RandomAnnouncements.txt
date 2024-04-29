@@ -1,0 +1,11 @@
+§130*** Starter kits can be provided by an admin/moderator (if online) to players but only the first several to join to boost the economy ***
+§130*** PvE time is 04:00 to 22:00 ***
+§130*** PvP time is 22:00 to 04:00 ***
+§130*** On-Death only the ToolBelt drops ***
+§130*** AirDrops are every 24 hours ***
+§130*** The map boundary is N/E/S/W 12,000 from 0, 0 go beyond this point and you will die! ***
+§130*** PK of players under level 5 is not allowed ***
+§130*** Use '/portal safe' for a safe place to AFK or new players to survive the night PK is not allowed in this safe box ***
+§130*** Placing land claims inside a POI you are not using as your primary base is not allowed ***
+§120*** Hackers/Cheaters will be jailed ***
+§130*** Chat must be in English only ***

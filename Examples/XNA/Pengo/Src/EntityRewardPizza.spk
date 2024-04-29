@@ -1,0 +1,46 @@
+Class EntityRewardPizza extends EntityReward
+{
+	Static $UniqueID = 0;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$Pizza;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/Pizza/Pizza.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 75;
+		$NoClip = true;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			// Spawn a Points entity
+			SpwanPoints();
+			// Add score to player
+			$V->AddScore($RewardValue);
+			// Play Sound
+			PlayCollectionSound();
+			// Remove this Pizza entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+};

@@ -1,0 +1,33 @@
+Class AI
+{
+	Static $AIEnabled = true;
+	my $Entity;
+	my $Enabled;
+	my $AIList;
+	Function __Construct(Entity $E)
+	{
+		$Entity = $E;
+		$Enabled = false;
+		$AIList = array();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+		$Enabled = false;
+		$Entity = null;
+	}
+	Function Update()
+	{
+		if($Disposed)
+			return;
+		foreach($AIList as my $AICls)
+			if($AICls->DoUpdate())
+				return;
+	}
+};

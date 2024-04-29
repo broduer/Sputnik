@@ -1,0 +1,108 @@
+// Load Sputnik Sound Library
+PluginLoad(array('SputnikSound', 'Sputnik.%Name, SputnikSound, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null'));
+
+// Load Sputnik XNA Library
+PluginLoad('SputnikXNA.dll');
+
+// Load Includes for the project
+Include('Colours.spk', true);
+
+Class EngineMain
+{
+    my $Name { get { return 'Main'; } }
+    my $_Disposed;
+    my $Disposed
+    {
+        get { return $this->$_Disposed; }
+        set { $this->$_Disposed = $value; }
+    };
+	my $GameWidth;
+	my $GameHeight;
+	my $TntTop;
+	my $TntSide;
+	my $TntBottom;
+	my $Prisoner;
+	my $Shotgun;
+	my $PrisonerPos;
+	my $ShotgunPos;
+    my $FontArial;
+    Function __Construct()
+    {
+        $_Disposed = false;
+		$Pengo = null;
+		$Penguina = null;
+    }
+    Function Dispose()
+    {
+    }
+    Function Initialize()
+    {
+		$GameWidth = 640;
+		$GameHeight = 512;
+		XNAOpt('InactiveSleepTime', 0);
+		XNAOpt('Width', $GameWidth);
+		XNAOpt('Height', $GameHeight);
+		XNAOpt('MouseVisible', true);
+    }
+    Function LoadContent()
+    {
+		$TntTop = XNASheet($Sheet, 64, 64, 2, 2);
+		$TntSide = XNASheet($Sheet, 64, 64, 2, 3);
+		$TntBottom = XNASheet($Sheet, 64, 64, 2, 4);
+		$Prisoner = XNAPng('Prisoner.png');
+		$Shotgun = XNAPng('Shotgun.png');
+		$PrisonerPos = array(200, 200);
+		$ShotgunPos = array(232, 200);
+		$FontArial = XNAFont('Fonts/Arial14', true);
+    }
+    Function UnloadContent()
+    {
+    }
+    Function Update($gameTime)
+    {
+		my List ($iX, $iY, $iScroll, $iLeft, $iRight, $iMiddle, $iExtra1, $iExtra2) = XNAMouseState();
+		if($PrisonerPos[0] > $iX)
+		{
+			$PrisonerPos[0]--;
+			$ShotgunPos[0]--;
+		}
+		if($PrisonerPos[0] < $iX)
+		{
+			$PrisonerPos[0]++;
+			$ShotgunPos[0]++;
+		}
+		if($PrisonerPos[1] < $iY)
+		{
+			$PrisonerPos[1]++;
+			$ShotgunPos[1]++;
+		}
+		if($PrisonerPos[1] > $iY)
+		{
+			$PrisonerPos[1]--;
+			$ShotgunPos[1]--;
+		}
+	}
+    Function Draw($gameTime)
+    {
+		// Clear game window
+        XNAClear($ColCornflowerblue);
+		
+		// Allow drawing
+		XNADrawBegin();
+		
+		XNADraw($TntTop, 0, 0, $ColWhite);
+		XNADraw($TntSide, 0, 64, $ColWhite);
+		XNADraw($TntBottom, 0, 128, $ColWhite);
+		
+		XNADraw($Prisoner, $PrisonerPos[0], $PrisonerPos[1], $ColWhite);
+		XNADraw($Shotgun, $ShotgunPos[0], $ShotgunPos[1], $ColWhite);
+		
+		XNADrawString($FontArial, 'He will chase the mouse', 0, 0, $ColRed);
+			
+		// Stop drawing
+		XNADrawEnd();
+	}
+}
+
+XNAEngineAdd(new EngineMain());
+XNARun();

@@ -1,0 +1,6 @@
+# Telnet settings
+ip: 1.1.1.1
+port: 26005
+password: pixiepublic
+autouserlist: F:\opt\xampp\htdocs\players\players.txt
+autouserlisttimer: 30

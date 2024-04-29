@@ -1,0 +1,78 @@
+﻿$onServerInit[] = 'OfflinePlayerInit';
+$onPlayerListChange[] = 'OfflinePlayerOnPlayerListChange';
+Class extends ServerManager
+{
+	my $offlinePlayers;
+	Function OfflinePlayerInit()
+	{
+		$offlinePlayers = new PlayerList();
+		LoadOfflinePlayers();
+	}
+	Function OfflinePlayerOnPlayerListChange($oldList, $newList)
+	{
+		foreach($newList->$players as my $player)
+			UpdateOfflinePlayer($player);
+		SaveOfflinePlayers();
+	}
+	
+	Function FindOnlineOrOfflinePlayerByIdOrPartialName($name)
+	{
+		my $found = $currentPlayers->FindByIdOrPartialName($name);
+		my $isOnline = $found != null;
+		if (!$isOnline)
+		{
+			$found = $offlinePlayers->FindByIdOrPartialName($name);
+			if ($found == null)
+				return null;
+		}
+		return array($found, $isOnline);		
+	}
+	Function FindOnlineOrOfflinePlayerByName($name)
+	{
+		my $found = $currentPlayers->FindByName($name);
+		my $isOnline = $found != null;
+		if (!$isOnline)
+		{
+			$found = $offlinePlayers->FindByName($name);
+			if ($found == null)
+				return null;
+		}
+		return array($found, $isOnline);		
+	}
+	Function FindOnlineOrOfflinePlayer($SteamId)
+	{
+		my $found = $currentPlayers->FindBySteamId($SteamId);
+		my $isOnline = $found != null;
+		if (!$isOnline)
+		{
+			$found = $offlinePlayers->FindBySteamId($SteamId);
+			if ($found == null)
+				return null;
+		}
+		return array($found, $isOnline);		
+	}
+	Function UpdateOfflinePlayer($player)
+	{
+		my $SteamId = $player->$SteamId;
+		if ($offlinePlayers->FindBySteamId($SteamId) != null)
+			$offlinePlayers->DelBySteamId($SteamId);
+		$offlinePlayers->AddPlayer($player);
+	}
+	Function SaveOfflinePlayers()
+	{
+		my $serialized = serialize($offlinePlayers);
+		FileSave('./Variables/OfflinePlayers.db', $serialized);
+	}
+	Function LoadOfflinePlayers()
+	{
+		$offlinePlayers->ClearPlayers();
+		if (!FileExists('./Variables/OfflinePlayers.db'))
+			return;
+		my $offlinePlayerDb = FileLoad('./Variables/OfflinePlayers.db');
+		my $unserialized = unserialize($offlinePlayerDb);
+		if ($unserialized IsNot PlayerList)
+			return;
+		$unserialized->VerifyPlayers();
+		$offlinePlayers = $unserialized;
+	}
+}

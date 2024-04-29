@@ -1,0 +1,261 @@
+Enum ControlType
+{
+	$MoveUp,
+	$MoveDown,
+	$MoveLeft,
+	$MoveRight,
+	$Attack
+};
+Class EntityPlayer extends Entity
+{
+	my $Attacking;
+	my $AttackDelayTickCount;
+	my $AttackDelayTickInterval;
+	my $Size;
+	my $Score;
+	my $Lives;
+	my $Credits;
+	my $BeenHit;
+	my $HitTextures;
+	my $HitTickCount;
+	my $HitTickInterval;
+	my $InvulTickCount;
+	my $InvulTickInterval;
+	my $HitFrame;
+	my $HitFrameMax;
+	my $HitCycles;
+	my $KeyControls;
+	my $HurtSound;
+	my $AttackSound;
+	my $GemPickupSound;
+	my $Immortal;
+	my $ImmortalCounter;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::Entity::__construct($Engine, $EName);
+		$ID = EntityType->$Player;
+		$GemPickupSound = array(BinaryLoad('./Sounds/GemPickup.wav'), 'GemPickup.wav');
+		$HurtSound = array(BinaryLoad('./Sounds/PlayerHurt.wav'), 'PlayerHurt.wav');
+		$AttackSound = array(BinaryLoad('./Sounds/PlayerAttack.wav'), 'PlayerAttack.wav');
+		$Size = $Game->$Map->$MapTileSize;
+		$IsPlayer = true;
+		$Attacking = false;
+		$AttackDelayTickCount = 0;
+		$AttackDelayTickInterval = 100;
+		$Score = 0;
+		$Lives = 3; // Default
+		$Credits = 1; // Default
+		$BeenHit = false;
+		$HitTextures = array();
+		$HitTickCount = 0;
+		$HitTickInterval = 15;
+		$InvulTickCount = 0;
+		$InvulTickInterval = 100;
+		$HitFrame = 0;
+		$HitFrameMax = 0;
+		$KeyControls = array();
+		$Immortal = false;
+		$ImmortalCounter = 0;
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function ImmortalBuff()
+	{
+		$Immortal = true;
+		$ImmortalCounter = 100000000;
+	}
+	Function Debuff()
+	{
+		// Turn immortal off
+		$Immortal = false;
+		$ImmortalCounter = 0;
+		// Put speed back to default
+		$VelocityValue = $DefaultVelocityValue;
+		$VelocityMovesValue = $DefaultVelocityMovesValue;
+	}
+	Function Hit()
+	{
+		PlaySound($HurtSound, false);
+		$BeenHit = true;
+		$AllowMoveCheck = false;
+		$HitCycles = 5;
+		$HitFrame = 0;
+		$Immortal = true;
+		$ImmortalCounter = 20;
+	}
+	Function RemoveHit( )
+	{
+		$BeenHit = false;
+		$AllowMoveCheck = true;
+	}
+	Function AddScore( $Value )
+	{
+		$Score += $Value;
+	}
+	Function AddLives( $Value )
+	{
+		$Lives += $Value;
+	}
+	Function SubLives( $Value )
+	{
+		$Lives -= $Value;
+		if($Lives <= 0)
+		{
+			$Lives = 0;
+			if($Credits > 0)
+			{
+				SubCredits(1);
+				$Lives = 3;
+			}
+			else
+			{
+				// Game over....
+				$Game->GameOver($this);
+			}
+		}
+	}
+	Function AddCredits( $Value )
+	{
+		$Credits += $Value;
+	}
+	Function SubCredits( $Value )
+	{
+		$Credits -= $Value;
+		if($Credits <= 0)
+			$Credits = 0;
+	}
+	Function Attack( )
+	{
+		my $NewAttackDelayTickCount = TickCount($AttackDelayTickCount);
+		if($NewAttackDelayTickCount > $AttackDelayTickInterval)
+		@{
+			$AttackDelayTickCount = TickCount() + $AttackDelayTickInterval;
+			$Attacking = true;
+			if($Facing == Facing->$Right)
+				$Facing = Facing->$RightAttack;
+			if($Facing == Facing->$Left)
+				$Facing = Facing->$LeftAttack;
+			// Get block we are facing if it is Solid
+			my List($X, $Y) = GetFacingTile();
+			// Are we inside a block?
+			my List($PX, $PY) = GetPosition();
+			my $Trapped = $Game->$Map->$Level[$PX][$PY] != TileType->$Blank;
+			if($Trapped)
+			@{
+				$X = $PX;
+				$Y = $PY;
+			}
+			my List($X2, $Y2) = GetFacingTileFrom($X, $Y);
+			// Melt Ice
+			if(
+				!$Game->$Map->IsTileProtected($X, $Y)
+				&&
+				$Game->$Map->$Level[$X][$Y] == TileType->$Ice
+				&&
+				($Trapped || $Game->$Map->IsTileSolid($Game->$Map->$Level[$X2][$Y2], $this))
+			)
+			@{
+				PlaySound($AttackSound, false);
+				$Game->$Map->SetTile($X, $Y, TileType->$InvisBlock);
+				my $IceName = 'EntityBreakingIce' . EntityBreakingIce::$UniqueID++;
+				my $newEntity = new EntityBreakingIce($Game, $IceName, $X, $Y);
+				$Game->$Map->$EntityManager->$Entities[$newEntity->$ID][$IceName] = $newEntity;
+			}
+			// Push Block
+			if(
+				!$Game->$Map->IsTileProtected($X, $Y)
+				&&
+				!$Game->$Map->IsTileProtected($X2, $Y2)
+				&&
+				($Game->$Map->$Level[$X][$Y] == TileType->$Ice || $Game->$Map->$Level[$X][$Y] == TileType->$Ruby)
+				&&
+				!$Game->$Map->IsTileSolid($Game->$Map->$Level[$X2][$Y2], $this)
+			)
+			@{
+				PlaySound($AttackSound, false);
+				my $BlockType = $Game->$Map->$Level[$X][$Y];
+				$Game->$Map->SetTile($X, $Y, TileType->$Blank);
+				my $IceName = 'EntityMovingBlock' . EntityMovingBlock::$UniqueID++;
+				my $newEntity = new EntityMovingBlock($Game, $IceName, $BlockType, $X, $Y);
+				$newEntity->$Player = $this;
+				$Game->$Map->$EntityManager->$Entities[$newEntity->$ID][$IceName] = $newEntity;
+				$Game->$Map->$EntityManager->$Entities[$newEntity->$ID][$IceName]->TryMove($MoveDirection);
+			}
+		}
+	}
+	Function StopAttack( )
+	{
+		$Attacking = false;
+		if($Facing == Facing->$RightAttack)
+			$Facing = Facing->$Right;
+		if($Facing == Facing->$LeftAttack)
+			$Facing = Facing->$Left;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		// Check if we are standing on Gems
+		my List($X, $Y) = GetPosition();
+		switch($Game->$Map->$Level[$X][$Y])
+		{
+			case TileType->$RedGem:
+			case TileType->$YellowGem:
+			case TileType->$GreenGem:
+			case TileType->$BlueGem:
+				$Game->$Map->SetTile($X, $Y, TileType->$Blank);
+				$Game->$Map->GemCount();
+				AddScore(10);
+				PlaySound($GemPickupSound, false);
+				break;
+		}
+	}
+	Function Draw( )
+	{
+		if($Disposed)
+			return;
+		my $Playing = $Game->$CurrentState == GameState->$Playing;
+		my $Col = $Immortal ? $ColTransWhite100 : $ColWhite;
+		if($BeenHit)
+		@{
+			XNADraw($HitTextures[$HitFrame], $DrawPosition[0], $DrawPosition[1], $ColWhite, $Size, $Size);
+			my $NewHitTickCount = TickCount($HitTickCount);
+			if($Playing && $NewHitTickCount > $HitTickInterval)
+			@{
+				$HitTickCount = TickCount() + $HitTickInterval;
+				$HitFrame++;
+				if($HitFrame >= $HitFrameMax)
+				@{
+					$HitFrame = 0;
+					$HitCycles--;
+				}
+				if($HitCycles == 0)
+					RemoveHit();
+			}
+		}
+		else
+		@{
+			if($Playing && $Immortal)
+			{
+				my $NewInvulTickCount = TickCount($InvulTickCount);
+				if($Playing && $NewInvulTickCount > $InvulTickInterval)
+				@{
+					$InvulTickCount = TickCount() + $InvulTickInterval;
+					$ImmortalCounter--;
+					if($ImmortalCounter == 0)
+						$Immortal = 0;
+				}
+			}
+			if($Immortal ? ($Playing ? (int)Random(0, 2) : true) : true)
+				XNADraw($Textures[$Facing][0], $DrawPosition[0], $DrawPosition[1], $Col, $Size, $Size);
+		}
+	}
+};

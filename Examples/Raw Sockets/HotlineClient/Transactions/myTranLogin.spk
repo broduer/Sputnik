@@ -1,0 +1,21 @@
+Class TransactionLogin extends Transaction
+{
+	Function __Construct( HLSocket $H, $Login, $Pass )
+	{
+		$HLSocket = $H;
+		$Parameters = new Parameters();
+		$Parameters->AddStringEnc(FieldID->$UserLogin, $Login);
+		if(StrLen($Pass) > 0)
+			$Parameters->AddStringEnc(FieldID->$UserPassword, $Pass);
+		$Parameters->AddInteger(FieldID->$Vers, $H->$ClientVersion);
+		my $Data = $Parameters->GetData();
+		SetFlags(0);
+		SetIsReply(0);
+		SetType(myTran->$Login);
+		SetID($H->GetUniqueID());
+		SetErrorCode(0);
+		SetData($Data);
+		SetTotalSize(BinaryLen($Data));
+		SetDataSize(BinaryLen($Data));
+	}
+}

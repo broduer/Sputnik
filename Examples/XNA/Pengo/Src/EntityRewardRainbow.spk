@@ -1,0 +1,78 @@
+Class EntityRewardRainbow extends EntityReward
+{
+	Static $UniqueID = 0;
+	Function __Construct(EngineMain $Engine, $EName, $X, $Y)
+	{
+		parent::EntityReward::__construct($Engine, $EName, $X, $Y);
+		$ID = EntityType->$Rainbow;
+		$ParentID = EntityType->$Reward;
+		$Size = $Engine->$Map->$MapTileSize;
+		$Tex = XNAPng('./Images/Entities/Rainbow/Rainbow.png');
+		$DeathCounter = 50; // Full cycle
+		$RewardValue = 0;
+		$NoClip = true;
+		SetFalling();
+	}
+	Function __Destruct()
+	{
+		Dispose();
+	}
+	Function Dispose()
+	{
+		if($Disposed)
+			return;
+		$Disposed = true;
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		my $V = $Game->$Map->PlayerAt(GetPosition());
+		if($V)
+		@{
+			$Game->$Map->$RainbowTriggered = true;
+			// Play Sound
+			PlayCollectionSound();
+			// Convert the map!
+			DoRainbow();
+			// Remove this Rainbow entity
+			Dispose();
+			return;
+		}
+		else
+			HandleFalling();
+	}
+	Function RainbowCompat( $TileType )
+	{
+		return $TileType == TileType->$Ice || $TileType == TileType->$Ruby;
+	}
+	Function DoRainbow( )
+	{
+        For(my $i = 0;$i < $Game->$Map->$MapWidth; $i++)
+        @{
+            For(my $j = 0;$j < $Game->$Map->$MapHeight; $j++)
+            @{
+				if(!$Game->$Map->IsTileProtected($i, $j) && RainbowCompat($Game->$Map->$Level[$i][$j]))
+				{
+					my $Rnd = (int)Random(0, 3);
+					switch($Rnd)
+					{
+						case 0:
+							$Game->$Map->SetTile($i, $j, TileType->$RedGem);
+							break;
+						case 1:
+							$Game->$Map->SetTile($i, $j, TileType->$YellowGem);
+							break;
+						case 2:
+							$Game->$Map->SetTile($i, $j, TileType->$GreenGem);
+							break;
+						default:
+							$Game->$Map->SetTile($i, $j, TileType->$BlueGem);
+							break;
+					}
+				}
+            }
+        }
+		$Game->$Map->GemCount();
+	}
+};

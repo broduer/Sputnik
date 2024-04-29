@@ -1,0 +1,60 @@
+Class EntityMobCreeper extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $DeathSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$ID = EntityType->$Creeper;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIWander = new AIWander($this);
+		$AIWander->$Enabled = true;
+		$AI->$AIList[] = $AIWander;
+		
+		$DeathSound = array(BinaryLoad('./Sounds/MonsterCrushed.wav'), 'MonsterCrushed.wav');
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Creeper/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Creeper/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Creeper/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Creeper/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Creeper/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Creeper/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Creeper/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Creeper/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Creeper/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Creeper/Spawn13.png');
+		$Respawn = false;
+	}
+	Function Death()
+	{
+		if($Disposed)
+			return;
+		PlaySound($DeathSound, false);
+		if($Respawn)
+			$Game->$Map->SpawnDelayed($ID);
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+			return;
+		$AI->Update();
+		AttackPlayers();
+	}
+};

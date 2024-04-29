@@ -1,0 +1,136 @@
+##TEMPLATE-NAME 'D - Matthias Piepkorn Engine (Separate constants)'
+##LANGUAGE 'Delphi'
+##ENGINE-NAME 'D Engine by Matthias Piepkorn'
+##AUTHOR 'Matthias Piepkorn' 
+##FILE-EXTENSION 'd'
+##NOTES
+Skeleton program for D, uses the GOLD Parser D Engine 
+by Matthias Piepkorn
+
+Can load grammar from a file or use bintod to embed
+it into the program. Generate necessary constants 
+with the "Constants" template
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+##PARAMETERS
+module %OutputFileBase%; 
+##END-PARAMETERS
+
+import
+    goldengine.goldparser,
+##PARAMETERS
+    %Name%_consts;
+##END-PARAMETERS
+
+version(Tango) {
+    import
+        tango.io.Conduit,
+        tango.io.MemoryConduit;
+} else {
+    import std.stream;
+}
+
+//Generated parser class for 
+##PARAMETERS
+//%Name% grammar by %Author%
+//Grammar version: %Version%
+class %Name%Parser {
+##END-PARAMETERS
+    private {
+        Grammar mGrammar;
+        GOLDParser mParser;
+        Object mRoot;
+    }
+
+    this() {
+        loadGrammar();
+        mParser = new GOLDParser(mGrammar);
+        mParser.onReduce = &reduce;
+        mParser.onAccept = &accept;
+        mParser.onProgress = &progress;
+    }
+    
+    //This will load the grammar file on instanciation
+    private void loadGrammar() {
+##PARAMETERS
+        //Load grammar from an external file
+        mGrammar = new Grammar("%Name%.cgt");
+        //Uncomment this to load the grammar from a binary
+        //array created by bintod
+        /*
+version(Tango) {
+        auto mem = new MemoryConduit;
+        mem.write(BINARY_%Name%_CGT);
+		mGrammar = new Grammar(mem);
+} else {
+		mGrammar = new Grammar(new MemoryStream(BINARY_%Name%_CGT));
+}*/
+##END-PARAMETERS
+    }
+
+    //Parse a source string
+    //The parse is successful if no exception is thrown
+    public void execute(wchar[] source) {
+        mRoot = null;
+        mParser.loadSource(source);
+        run();
+    }
+    
+    //Parse a stream source
+    //The parse is successful if no exception is thrown
+version(Tango) {
+	public void execute(Conduit source) {
+		mRoot = null;
+		mParser.loadSource(source);
+		run();
+	}
+} else {
+	public void execute(Stream source) {
+		mRoot = null;
+		mParser.loadSource(source);
+		run();
+	}
+}
+    
+    //When the parse is successful, you can retrieve the
+    //parse tree root you returned for the start symbol reduction
+    public Object root() {
+        return mRoot;
+    }
+    
+    private void run() {
+        mParser.parse();
+    }
+
+    private void progress(int line, int pos, int size) {
+        //Add code to display the progress to the user here
+    }
+
+    //Create an object for the current reduction from strings
+    //and objects in tokens
+    private Object reduce(Rule redRule, Token[] tokens) {
+        //Refer to token strings with
+        //    tokens[i].text
+        //Refer to reduction objects with
+        //    tokens[i].data
+        switch (redRule.index) {
+##RULES
+            // %Description%     
+            case %ID%:
+                return null;
+                break;
+##END-RULES         
+            default:
+                assert(false, "Rule "~redRule.ntSymbol.toString~" not implemented. The file needs to be updated");
+                break;
+        }
+    }
+    
+    private void accept(Object reduction) {
+        mRoot = reduction;
+    }
+    
+}

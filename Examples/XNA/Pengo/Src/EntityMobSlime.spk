@@ -1,0 +1,71 @@
+Class EntityMobSlime extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $DeathSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$ID = EntityType->$Slime;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIWanderAStar = new AIWanderAStar($this);
+		$AIWanderAStar->$Enabled = true;		
+		my $AIChase = new AIChase($this);
+		$AIChase->$Enabled = true;
+		$AIChase->$TryChasePlayer = true;
+		$AIChase->$TryChasePlayerDist = 3;
+		$AIChase->$TryChasePlayerLock = true;		
+		my $AIMoveDelay = new AIMoveDelay($this);
+		$AIMoveDelay->$MoveFor = 200;
+		$AIMoveDelay->$StopFor = 10;
+		$AIMoveDelay->$Enabled = true;
+		$AI->$AIList[] = $AIMoveDelay;
+		$AI->$AIList[] = $AIChase;
+		$AI->$AIList[] = $AIWanderAStar;
+		
+		$DeathSound = array(BinaryLoad('./Sounds/MonsterCrushed.wav'), 'MonsterCrushed.wav');
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Slime/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Slime/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Slime/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Slime/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Slime/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Slime/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Slime/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Slime/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Slime/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Slime/Spawn13.png');
+		$Respawn = false;
+	}
+	Function Death()
+	{
+		if($Disposed)
+			return;
+		PlaySound($DeathSound, false);
+		if($Respawn)
+			$Game->$Map->SpawnDelayed($ID);
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+			return;
+		$AI->Update();
+		AttackPlayers();
+	}
+};

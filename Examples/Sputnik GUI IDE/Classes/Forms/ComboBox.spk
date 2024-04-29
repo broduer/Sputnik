@@ -1,0 +1,55 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$ComboBox] = false;
+Object::$Names[ObjectType->$ComboBox] = 'ComboBox';
+Object::$Props[ObjectType->$ComboBox] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropColour('BackColor', null, null, null),
+												new PropColour('ForeColor', null, null, null),
+												new PropFont('Font', null, null, null),
+												new PropDropDownStyle('DropDownStyle', null, 'DropDown', null),
+												new PropComboBoxItems('Items', null, null, null)
+											);
+Object::$Events[ObjectType->$ComboBox] = array(
+												Object::$GenericEvents[<=>],
+												'SelectedIndexChanged' => EventType->$Link,
+												'SelectedValueChanged' => EventType->$Link
+											);
+Object::$MenuAdd[ObjectType->$ComboBox] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$ComboBox]);
+GUILink(Object::$MenuAdd[ObjectType->$ComboBox], 'Click', 'CreateControl(ObjectType->$ComboBox);');
+Class ComboBox extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 110, $Height = 110)
+	{
+		CreateParent($myParent);
+		SetType(ObjectType->$ComboBox);
+		SetName($Name);
+		SetObject(GUICreate('ComboBox', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		// ContextMenu
+		my $MenuClear = GUICreate('MenuItem', GetContextMenu(), 'Clear Items');
+		GUISetProp(GetObject(), 'ContextMenu', GetContextMenu());
+		GUILink($MenuClear, 'Click', '$param->onClickContextClear();', $this);
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function onClickContextClear()
+	{
+		GUIComboBox(GetObject(), 'Clear');
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

@@ -1,0 +1,23 @@
+﻿$LoadCommands['news'] = array('CmdNews', 0, 0);
+Class extends ServerManager
+{
+	Function CmdNews($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Get the latest news about this server';
+		if ($args === 'help')
+			return array('Get the latest news about this server');
+		if ($commandUser == null)
+			return;
+		my $fileLines = array();
+		if (FileExists('./Variables/News.txt'))
+			$fileLines = FileReadLines('./Variables/News.txt');
+		SayToUser($commandUser, 'The server news:');
+		foreach($fileLines as my $line)
+			SayToUser($commandUser, $line);
+	}
+}

@@ -1,0 +1,29 @@
+##TEMPLATE-NAME 'C# - Constants Only with Inline Documentation'
+##LANGUAGE 'C#'
+##ENGINE-NAME 'None'
+##AUTHOR 'Max Battcher (www.worldmaker.net)' 
+##FILE-EXTENSION 'cs'
+##NOTES
+This template creates a set of C# enumerated constants for the grammar's symbols and rules.
+##END-NOTES
+##ID-CASE UPPERCASE
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+enum SymbolConstants : int
+{
+##SYMBOLS
+##DELIMITER ','   
+   /// <c> %Description.XML% </c>
+   %ID.Padded% = %Value%%Delimiter%     
+##END-SYMBOLS
+};
+
+enum RuleConstants : int
+{
+##RULES
+##DELIMITER ','   
+   /// <c> %Description.XML% </c>
+   %ID.Padded% = %Value%%Delimiter%    
+##END-RULES
+};

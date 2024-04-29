@@ -1,0 +1,420 @@
+#<?
+Class Compiler
+{
+	my $InternalCompiler;
+	my $IncludesDone;
+	my $RequiresDone;
+	my $Requires;
+	my $RequireCount;
+	my $IncludeCount;
+	my $IncludeHash;
+	my $Failed;
+	my $ParsedLines;
+	Function __Construct()
+	{
+		$InternalCompiler = new SpkCompiler();
+		$IncludesDone = array();
+		$RequiresDone = array();
+		$Requires = array();
+		$RequireCount = 0;
+		$IncludeCount = 0;
+		$IncludeHash = array();
+		$Failed = false;
+		$ParsedLines = 0;
+	}
+	Function __Destruct()
+	{
+		unset($InternalCompiler);
+		unset($IncludesDone);
+		unset($RequiresDone);
+		unset($Requires);
+		unset($RequireCount);
+		unset($IncludeCount);
+		unset($IncludeHash);
+		unset($Failed);
+	}
+	Function BeginCompile($Script, $Exe)
+	{
+		ChangeProjectName($ProjectName, " ;; Compiling...");
+		AddPath(Replace(GetFullPath($Exe), GetFileName($Exe), ''));
+		my $MainScript = ParseFile($Script, true, true);
+		println("Parsed $ParsedLines Line(s) of code");
+		if($Failed)
+			return false;
+		my $IncludeLoader = @"Global $_Files = array();" . "\n";
+		foreach($IncludeHash as my $FileName => my $VariableName)
+			$IncludeLoader .= @"$_Files[""" . $FileName . @"""] = $" . $VariableName . ";" . "\n";
+		$MainScript ..= $IncludeLoader;
+		$InternalCompiler->Add('Script', 'str', $MainScript);
+		$InternalCompiler->Add('ScriptREQCount', 'str', $RequireCount);
+		$InternalCompiler->Save($Exe);
+		ChangeProjectName($ProjectName);
+		if(FileExists($Exe))
+			return true;
+		else
+			return false;
+	}
+	Function ParseFile($File, $Main, $NotFile)
+	{
+		if($NotFile)
+			println("Compiling main source");
+		else
+			println('Compiling file: ' . GetFileName($File));
+		my $RET = "";
+		my $Lines;
+		if ($NotFile)
+		{
+			my $p = Preprocess($File);
+			$Lines = Lines($p);
+		}
+		else
+		{
+			my $t = FileLoad($File);
+			my $p = Preprocess($t);
+			$Lines = Lines($p);
+		}
+		my $i = 0;
+		Foreach ( $Lines as my $Linex )
+		{
+			my $OrigLine = $Linex;
+			my $Line = trim($Linex);
+			if($Line =~ m/^#Include\s{1,}(.*)/i)
+			{
+				my $IncludeSTR = trim($1);
+				my $CSV = CSV($IncludeSTR, ' ', '"', @'\0');
+				if(Count($CSV) == 1)
+				{
+					my $CSVPars = $CSV[0];
+					if(Count($CSVPars) == 2)
+					{
+						my $IncludeType = LC($CSVPars[0]);
+						my $IncludeParam = $CSVPars[1];
+						switch($IncludeType)
+						{
+							case 'binary':
+							{
+								my $Name = '';
+								my $Exists = false;
+								If(FileExists(ParsePath($IncludeParam)))
+								{
+									$Name = ParsePath($IncludeParam);
+									$Exists = true;
+								}
+								if( $Exists )
+								{
+									my $IncludeName = "myIncl$IncludeCount";
+									my $binary = BinaryLoad($Name);
+									$InternalCompiler->Add($IncludeName, 'bin', $binary);
+									unset($binary);
+									$IncludeCount++;
+									//$IncludeHash[GetFileName($Name)] = $IncludeName;
+									$IncludeHash[$Name] = $IncludeName;
+								}
+								else
+								{
+									throwError("Invalid #include [file not found] (Line '$i' File '$FileName'): " . $Line);
+									if($Failed)
+										return;
+								}
+							}
+							break;
+							case "text":
+							{
+								my $Name = "";
+								my $Exists = false;
+								If(FileExists(ParsePath($IncludeParam)))
+								{
+									$Name = ParsePath($IncludeParam);
+									$Exists = true;
+								}
+								if( $Exists )
+								{
+									my $IncludeName = "myIncl$IncludeCount";
+									my $Text = BinaryLoad($Name);
+									$InternalCompiler->Add($IncludeName, 'str', $Text);
+									unset($Text);
+									$IncludeCount++;
+									//$IncludeHash[GetFileName($Name)] = $IncludeName;
+									$IncludeHash[$Name] = $IncludeName;
+								}
+								else
+								{
+									throwError("Invalid #include [file not found] (Line '$i' File '$FileName'): " . $Line);
+									if($Failed)
+										return;
+								}
+							}
+							break;
+							default:
+							{
+								throwError("Invalid #include [type] (Line '$i' File '$FileName'): " . $Line);
+								if($Failed)
+									return;
+							}
+							break;
+						}
+					}
+					else if(Count($CSVPars) == 3)
+					{
+						my $IncludeType = LC($CSVPars[0]);
+						my $IncludeVariable = $CSVPars[1];
+						my $IncludeParam = $CSVPars[2];
+						switch($IncludeType)
+						{
+							case 'binary':
+							{
+								my $Name = '';
+								my $Exists = false;
+								If(FileExists(ParsePath($IncludeParam)))
+								{
+									$Name = ParsePath($IncludeParam);
+									$Exists = true;
+								}
+								if( $Exists )
+								{
+									my $binary = BinaryLoad($Name);
+									$InternalCompiler->Add(TrimLeft($IncludeVariable, '$'), 'bin', $binary);
+									unset($binary);
+								}
+								else
+								{
+									throwError("Invalid #include [file not found] (Line '$i' File '$FileName'): " . $Line);
+									if($Failed)
+										return;
+								}
+							}
+							break;
+							case 'text':
+							{
+								my $Name = '';
+								my $Exists = false;
+								If(FileExists(ParsePath($IncludeParam)))
+								{
+									$Name = ParsePath($IncludeParam);
+									$Exists = true;
+								}
+								if( $Exists )
+								{
+									my $Text = FileLoad($Name);
+									$InternalCompiler->Add(TrimLeft($IncludeVariable, '$'), 'str', $Text);
+									unset($binary);
+								}
+								else
+								{
+									throwError("Invalid #include [file not found] (Line '$i' File '$FileName'): " . $Line);
+									if($Failed)
+										return;
+								}
+							}
+							break;
+							default:
+							{
+								throwError("Invalid #include [type] (Line '$i' File '$FileName'): " . $Line);
+								if($Failed)
+									return;
+							}
+							break;
+						}
+					}
+					else
+					{
+						throwError("Invalid #include statement (Line '$i' File '$FileName'): " . $Line);
+						if($Failed)
+							return;
+					}
+				}
+				else
+				{
+					throwError("Invalid #include statement (Line '$i' File '$FileName'): " . $Line);
+					if($Failed)
+						return;
+				}
+			}
+			else if($Line =~ m/^(Include|Require)\s*\(/i)
+			{
+				if($Line =~ m/^Include\s*\(\s*"(.*?)"\s*,\s*(.*)\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveInclude($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Include\s*\(\s*"(.*?)"\s*,\s*(\d{1,})\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveInclude($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Include\s*\(\s*"(.*?)"\s*\);/i)
+				{
+					my $FileName = $1;
+					ResolveInclude($RET, $FileName);
+				}
+				else if($Line =~ m/^Require\s*\(\s*"(.*?)"\s*,\s*(.*)\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveRequire($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Require\s*\(\s*"(.*?)"\s*,\s*(\d{1,})\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveRequire($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Require\s*\(\s*"(.*?)"\s*\);/i)
+				{
+					my $FileName = $1;
+					ResolveRequire($RET, $FileName);
+				}
+				else if($Line =~ m/^Include\s*\(\s*'(.*?)'\s*,\s*(.*)\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveInclude($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Include\s*\(\s*'(.*?)'\s*,\s*(\d{1,})\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveInclude($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Include\s*\(\s*'(.*?)'\s*\);/i)
+				{
+					my $FileName = $1;
+					ResolveInclude($RET, $FileName);
+				}
+				else if($Line =~ m/^Require\s*\(\s*'(.*?)'\s*,\s*(.*)\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveRequire($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Require\s*\(\s*'(.*?)'\s*,\s*(\d{1,})\);/i)
+				{
+					my $FileName = $1;
+					my $Num = $2;
+					ResolveRequire($RET, $FileName, $Num);
+				}
+				else if($Line =~ m/^Require\s*\(\s*'(.*?)'\s*\);/i)
+				{
+					my $FileName = $1;
+					ResolveRequire($RET, $FileName);
+				}
+				else
+				{
+					throwError("Invalid include(), require() or #include statement (Line '$i' File '$FileName'): " . $Line);
+					if($Failed)
+						return;
+				}
+			}
+			else
+			{
+				$RET .= $OrigLine . "\n";
+			}
+			$i++;
+			$ParsedLines++;
+		}
+		return $RET;
+	}
+
+	Function ResolveRequire(&$RET, $FileName, $Num = 0)
+	{
+		my $Exists = false;
+		my $Name = '';
+		$Num = trim($Num);
+		switch(lc($Num))
+		{
+			case 'true':
+				$Num = 1;
+				break;
+			case 'false':
+				$Num = 0;
+				break;
+		}
+		If(FileExists(ParsePath($FileName)))
+		{
+			$Name = ParsePath($FileName);
+			$Exists = true;
+		}
+		If($Exists)
+		{
+			my $DoIt = false;
+			if($Num > 0)
+			{
+				if(!isKeySet($RequiresDone, $Name))
+					$DoIt = true;
+			}
+			else
+				$DoIt = true;
+			if($DoIt)
+			{
+				$RequiresDone[$Name] = true;
+				my $ReqCode = ParseFile($Name, false);
+				my $RequireName = "";
+				if(!isKeySet($Requires, $Name))
+				{
+					$Requires[$Name] = 'ScriptREQ' . $RequireCount;
+					$RequireCount++;
+					$RequireName = $Requires[$Name];
+				}
+				else
+					$RequireName = $Requires[$Name];
+				$InternalCompiler->Add($RequireName, 'str', $ReqCode);
+				$RET .= "Eval(\$$RequireName, 2);\n";
+			}
+		}
+		else
+		{
+			throwError("Invalid require() statement file '$FileName' cannot be found");
+			return;
+		}
+	}
+
+	Function ResolveInclude(&$RET, $FileName, $Num = 0)
+	{
+		my $Exists = false;
+		my $Name = "";
+		$Num = trim($Num);
+		switch(lc($Num))
+		{
+			case 'true':
+				$Num = 1;
+				break;
+			case 'false':
+				$Num = 0;
+				break;
+		}
+		If(FileExists(ParsePath($FileName)))
+		{
+			$Name = ParsePath($FileName);
+			$Exists = true;
+		}
+		If($Exists)
+		{
+			my $DoIt = false;
+			if($Num > 0)
+			{
+				if(!isKeySet($IncludesDone, $Name))
+					$DoIt = true;
+			}
+			else
+				$DoIt = true;
+			if($DoIt)
+			{
+				$IncludesDone[$Name] = true;
+				$RET .= ParseFile($Name, false);
+			}
+		}
+		else
+		{
+			throwError("Invalid include() statement file '$FileName' cannot be found");
+			return;
+		}
+	}
+
+	Function throwError( $errString )
+	{
+		println($errString);
+		$Failed = true;
+	}
+};

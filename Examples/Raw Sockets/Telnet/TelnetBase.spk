@@ -1,0 +1,62 @@
+﻿Class TelnetBase
+{
+	my $appName;
+	my $toProcess;
+	my $console;
+	my $Socket;
+	my $isServer;
+	Function Init()
+	{
+		// Create the Console handler and set it up
+		$console = new ConsoleWithInput($appName);
+		$console->$ShowCommands = false;
+		$console->$ShowType = false;
+		$console->$TypedFunc = array($this, 'UserTyped');
+		$console->AddCommand('.exit', array($this, 'CmdExit'), 0, 0);
+		$console->AddCommand('.cls', array($this, 'CmdCls'), 0, 0);
+		// Create a variable to hold lines from server to process later
+		// we will store them here on the network thread then
+		// when the main thread runs a processing it will handle them
+		$toProcess = array();
+		// Create the socket
+		$Socket = SocketCreate('Stream', 'TCP');
+	}
+	// The main function of the client which will handle everything
+	// This will eat the thread given to it
+	Function Go()
+	{
+		// Begin loop to process user input and show console text
+		while (true)
+		{
+			// Process console stuff
+			$console->Process();
+			// Make sure to lock the process thread
+			// since if stuff gets added to the array while
+			// we are processing bad things will happen
+			ThreadLock("ToProcess")
+			{
+				// Begin processing network lines
+				// will process one at a time
+				ProcessNetwork();
+			}
+			// dont hog the cpu
+			sleep(1);
+		}
+	}
+	// Adds a new line of text to the console window
+	Function AppendLine($text)
+	{
+		$console->AppendLine($text);
+	}
+	// Handle the Cls command -- Will clear the console
+	Function CmdCls($args, $argCount, $cmdRest)
+	{
+		$console->ClearScreen('-- Cleared');
+	}
+	// Handle the Exit command -- Will close the program
+	Function CmdExit($args, $argCount, $cmdRest)
+	{
+		unset($Socket);
+		exit;
+	}
+}

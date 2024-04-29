@@ -1,0 +1,43 @@
+#include-once
+#require-once
+// Trigger the CGI flag making Sputnik use <BR> instead of \n all over the place
+// It also causes Sputnik to print the content type
+// on ERROR and EXCEPTION (will only print it once)
+#CGI
+// Create the $Request array
+Global $Request = array();
+
+// Define the QueryString
+my $QueryString;
+
+// Fill the Query string with data
+if (EnvGet('REQUEST_METHOD') eq 'GET')
+	// Fill it with METHOD_POST data
+	$QueryString = EnvGet('QUERY_STRING');
+else
+	// Otherwise fill it with data we read from the console
+	$QueryString = Read(EnvGet('CONTENT_LENGTH'));
+// Parse the query string
+ResolveQueryString($QueryString);
+
+// This function will parse the query string into
+// KEY VALUE pairs in the $Request array
+Function ResolveQueryString( $QueryString )
+{
+	my $QueryList = Split($QueryString, '&');
+	Foreach($QueryList as my $i)
+	{
+		my List ( $Key, $Value ) = Split($i, '=');
+		$Value =~ s/%([a-fA-F0-9][a-fA-F0-9])/ChrW(Dec($1))/ego;
+		$Value =~ s/\+/ /gi;
+		$Value =~ s/\</&lt;/gi;
+		$Value =~ s/\>/&gt;/gi;
+		$Request[$Key] = $Value;
+	}
+}
+
+// This function will print the default Content-type: text/html\n\n
+Function ContentTypeTextHtml()
+{
+	print("Content-type: text/html\n\n");
+}

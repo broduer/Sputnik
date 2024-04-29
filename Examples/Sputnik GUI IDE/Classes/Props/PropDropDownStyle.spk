@@ -1,0 +1,53 @@
+#<?
+Class PropDropDownStyle extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$BeginEditRet, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return GUIComboBox($Object->GetObject(), $Name);
+	}
+	override Function SetProp($Object, $Value)
+	{
+		my $Cur = GUIComboBox($Object->GetObject(), $Name);
+		my $Arr = array(
+							'DropDown' => ($Cur == 'DropDown'),
+							'DropDownList' => ($Cur == 'DropDownList'),
+							'Simple' => ($Cur == 'Simple')
+						);
+		my $Ret = ChoiceBox('DropDownList', 
+							'Please select a DropDownList type from the options below', 
+							$Arr
+							);
+		if($Ret === null)
+			return null;
+		if(IsEmptyOrNull($Ret))
+		@{
+			MsgBox('You must pick a style!', $Title, 48);
+			return;
+		}
+		GUIComboBox($Object->GetObject(), $Name, $Ret);
+		return $Ret;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		GUIComboBox($Object->GetObject(), 'DropDownStyle', $Value);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)GUIComboBox($Object->GetObject(), 'DropDownStyle');
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Style = GUIComboBox($Object->GetObject(), 'DropDownStyle');
+		$Code .= "GUIComboBox(\$$ObjName, 'DropDownStyle', '$Style');\r\n";
+		return $Code;
+	}
+};

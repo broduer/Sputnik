@@ -1,0 +1,62 @@
+﻿Class extends ServerManager
+{
+	Function AreBothFriends($user, $user2)
+	{
+		return IsUserFriendOf($user, $user2) && IsUserFriendOf($user2, $user);
+	}
+	Function IsUserFriendOf($user, $friend)
+	{
+		my $friendDb = GetFriendList($user);
+		my $steamId = $friend->$SteamId;
+		return InArray($friendDb, $steamId);
+	}
+	Function AddUserFriend($user, $friend)
+	{
+		my $friendDb = GetFriendList($user);
+		my $steamId = $friend->$SteamId;
+		if (InArray($friendDb, $steamId))
+			return;
+		$friendDb[] = $steamId;
+		SaveFriendList($user, $friendDb);
+	}
+	Function DelUserFriend($user, $friend)
+	{
+		my $friendDb = GetFriendList($user);
+		my $steamId = $friend->$SteamId;
+		if (!InArray($friendDb, $steamId))
+			return;
+		RemoveValue($friendDb, $steamId);
+		order($friendDb);
+		SaveFriendList($user, $friendDb);
+	}
+	Function DelAllUserFriends($user)
+	{
+		SaveFriendList($user, array());
+	}
+	Function GetFriendList($user)
+	{
+		if (!FileExists('./Variables/Friends.db'))
+			return array();
+		my $rawData = FileLoad('./Variables/Friends.db');
+		my $unserializedData = unserialize($rawData);
+		if (!IsVarArray($unserializedData))
+			return array();
+		if ($user === null)
+			return $unserializedData;
+		my $steamId = $user->$SteamId;
+		if (!IsKeySet($unserializedData, $steamId))
+			return array();
+		my $friendData = $unserializedData[$steamId];
+		if (!IsVarArray($friendData))
+			return array();
+		return $friendData;
+	}
+	Function SaveFriendList($user, $friendData)
+	{
+		my $friendDb = GetFriendList(null);
+		my $steamId = $user->$SteamId;
+		$friendDb[$steamId] = $friendData;
+		my $serializedData = serialize($friendDb);
+		FileSave('./Variables/Friends.db', $serializedData);
+	}
+}

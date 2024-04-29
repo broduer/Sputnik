@@ -1,0 +1,299 @@
+﻿$onPlayerSlayed[] = 'BountyOnPlayerSlayed';
+$LoadCommands['bounty'] = array('CmdBounty', 0, 3);
+Class extends ServerManager
+{
+	Function CmdBounty($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Player;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Place a bounty on somebody or view current bounties';
+		if ($args === 'help')
+			return array(
+							"Place a bounty on somebody or view current bounties",
+							"Type '/bounty add playerName 300' to add a bounty of 300 to a player",
+							"Type '/bounty del playerName' to remove all your bounties from a player",
+							"Type '/bounty list' list all bounties on all players",
+							"Type '/bounty list playerName' list all bounties on a given player"
+						);
+		if ($commandUser == null)
+			return;
+		if (GetConfig('AllowBounty') == false)
+		{
+			SayToUser($commandUser, "Sorry this command is currently disabled");
+			return;
+		}
+		my $ourName = $commandUser->$Name;
+		my $ourSteamId = $commandUser->$SteamId;
+		my $bountyData = $utils->getBountyFile();
+		switch ($argCount)
+		{
+			case 0:
+				SayToUser($commandUser, "See '/help bounty' to learn how to use this command");
+				return;
+			case 1:
+			{
+				my $action = lc($args[0]);
+				switch ($action)
+				{
+					case 'list':
+					{
+						my $bCount = count($bountyData);
+						SayToUser($commandUser, "There are currently '$bCount' bounties");
+						my $i = 1;
+						foreach($bountyData as my $steamId => my $data)
+						{
+							my List($found, $isOnline) = FindOnlineOrOfflinePlayer($steamId);
+							if ($found == null)
+								continue;
+							my $foundName = $found->$Name;
+							my $bountyCount = count($data);
+							my $total = 0;
+							foreach($data as my $bData)
+							{
+								my List($addedSteamId, $addedValue) = $bData;
+								$total += $addedValue;
+							}
+							SayToUser($commandUser, "$i. $foundName has '$bountyCount' bounties (Total pay: $total)");
+							$i++;
+						}
+					}
+					break;
+					default:
+						SayToUser($commandUser, "Invalid action '$action' for bounty");
+						return;
+				}
+			}
+			break;
+			case 2:
+			{
+				my $action = lc($args[0]);
+				switch ($action)
+				{
+					case 'list':
+					{
+						my $who = $args[1];
+						if (IsEmptyOrNull($who))
+						{
+							SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+							return;
+						}
+						my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+						if ($found == null)
+						{
+							SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+							return;
+						}
+						my $total = 0;
+						my $foundName = $found->$Name;
+						my $foundSteamId = $found->$SteamId;
+						my $wantsDead = array();
+						foreach($bountyData as my $steamId => my $data)
+						{
+							if ($steamId != $foundSteamId)
+								continue;
+							my List($found, $isOnline) = FindOnlineOrOfflinePlayer($steamId);
+							if ($found == null)
+								continue;
+							foreach($data as my $bData)
+							{
+								my List($addedSteamId, $addedValue) = $bData;
+								my List($foundWants, $isOnlineWants) = FindOnlineOrOfflinePlayer($addedSteamId);
+								if ($foundWants == null)
+									continue;
+								$total += $addedValue;
+								if (InArray($wantsDead, $foundWants))
+									continue;
+								$wantsDead[] = $foundWants;
+							}
+						}
+						if ($total <= 0)
+							SayToUser($commandUser, "$foundName does not have any bounties");
+						else
+						{
+							my $count = count($wantsDead);
+							SayToUser($commandUser, "There are '$count' player(s) with a bounty on $foundName");
+							foreach($wantsDead as my $contractor)
+							{
+								my $contractorName = $contractor->$Name;
+								SayToUser($commandUser, "$contractorName wants to see $foundName dead");
+							}
+							SayToUser($commandUser, "Killing $foundName will net you '$total' cash");
+						}
+					}
+					break;
+					case 'del':
+					{
+						my $who = $args[1];
+						if (IsEmptyOrNull($who))
+						{
+							SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+							return;
+						}
+						my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+						if ($found == null)
+						{
+							SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+							return;
+						}
+						if ($found->$Id == $commandUser->$Id)
+						{
+							SayToUser($commandUser, "You cannot add a bounty to yourself");
+							return;
+						}
+						my $foundName = $found->$Name;
+						my $foundSteamId = $found->$SteamId;
+						if (!IsKeySet($bountyData, $foundSteamId))
+						{
+							SayToUser($commandUser, "There are no bounties on $foundName");
+							return;
+						}
+						my $newData = array();
+						my $refund = 0;
+						foreach($bountyData[$foundSteamId] as my $bData)
+						{
+							my List($addedSteamId, $addedValue) = $bData;
+							if ($addedSteamId == $ourSteamId)
+							{
+								$refund += $addedValue;
+								continue;
+							}
+							$newData[] = $bData;
+						}
+						$bountyData[$foundSteamId] = $newData;
+						my $newBountyData = array();
+						foreach($bountyData as my $steamId => my $data)
+						{
+							if (count($data) <= 0)
+								continue;
+							$newBountyData[$steamId] = $data;
+						}
+						$utils->setBountyFile($newBountyData);
+						AddUserCash($commandUser, $refund);
+						my $cash = GetUserCash($commandUser);
+						SayToAll("$ourName removed all their bounties on $foundName ($refund worth)");
+						SayToUser($commandUser, "You were refunded '$refund' cash you now have '$cash' cash");
+					}
+					break;
+					default:
+						SayToUser($commandUser, "Invalid action '$action' for bounty");
+						return;
+				}
+			}
+			break;
+			case 3:
+			{
+				my $action = lc($args[0]);
+				switch ($action)
+				{
+					case 'add':
+					{
+						my $who = $args[1];
+						my $value = (int)$args[2];
+						if (IsEmptyOrNull($who))
+						{
+							SayToUser($commandUser, "You must enter a name (partial or full) or a player id");
+							return;
+						}
+						my List($found, $isOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($who);
+						if ($found == null)
+						{
+							SayToUser($commandUser, "Could not find a player with the name/id of '$who'");
+							return;
+						}
+						if ($found->$Id == $commandUser->$Id)
+						{
+							SayToUser($commandUser, "You cannot add a bounty to yourself");
+							return;
+						}
+						my $minBounty = (int)GetConfig('BountyMinValue');
+						if ($value <= 0 || $value < $minBounty)
+						{
+							SayToUser($commandUser, "The value '$value' is too low for a bounty the min is '$minBounty' cash");
+							return;
+						}
+						my $cash = GetUserCash($commandUser);
+						if ($value > $cash)
+						{
+							SayToUser($commandUser, "You cannot afford a bounty of '$value' since you only have '$cash'");
+							return;
+						}
+						my $foundName = $found->$Name;
+						my $foundSteamId = $found->$SteamId;
+						if (!IsKeySet($bountyData, $foundSteamId))
+							$bountyData[$foundSteamId] = array();
+						$bountyData[$foundSteamId][] = array($ourSteamId, $value);
+						$utils->setBountyFile($bountyData);
+						DelUserCash($commandUser, $value);
+						my $cash = GetUserCash($commandUser);
+						SayToAll("$ourName added a bounty of '$value' cash to $foundName");
+					}
+					break;
+					default:
+						SayToUser($commandUser, "Invalid action '$action' for bounty");
+						return;
+				}
+			}
+			break;
+		}
+	}
+	Function BountyOnPlayerSlayed($killer, $killed)
+	{
+		my List($foundKiller, $isKillerOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($killer);
+		if ($foundKiller == null)
+			return;
+		my List($foundKilled, $isKilledOnline) = FindOnlineOrOfflinePlayerByIdOrPartialName($killed);
+		if ($foundKilled == null)
+			return;			
+		my $bountyData = $utils->getBountyFile();
+		my $foundKillerName = $foundKiller->$Name;
+		my $foundKillerSteamId = $foundKiller->$SteamId;
+		my $foundKillerId = $foundKiller->$Id;
+		my $foundKilledName = $foundKilled->$Name;
+		my $foundKilledSteamId = $foundKilled->$SteamId;
+		my $foundKilledId = $foundKilled->$Id;
+		if ($foundKillerId == $foundKilledId)
+			return;
+		if (!IsKeySet($bountyData, $foundKilledSteamId))
+			return;
+		my $payValue = 0;
+		foreach($bountyData[$foundKilledSteamId] as my $bData)
+		{
+			my List($addedSteamId, $addedValue) = $bData;
+			$payValue += $addedValue;
+		}
+		$bountyData[$foundKilledSteamId] = array();
+		my $newBountyData = array();
+		foreach($bountyData as my $steamId => my $data)
+		{
+			if (count($data) <= 0)
+				continue;
+			$newBountyData[$steamId] = $data;
+		}
+		$utils->setBountyFile($newBountyData);
+		AddUserCash($foundKiller, $payValue);
+		my $cash = GetUserCash($commandUser);
+		SayToAll("$foundKillerName slayed $foundKilledName and collected the full bounty of '$payValue' cash");
+	}
+}
+
+Class extends Utils
+{
+	Function getBountyFile()
+	{
+		if (!FileExists('./Variables/Bounty.db'))
+			return array();
+		my $dileData = FileLoad('./Variables/Bounty.db');
+		my $data = unserialize($dileData);
+		if ($data == null || !IsVarArray($data))
+			return array();
+		return $data;
+	}
+	Function setBountyFile($lotteryData)
+	{
+		my $data = serialize($lotteryData);
+		FileSave('./Variables/Bounty.db', $data);
+	}
+}

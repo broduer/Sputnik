@@ -1,0 +1,42 @@
+#<?
+Class PropChar extends Prop
+{
+	Function __Construct($PropName, $PropValidation, $PropDefault, $PropParentType)
+	{
+		parent::__Construct($PropName, PAT->$EndEdit, $PropValidation, $PropDefault, $PropParentType);
+	}
+	override Function GetDefault($Object)
+	{
+		return $Default;
+	}
+	override Function GetProp($Object)
+	{
+		return (char)GUIGetProp($Object->GetObject(), $Name);
+	}
+	override Function SetProp($Object, $Value)
+	{
+		if($Validation !== null)
+		{
+			if(!RegexMatch($Value, $Validation))
+				return new PropVerificationError();
+		}
+		my $v = (char)$Value;
+		GUISetProp($Object->GetObject(), $Name, $v);
+		return $v;
+	}
+	override Function LoadProp($Object, $Value)
+	{
+		SetProp($Object, $Value);
+	}
+	override Function SaveProp($Object)
+	{
+		return (string)GetProp($Object);
+	}
+	override Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		my $Value = MakeChar(GetProp($Object));
+		$Code .= "GUISetProp(\$$ObjName, '$Name', $Value);\r\n";
+		return $Code;
+	}
+};

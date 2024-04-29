@@ -1,0 +1,64 @@
+Class AIAttackPlayersInSight extends AI
+{
+	Function __Construct(Entity $E)
+	{
+		parent::AI::__construct($E);
+	}
+	Function DoUpdate( )
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		return AttackPlayersInSight();
+	}
+	Function AttackPlayersInSight()
+	{
+		if(!$Enabled)
+			return false;
+		if($Disposed)
+			return false;
+		if(!AI::$AIEnabled)
+			return false;
+		if($Entity->Stopped())
+		{
+			my List($X, $Y) = $Entity->GetPosition();
+			foreach($Entity->$Game->$Map->Players() as my $V)
+			@{
+				if(!$V->$BeenHit && !$V->$Immortal)
+				@{
+					my List ($PX, $PY) = $V->GetPosition();
+					// Horizontal check
+					if($Y == $PY)
+					@{
+						if(!$Entity->$Game->$Map->IsPathXBlocked($Y, $X, $PX))
+						@{
+							my $moved = false;
+							if($X > $PX)
+								$moved = $Entity->TryMove(Direction->$Left);
+							else
+								$moved = $Entity->TryMove(Direction->$Right);
+							return $moved;
+						}
+					}
+					// Verticle check
+					if($X == $PX)
+					@{
+						if(!$Entity->$Game->$Map->IsPathYBlocked($X, $Y, $PY))
+						@{
+							my $moved = false;
+							if($Y > $PY)
+								$moved = $Entity->TryMove(Direction->$Up);
+							else
+								$moved = $Entity->TryMove(Direction->$Down);
+							return $moved;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+};

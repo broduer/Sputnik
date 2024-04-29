@@ -1,0 +1,162 @@
+﻿// Sputnik include to use TinyC Compiler
+// This file contains all DLL calls with a sample on how to use it
+// tcc_set_output_type requires one of these variables
+Global $TCC_OUTPUT_MEMORY = 0;		/* output will be run in memory (default) */
+Global $TCC_OUTPUT_EXE = 1;			/* executable file */
+Global $TCC_OUTPUT_DLL = 2;			/* dynamic library */
+Global $TCC_OUTPUT_OBJ = 3;			/* object file */
+Global $TCC_OUTPUT_PREPROCESS = 4;	/* only preprocess (used internally) */
+Global $TCC_DIR = @ExeDir . '\lib\bin\TCC';
+AddPath($TCC_DIR); // Make sure TCC is on the search path or else we wont find its DLL etc
+// Add the TCC folder to path (so its DLL etc can be found)
+my $Path = EnvGet('PATH');
+if(!Contains($Path, '\lib\bin\tcc', true))
+{
+	EnvSet("PATH", "$Path;$TCC_DIR" );
+}
+// Link to the TCC.dll
+DllImport('TCC.dll:once');
+// Uncomment to execute the test sample
+/*
+TCC_Sample();
+// Run this function to test TCC
+// this sample compiles some C code and runs it in memory
+// without needing to produce an exe/dll (unless changing comments)
+// an int is sent to the main function and an int is returned
+Function TCC_Sample()
+{
+	my $TCC = tcc_new();
+	tcc_add_include_path($TCC, $TCC_DIR . '\include');
+	tcc_add_library_path($TCC, $TCC_DIR . '\lib');
+	my $source = 
+	@"
+		#include <stdio.h>
+		int main(int i) 
+		{
+			printf(""Main was run with the int: %d\n"", i);
+			//system(""pause"");
+			return 3;
+		}
+	";
+	tcc_set_output_type($TCC, $TCC_OUTPUT_MEMORY);
+	//tcc_set_output_type($TCC, $TCC_OUTPUT_EXE);
+	tcc_compile_string($TCC, $source);
+	my $ret = tcc_run_test($TCC, 1337);
+	//tcc_output_file($TCC, "a.exe");
+	tcc_delete($TCC);
+	say "Return: $ret";
+}
+*/
+
+/*
+// Example of how to use the class
+my $source = 
+@"
+	#include <stdio.h>
+	int main(int a)
+	{
+		printf(""Value is '%d' Hello from C++\n"", a);
+		//system(""pause"");
+		return 3;
+	}
+";
+
+my $newC = new InlineC();
+$newC->SetOutputType($TCC_OUTPUT_MEMORY);
+$newC->AddSource($source);
+$newC->SetExecute("Int32", "i");
+my $ret = $newC->Execute(999);
+say "Return: $ret";
+*/
+// This class is just to make it easy to execute C code
+// in Sputnik directly without having to produce a DLL
+// it can also produce exes/dlls if needed.
+Class InlineC // This is incomplete but it does work
+{
+	my $TCC;
+	my $TCCCall;
+	my $Disposed;
+	my $ExecName;
+	Function __Construct()
+	{
+		$TCC = tcc_new();
+		$TCCCall = array($TCC);
+		$Disposed = false;
+		// Add default paths
+		AddLibraryPath($TCC_DIR . '\lib');
+		AddIncludePath($TCC_DIR . '\include');
+		AddIncludePath($TCC_DIR . '\include\winapi');
+		AddIncludePath($TCC_DIR . '\include\sys');
+		AddIncludePath($TCC_DIR . '\include\sec_api');
+		AddIncludePath($TCC_DIR . '\include\sec_api\sys');
+	}
+	Function __Destruct()
+	{
+		if($Disposed) return;
+		$Disposed = true;
+		tcc_delete($TCC);
+		UnsetExecute();
+	}
+	// Add a library path that contains .lib files
+	Function AddLibraryPath($path)
+	{
+		return tcc_add_library_path($TCC, $path);
+	}
+	// Add a library such as a .lib file for use
+	Function AddLibrary($filename)
+	{
+		return tcc_add_library($TCC, $filename);
+	}
+	// Add an include path for use with #include <name>
+	Function AddIncludePath($path)
+	{
+		return tcc_add_include_path($TCC, $path);
+	}
+	// Add C source code as a string
+	Function AddSource($input)
+	{
+		return tcc_compile_string($TCC, $input);
+	}
+	// Add a file as C source code
+	Function AddSourceFile($input)
+	{
+		return tcc_add_file($TCC, $input);
+	}
+	// Set output type 
+	// $TCC_OUTPUT_MEMORY		/* output will be run in memory (default) */
+	// $TCC_OUTPUT_EXE			/* executable file */
+	// $TCC_OUTPUT_DLL			/* dynamic library */
+	// $TCC_OUTPUT_OBJ			/* object file */
+	// $TCC_OUTPUT_PREPROCESS	/* only preprocess (used internally) */
+	Function SetOutputType($type)
+	{
+		return tcc_set_output_type($TCC, $type);
+	}
+	// Produce a .exe or .dll or .lib depending on Output type
+	Function Compile($filename)
+	{
+		return tcc_output_file($TCC, $filename);
+	}
+	// Set the return value and params of the Execute
+	Function SetExecute($Ret, $Params, $CharType = 'Ansi')
+	{
+		UnsetExecute();
+		$ExecName = 'tcc_run' . RandStr(10);
+		DllImport('libtcc.dll', 'tcc_run:' . $ExecName, $Ret, 't' . $Params, "$CharType:Cdecl");
+	}
+	// Unset a previously set execute return type and params from SetExecute()
+	Function UnsetExecute()
+	{
+		if(!IsEmptyOrNull($ExecName))
+			UnsetDLLImport($ExecName);
+	}
+	// If not compiling then execute the C code directly (will call the Main() function)
+	[Args("true")]
+	Function Execute()
+	{
+		if(IsEmptyOrNull($ExecName))
+			return false;
+		return CallArray($ExecName, $TCCCall . @args);
+		//return tcc_runv($TCC);
+	}
+}

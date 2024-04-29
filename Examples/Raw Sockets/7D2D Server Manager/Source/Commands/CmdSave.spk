@@ -1,0 +1,25 @@
+﻿$LoadCommands['save'] = array('CmdSave', 0, 0);
+Class extends ServerManager
+{
+	Function CmdSave($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Administration;
+		if ($args === 'rank')
+			return CommandRanks->$Admin;
+		if ($args === 'helpDesc')
+			return 'Save the world on the server';
+		if ($args === 'help')
+			return array("Save the world on the server");
+		if ($commandUser == null)
+			return;
+		if (!IsUserAdmin($commandUser) && !IsUserModerator($commandUser))
+		{
+			SayToUser($commandUser, "Only Admins/Mods may save the world");
+			return;
+		}
+		SayToAll("Saving... Chat/Game may freeze for a second...");
+		SaveWorld();
+		SayToAll("Save complete");
+	}
+}

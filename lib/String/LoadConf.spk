@@ -1,0 +1,33 @@
+#include-once
+#require-once
+// This function can load a simple config file where
+// the information is stored like:
+// Key = Value
+// it supports # comments on the same line as the Key = Value such as
+// Cat = Dog # yup
+// And it supports # being on the line by itself
+Function LoadConf($FileName)
+{
+	my $IniSettings = array();
+	my $fileExists = FileExists($FileName);
+	if($fileExists)
+	{
+		foreach(FileReadLines($FileName) as my $Line)
+		{
+			my $LineTrim = trim($Line);
+			if(StartsWith($LineTrim, '#'))
+				continue;
+			if(IsEmptyOrNull($LineTrim))
+				continue;
+			$LineTrim =~ s/\t+/\t/g;
+			$LineTrim = gsub($LineTrim, '#.*$');
+			my List($Key, $Value) = match($LineTrim, '^(%w+)%s?=%s?(.+)$');
+			if (IsEmptyOrNull($Key))
+				continue;
+			$Key = trim($Key);
+			$Value = trim($Value);
+			$IniSettings[$Key] = $Value;
+		}
+	}
+	return $IniSettings;
+}

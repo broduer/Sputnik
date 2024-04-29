@@ -1,0 +1,26 @@
+##TEMPLATE-NAME 'Java - Constants Only'
+##LANGUAGE 'Java'
+##ENGINE-NAME 'None'
+##AUTHOR 'Devin Cook' 
+##FILE-EXTENSION 'java'
+##NOTES
+This template creates to set of Java enumerated constants for the grammar's symbols and rules.
+##END-NOTES
+##ID-CASE UPPERCASE
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+public interface SymbolConstants 
+{
+##SYMBOLS
+   final int %ID.Padded% = %Value.Padded%;  // %Description%
+##END-SYMBOLS
+};
+
+public interface RuleConstants
+{
+##RULES
+##DELIMITER ','
+   final int %ID.Padded% = %Value.Padded%;  // %Description%
+##END-RULES
+};

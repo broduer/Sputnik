@@ -1,0 +1,28 @@
+#<?
+Global $SaveData = array();
+Function GetFullContent()
+{
+	return StrCompress(Serialize($SaveData));
+}
+Function ClearContent()
+{
+	$SaveData = array();
+}
+Function SetContent($Key, $Value)
+{
+    $SaveData[$Key] = $Value;
+}
+Function GetContent($Key, $fName = null)
+{
+    if($fName !== null)
+	@{
+		$SaveData = array();
+		if( -e $fName)
+			$SaveData = Unserialize(StrUncompress(FileLoad($fName)));
+	}
+	
+	if(IsKeySet($SaveData, $Key))
+		return $SaveData[$Key];
+    
+    return null;
+}

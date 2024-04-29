@@ -1,0 +1,372 @@
+#<?
+Class Gripper
+{
+	my $myWindow;
+	my $Grips = array(); // Grips
+	my $GripStatus = array(); // Grip status on/off etc
+	my $GripVisibility = array(); // Grip visibility
+	my $GripCursor = array (	'SizeNWSE', 'SizeNS', 'SizeNESW',
+								'SizeWE', 			  'SizeWE',
+								'SizeNESW', 'SizeNS', 'SizeNWSE'
+							); // Grip cursors
+	my List (	$TLeft = 0, $TMiddle = 1, $TRight = 2,
+				$MLeft = 3, 			  $MRight = 4,
+				$BLeft = 5, $BMiddle = 6, $BRight = 7
+			); // Grip Enum
+	my $GripperON = RGB(51, 153, 255);
+	my $GripperOFF = Colour('Black');
+	my $MoveMode = 0;
+	my $Object = 0;
+	my $Offset = 7;
+	my $OffsetX = 0;
+	my $OffsetY = 0;
+	my $MoveIt;
+	my $Attached;
+	Function __construct($window)
+	{
+		$this->$Attached = false;
+		
+		$this->$myWindow = $window;
+		$Grips[$TLeft] = GUICreate('Label', $this->$myWindow, '', 5, 5, $Offset, $Offset);
+		$Grips[$MLeft] = GUICreate('Label', $this->$myWindow, '', 5, 15, $Offset, $Offset);
+		$Grips[$BLeft] = GUICreate('Label', $this->$myWindow, '', 5, 25, $Offset, $Offset);
+		$Grips[$TRight] = GUICreate('Label', $this->$myWindow, '', 35, 5, $Offset, $Offset);
+		$Grips[$MRight] = GUICreate('Label', $this->$myWindow, '', 35, 15, $Offset, $Offset);
+		$Grips[$BRight] = GUICreate('Label', $this->$myWindow, '', 35, 25, $Offset, $Offset);
+		$Grips[$TMiddle] = GUICreate('Label', $this->$myWindow, '', 17, 5, $Offset, $Offset);
+		$Grips[$BMiddle] = GUICreate('Label', $this->$myWindow, '', 17, 25, $Offset, $Offset);
+		
+		// Setup CLICK links		
+		GUILink($Grips[$TLeft], 'Click', '$param->Clicked("' . $TLeft . '");', $this);
+		GUILink($Grips[$MLeft], 'Click', '$param->Clicked("' . $MLeft . '");', $this);
+		GUILink($Grips[$BLeft], 'Click', '$param->Clicked("' . $BLeft . '");', $this);
+		GUILink($Grips[$TRight], 'Click', '$param->Clicked("' . $TRight . '");', $this);
+		GUILink($Grips[$MRight], 'Click', '$param->Clicked("' . $MRight . '");', $this);
+		GUILink($Grips[$BRight], 'Click', '$param->Clicked("' . $BRight . '");', $this);
+		GUILink($Grips[$TMiddle], 'Click', '$param->Clicked("' . $TMiddle . '");', $this);
+		GUILink($Grips[$BMiddle], 'Click', '$param->Clicked("' . $BMiddle . '");', $this);
+		
+		// Setup MOUSE MOVE links		
+		GUILink($Grips[$TLeft], 'MouseMove', '$param->Moved("' . $TLeft . '", $arg);', $this);
+		GUILink($Grips[$MLeft], 'MouseMove', '$param->Moved("' . $MLeft . '", $arg);', $this);
+		GUILink($Grips[$BLeft], 'MouseMove', '$param->Moved("' . $BLeft . '", $arg);', $this);
+		GUILink($Grips[$TRight], 'MouseMove', '$param->Moved("' . $TRight . '", $arg);', $this);
+		GUILink($Grips[$MRight], 'MouseMove', '$param->Moved("' . $MRight . '", $arg);', $this);
+		GUILink($Grips[$BRight], 'MouseMove', '$param->Moved("' . $BRight . '", $arg);', $this);
+		GUILink($Grips[$TMiddle], 'MouseMove', '$param->Moved("' . $TMiddle . '", $arg);', $this);
+		GUILink($Grips[$BMiddle], 'MouseMove', '$param->Moved("' . $BMiddle . '", $arg);', $this);
+		
+		// Setup MOUSE DOWN links		
+		GUILink($Grips[$TLeft], 'MouseDown', '$param->MouseDown("' . $TLeft . '", $arg);', $this);
+		GUILink($Grips[$MLeft], 'MouseDown', '$param->MouseDown("' . $MLeft . '", $arg);', $this);
+		GUILink($Grips[$BLeft], 'MouseDown', '$param->MouseDown("' . $BLeft . '", $arg);', $this);
+		GUILink($Grips[$TRight], 'MouseDown', '$param->MouseDown("' . $TRight . '", $arg);', $this);
+		GUILink($Grips[$MRight], 'MouseDown', '$param->MouseDown("' . $MRight . '", $arg);', $this);
+		GUILink($Grips[$BRight], 'MouseDown', '$param->MouseDown("' . $BRight . '", $arg);', $this);
+		GUILink($Grips[$TMiddle], 'MouseDown', '$param->MouseDown("' . $TMiddle . '", $arg);', $this);
+		GUILink($Grips[$BMiddle], 'MouseDown', '$param->MouseDown("' . $BMiddle . '", $arg);', $this);
+		
+		// Setup MOUSE UP links		
+		GUILink($Grips[$TLeft], 'MouseUp', '$param->MouseUp("' . $TLeft . '", $arg);', $this);
+		GUILink($Grips[$MLeft], 'MouseUp', '$param->MouseUp("' . $MLeft . '", $arg);', $this);
+		GUILink($Grips[$BLeft], 'MouseUp', '$param->MouseUp("' . $BLeft . '", $arg);', $this);
+		GUILink($Grips[$TRight], 'MouseUp', '$param->MouseUp("' . $TRight . '", $arg);', $this);
+		GUILink($Grips[$MRight], 'MouseUp', '$param->MouseUp("' . $MRight . '", $arg);', $this);
+		GUILink($Grips[$BRight], 'MouseUp', '$param->MouseUp("' . $BRight . '", $arg);', $this);
+		GUILink($Grips[$TMiddle], 'MouseUp', '$param->MouseUp("' . $TMiddle . '", $arg);', $this);
+		GUILink($Grips[$BMiddle], 'MouseUp', '$param->MouseUp("' . $BMiddle . '", $arg);', $this);
+		
+		// Set default status
+		SetAllGripsStatus(false);
+		
+		// Set default visibility
+		SetAllGripsVisible(false);
+	}
+	[Args("false")]
+	Function MouseDown( $ID, $arg )
+	{
+		my $ID = (int)$ID;
+		if( isVarClass($this->$Object) && $GripStatus[$ID] )
+		{
+			SetAllGripsVisible(true);
+			$this->$MoveIt = true;
+		}
+	}
+	[Args("false")]
+	Function MouseUp( $ID, $arg )
+	{
+		my $ID = (int)$ID;
+		if( isVarClass($this->$Object) )
+			$this->$MoveIt = false;
+	}
+	[Args("false")]
+	Function Moved( $ID, $arg )
+	{
+		my $ID = (int)$ID;
+		if( isVarClass($this->$Object) && $this->$MoveIt && $GripStatus[$ID] )
+			ResizeControl($ID);
+	}
+	[Args("false")]
+	Function Clicked( $ID )
+	{
+		my $ID = (int)$ID;
+	}
+	[Args("false")]
+	Function ResizeControl( $ID )
+	{
+		my $ID = (int)$ID;
+		if( isVarClass($this->$Object) )
+		@{
+			my $hWnd = GUIGetProp($Object->$Object, 'Handle');
+			my $Width = GUIGetProp($Object->$Object, 'Width');
+			my $Height = GUIGetProp($Object->$Object, 'Height');
+			my $Top = GUIGetProp($Object->$Object, 'Top');
+			my $Left = GUIGetProp($Object->$Object, 'Left');
+		
+			my List ($TopO, $LeftO) = parentOffset($Object);
+			$Top += $TopO;
+			$Left += $LeftO;
+			
+			my $WndHWND = GUIGetProp($Windows[$CurrentWindow]->$Object, 'Handle');
+			
+			my List ( $X, $Y ) = MouseGetPos();
+			my List ( $wx, $wy ) = WinGetPos($WndHWND, '');
+			$X -= $wx;
+			$Y -= $wy;
+			my List ( $cx, $cy ) = ControlGetPos('', '', $hWnd);
+			
+			if($ID == $MRight || $ID == $BRight || $ID == $TRight)
+			@{
+				my $newX = $X;
+				$newX -= $Left;
+				$newX -= $Offset * 2;
+				$newData = Utils::SnapToGrid($newX);
+				GUISetProp($Object->$Object, 'Width', $newData);
+				$Object->$Width = $newData;
+			}
+			
+			if($ID == $BMiddle || $ID == $BRight || $ID == $BLeft)
+			@{
+				my $newY = $Y;
+				$newY -= $Top;
+				$newY -= $Offset * 5;
+				$newY = Utils::SnapToGrid($newY);
+				GUISetProp($Object->$Object, 'Height', $newY);
+				$Object->$Height = $newY;
+			}
+			
+			if($ID == $MLeft || $ID == $TLeft || $ID == $BLeft)
+			@{
+				my $SetLeft = Utils::SnapToGrid($X);
+				GUISetProp($Object->$Object, 'Left', $SetLeft);
+				$Object->$Left = $SetLeft;
+				my $NewLeft = $Left - $SetLeft;
+				my $NewWidth = Utils::SnapToGrid( $NewLeft + $Width );
+				GUISetProp($Object->$Object, 'Width', $NewWidth);
+				$Object->$Width = $NewWidth;
+			}
+			
+			if($ID == $TMiddle || $ID == $TLeft || $ID == $TRight)
+			@{
+				my $newY = $Y;
+				$newY -= $Offset * 4;
+				my $SetTop = Utils::SnapToGrid($newY);
+				GUISetProp($Object->$Object, 'Top', $SetTop);
+				$Object->$Top = $SetTop;				
+				my $NewTop =  $Top - $SetTop;
+				my $newData = Utils::SnapToGrid( $NewTop + $Height );
+				GUISetProp($Object->$Object, 'Height', $newData);
+				$Object->$Width = $newData;
+			}
+			Attach($this->$Object);
+		}
+	}
+	[Args("false")]
+	Function SetAllGripsVisible($Visibility)
+	{	
+		SetGripVisible($TLeft, $Visibility);
+		SetGripVisible($MLeft, $Visibility);
+		SetGripVisible($BLeft, $Visibility);
+		SetGripVisible($TRight, $Visibility);
+		SetGripVisible($MRight, $Visibility);
+		SetGripVisible($BRight, $Visibility);
+		SetGripVisible($TMiddle, $Visibility);
+		SetGripVisible($BMiddle, $Visibility);
+	}
+	[Args("false")]
+	Function SetGripVisible($ID, $Visibility)
+	{	
+		my $ID = (int)$ID;
+		$GripVisibility[$ID] = $Visibility;
+		if($Visibility)
+			GUISetProp($Grips[$ID], 'Visible', true);
+		else
+			GUISetProp($Grips[$ID], 'Visible', false);
+	}
+	[Args("false")]
+	Function SetAllGripsStatus($Status)
+	{	
+		SetGripStatus($TLeft, $Status);
+		SetGripStatus($MLeft, $Status);
+		SetGripStatus($BLeft, $Status);
+		SetGripStatus($TRight, $Status);
+		SetGripStatus($MRight, $Status);
+		SetGripStatus($BRight, $Status);
+		SetGripStatus($TMiddle, $Status);
+		SetGripStatus($BMiddle, $Status);
+	}
+	[Args("false")]
+	Function SetGripStatus($ID, $Status)
+	{	
+		my $ID = (int)$ID;
+		$GripStatus[$ID] = $Status;
+		if($Status)
+		@{
+			GUISetProp($Grips[$ID], 'BackColor', $GripperON);
+			GUISetProp($Grips[$ID], 'Cursor', $GripCursor[$ID]);
+		}
+		else
+		@{
+			GUISetProp($Grips[$ID], 'BackColor', $GripperOFF);
+			GUISetProp($Grips[$ID], 'Cursor', "");
+		}
+	}
+	[Args("false")]
+	Function UnAttach()
+	{	
+		// Set attachment flag
+		$this->$Attached = false;
+		// Set default status
+		SetAllGripsStatus(false);
+		// Set default visibility
+		SetAllGripsVisible(false);
+	}
+	[Args("false")]
+	Function Attach(Object $Object)
+	{
+		$this->$Attached = true;
+		$this->$Object = $Object;
+		SizeGrips();
+		SetAllGripsStatus(false); # Cause it to redraw and fix graphical issues
+		Switch ( $this->$Object->GetType() )
+		{
+			Case ObjectType->$Window:
+			@{
+				SetAllGripsStatus(false);
+				SetAllGripsVisible(false);
+			}
+			break;
+			Case ObjectType->$Timer:
+			Case ObjectType->$Hotkey:
+			Case ObjectType->$TabPage:
+			@{
+				SetAllGripsStatus(false);
+				SetAllGripsVisible(true);
+			}
+			break;
+			Case ObjectType->$TextBox:
+			Case ObjectType->$TextBoxEx:
+			@{
+				SetAllGripsStatus(true);
+				SetAllGripsVisible(true);
+				if(!GUIGetProp($Object->$Object, 'Multiline'))
+				@{
+					SetGripStatus($TLeft, false);
+					SetGripStatus($BLeft, false);
+					SetGripStatus($TRight, false);
+					SetGripStatus($BRight, false);
+					SetGripStatus($TMiddle, false);
+					SetGripStatus($BMiddle, false);
+				}
+			}
+			break;
+			Case ObjectType->$ComboBox:
+			@{
+				SetAllGripsStatus(true);
+				SetAllGripsVisible(true);
+				SetGripStatus($TLeft, false);
+				SetGripStatus($BLeft, false);
+				SetGripStatus($TRight, false);
+				SetGripStatus($BRight, false);
+				SetGripStatus($TMiddle, false);
+				SetGripStatus($BMiddle, false);
+			}
+			break;
+			Default:
+			@{
+				SetAllGripsStatus(true);
+				SetAllGripsVisible(true);
+			}
+			break;
+		}
+		$this->$Object->onGripperAttach();
+	}
+	[Args("false")]
+	Function SizeGrips()
+	{
+		my $Width = GUIGetProp($Object->$Object, 'Width');
+		my $Height = GUIGetProp($Object->$Object, 'Height');
+		my $Top = GUIGetProp($Object->$Object, 'Top');
+		my $Left = GUIGetProp($Object->$Object, 'Left');
+		
+		$Left += $this->$OffsetX;
+		$Top += $this->$OffsetY;
+		
+		my List ($TopO, $LeftO) = parentOffset($Object);
+		$Top += $TopO;
+		$Left += $LeftO;
+		
+		// Set grip positions
+		GUISetProp($Grips[$TMiddle], 'Left', $LEFT + ($WIDTH / 2) - 3);
+		GUISetProp($Grips[$TMiddle], 'Top', $TOP - 8);
+		
+		GUISetProp($Grips[$BMiddle], 'Left', $LEFT + ($WIDTH / 2) - 3);
+		GUISetProp($Grips[$BMiddle], 'Top', $TOP + $HEIGHT + 1);		
+		
+		GUISetProp($Grips[$TLeft], 'Left', $LEFT - 8);
+		GUISetProp($Grips[$TLeft], 'Top', $TOP - 8);
+		
+		GUISetProp($Grips[$MLeft], 'Left', $LEFT - 8);
+		GUISetProp($Grips[$MLeft], 'Top', $TOP + ($HEIGHT / 2) - 3);
+		
+		GUISetProp($Grips[$BLeft], 'Left', $LEFT - 8);
+		GUISetProp($Grips[$BLeft], 'Top', $TOP + $HEIGHT + 1);		
+
+		GUISetProp($Grips[$TRight], 'Left', $LEFT + $WIDTH + 1);
+		GUISetProp($Grips[$TRight], 'Top', $TOP - 8);
+		
+		GUISetProp($Grips[$MRight], 'Left', $LEFT + $WIDTH + 1);
+		GUISetProp($Grips[$MRight], 'Top', $TOP + ($HEIGHT / 2) - 3);
+		
+		GUISetProp($Grips[$BRight], 'Left', $LEFT + $WIDTH + 1);
+		GUISetProp($Grips[$BRight], 'Top', $TOP + $HEIGHT + 1);
+	}
+	[Args("false")]
+	Function parentOffset($myObj)
+	{
+		my $newTop = 0;
+		my $newLeft = 0;
+		if($myObj->HasParent())
+		{
+			my $Parent = $myObj->GetParent();
+			if(!isVarClass($Parent, 'window'))
+			@{
+				my $pTop = GUIGetProp($Parent->$Object, 'Top');
+				my $pLeft = GUIGetProp($Parent->$Object, 'Left');
+				$newTop += $pTop;
+				$newLeft += $pLeft;
+			}
+			if($Parent->HasParentOffset())
+			@{
+				my List ($poTop, $poLeft) = $Parent->GetParentOffset();
+				$newTop += $poTop;
+				$newLeft += $poLeft;
+			}
+			// Recursive
+			my List ($TopO, $LeftO) = parentOffset($Parent);
+			$newTop += $TopO;
+			$newLeft += $LeftO;
+		}
+		return array($newTop, $newLeft);
+	}
+};

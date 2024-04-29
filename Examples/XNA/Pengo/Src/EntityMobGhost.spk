@@ -1,0 +1,70 @@
+Class EntityMobGhost extends EntityMob
+{
+	Static $UniqueID = 0;
+	my $SpawnSound;
+	my $PlayedSpawnSound;
+	Function __Construct(EngineMain $Engine, $EName)
+	{
+		parent::EntityMob::__construct($Engine, $EName);
+		$SpawnSound = array(BinaryLoad('./Sounds/GhostSpawned.wav'), 'GhostSpawned.wav');
+		$PlayedSpawnSound = false;
+		$ID = EntityType->$Ghost;
+		$ParentID = EntityType->$Mob;
+		
+		// AI
+		$AI = new AI($this);
+		$AI->$Enabled = false;
+		my $AIGhost = new AIGhost($this);
+		$AIGhost->$Enabled = true;
+		my $AIMoveDelay = new AIMoveDelay($this);
+		$AIMoveDelay->$MoveFor = 40;
+		$AIMoveDelay->$StopFor = 50;
+		$AIMoveDelay->$Enabled = true;
+		$AI->$AIList[] = $AIMoveDelay;
+		$AI->$AIList[] = $AIGhost;
+		
+		SetTexture(Facing->$Center, XNAPng('./Images/Entities/Ghost/Front.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Ghost/Left.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Ghost/Left2.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Ghost/Left3.png'));
+		SetTexture(Facing->$Left, XNAPng('./Images/Entities/Ghost/Left4.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Ghost/Right.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Ghost/Right2.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Ghost/Right3.png'));
+		SetTexture(Facing->$Right, XNAPng('./Images/Entities/Ghost/Right4.png'));
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn1.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn2.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn3.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn4.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn5.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn6.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn7.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn8.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn9.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn10.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn11.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn12.png');
+		$SpawnTextures[] = XNAPng('./Images/Entities/Ghost/Spawn13.png');
+		$Respawn = false;
+		$NoClip = true; // Not necessary needed but just for future compatibility its here
+	}
+	Function DoUpdate( )
+	{
+		if($Disposed)
+			return;
+		if(!$Spawned)
+		{
+			if(!$PlayedSpawnSound)
+			{
+				$PlayedSpawnSound = true;
+				PlaySound($SpawnSound, false);
+			}
+			return;
+		}
+		
+		$AI->Update();
+		my $DoneAttacks = AttackPlayers();
+		if($DoneAttacks)
+			Dispose(); // Ghosts disappear after first attack
+	}
+};

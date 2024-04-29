@@ -1,0 +1,19 @@
+﻿$LoadCommands['players'] = array('CmdPlayers', 0, 0);
+Class extends ServerManager
+{
+	Function CmdPlayers($args, $argCount, $cmdRest)
+	{
+		if ($args === 'category')
+			return CommandCategories->$Information;
+		if ($args === 'rank')
+			return CommandRanks->$Player;
+		if ($args === 'helpDesc')
+			return 'Get information about players on the server';
+		if ($args === 'help')
+			return array('Get information about players on the server');
+		if ($commandUser == null)
+			return;
+		my $count = count($offlinePlayers->$players);
+		SayToUser($commandUser, "This server has '$count' player(s)");
+	}
+}

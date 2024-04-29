@@ -1,0 +1,109 @@
+﻿#<?
+Object::$MDIAllowed[ObjectType->$TabSheet] = false;
+Object::$Names[ObjectType->$TabSheet] = 'TabSheet';
+Object::$Props[ObjectType->$TabSheet] = array(
+												new PropInt('Left', null, null, null, null, null),
+												new PropInt('Top', null, null, null, null, null),
+												new PropInt('Width', null, null, null, null, null),
+												new PropInt('Height', null, null, null, null, null),
+												new PropAnchor('Anchor', null, null, null),
+												new PropInt('TabIndex', null, null, null, null, null),
+												new PropFakeBool('Enabled', null, true, null, null),
+												new PropFakeBool('Visible', null, true, null, null),
+												new PropTabs('Tabs', null, null, null)
+											);
+Object::$Events[ObjectType->$TabSheet] = array(
+												Object::$GenericEvents[<=>]
+											);
+Object::$MenuAdd[ObjectType->$TabSheet] = GUICreate('MenuItem', $mObjects, 'Add ' . Object::$Names[ObjectType->$TabSheet]);
+GUILink(Object::$MenuAdd[ObjectType->$TabSheet], 'Click', 'CreateControl(ObjectType->$TabSheet);');
+Class TabSheet extends Object
+{
+	Function __construct($myParent, $Name, $Left = 8, $Top = 8, $Width = 110, $Height = 110)
+	{
+		CreateContainer();
+		CreateParent($myParent);
+		CreateParentOffset(0, 0);
+		SetType(ObjectType->$TabSheet);
+		SetName($Name);
+		SetObject(GUICreate('TabSheet', $myParent->GetObject(), $Left, $Top, $Width, $Height));
+		SetObjectName();
+		SetLinks();
+		# Create a default tab page if necessary since Tab must always have at least 1 page
+		if($Status == Status->$Design)
+		{
+			my $PageName = $Name . "_Page1";
+			my $TabPage = new TabPage($this, $PageName);
+			$Container->$Objects[$PageName] = $TabPage;
+			$Container->$ObjectNames[$PageName] = true;
+		}
+		// ContextMenu
+		my $MenuAdd = GUICreate('MenuItem', GetContextMenu(), 'Add new tab');
+		my $MenuDel = GUICreate('MenuItem', GetContextMenu(), 'Delete current tab');
+		GUICreate('MenuItem', GetContextMenu(), '-');
+		my $MenuSort = GUICreate('MenuItem', GetContextMenu(), 'Sort tabs by name');
+		my $MenuSortNat = GUICreate('MenuItem', GetContextMenu(), 'Sort tabs by name ''Natural Order''');
+		my $MenuSortText = GUICreate('MenuItem', GetContextMenu(), 'Sort tabs by text');
+		my $MenuSortTextNat = GUICreate('MenuItem', GetContextMenu(), 'Sort tabs by text ''Natural Order''');
+		GUISetProp(GetObject(), 'ContextMenu', GetContextMenu());
+		GUILink($MenuAdd, 'Click', '$param->onClickContextTabAdd($arg);', $this);
+		GUILink($MenuDel, 'Click', '$param->onClickContextTabDel($arg);', $this);
+		GUILink($MenuSort, 'Click', '$param->onClickContextTabSort(false);', $this);
+		GUILink($MenuSortNat, 'Click', '$param->onClickContextTabSortNat(false);', $this);
+		GUILink($MenuSortText, 'Click', '$param->onClickContextTabSort(true);', $this);
+		GUILink($MenuSortTextNat, 'Click', '$param->onClickContextTabSortNat(true);', $this);
+		parent::Object::__construct();
+	}
+	Function __destruct()
+	{
+		parent::Object::__destruct();
+	}
+	Function onClickContextTabAdd()
+	{
+		my $PageName = InputBox($Title, "Enter the 'Name' for new tab", '');
+		if($PageName === null)
+			return;
+		if(IsEmptyOrNull($PageName))
+		{
+			msgbox('The name must be at least 1 char', $Title, 48);
+			return;
+		}
+		if(!ValidName($PageName, false))
+		{
+			msgbox("A object named '$PageName' already exists", $Title, 48);
+			return;
+		}
+		If(!isAlphaNumeric($PageName))
+		{
+			msgbox('Invalid name! Alpha numeric only', $Title, 48);
+			return;
+		}
+		my $TabPage = new TabPage($this, $PageName, $PageName);
+		$Container->$Objects[$PageName] = $TabPage;
+		$Container->$ObjectNames[$PageName] = true;
+	}
+	Function onClickContextTabDel()
+	{
+		my $PageName = GUITabSheet(GetObject(), 'SelectedText');
+		if(IsEmptyOrNull($PageName))
+			return;
+		unset($Container->$Objects[$PageName]);
+	}
+	Function onClickContextTabSort($SortByText)
+	{
+		my $Tabs = GUITabSheet(GetObject(), $SortByText ? 'TabTexts' : 'TabNames');
+		Sort($Tabs, 1);
+		GUITabSheet(GetObject(), $SortByText ? 'OrderToText' : 'OrderTo', $Tabs);
+	}
+	Function onClickContextTabSortNat($SortByText)
+	{
+		my $Tabs = GUITabSheet(GetObject(), $SortByText ? 'TabTexts' : 'TabNames');
+		Sort($Tabs, 1, Function( $a, $b ){ return StrNatCmp(my $a, my $b, true); });
+		GUITabSheet(GetObject(), $SortByText ? 'OrderToText' : 'OrderTo', $Tabs);
+	}
+	Function CodeGen($Window, $Object, $ObjName)
+	{
+		my $Code = '';
+		return $Code;
+	}
+};

@@ -1,0 +1,724 @@
+#include-once
+#require-once
+say "Testing operators below";
+
+// finish | operator
+// finish ^ operator
+// finish & operator
+// finish + operator
+// finish - operator
+// finish * operator
+// finish ** operator
+// finish / operator
+// finish % operator
+// finish < operator
+// finish > operator
+// finish <= operator
+// finish >= operator
+// finish <> operator
+// finish <=> operator
+// finish eq operator
+// finish eqi operator
+// finish neq operator
+// finish neqi operator
+// finish lt operator
+// finish gt operator
+// finish le operator
+// finish ge operator
+// finish lti operator
+// finish gti operator
+// finish lei operator
+// finish gei operator
+// finish lg operator
+// finish lgi operator
+// finish .. RANGE operator
+// finish !<expr> operator
+// finish ~<expr> operator
+// finish &<expr> operator
+// finish *<expr> operator
+// finish all casts
+// finish LIST() operator
+// finish unless operator
+// finish for operator
+// finish foreach operator
+// finish while operator
+// finish until operator
+// finish [ ] index operator
+
+// Test [ ]:X
+say "Testing [ ]:X operator";
+{
+	my $ptr = Alloc(10, 0x00);
+	$ptr[0]:f = 133.77;
+	$ptr[1]:f = 777.42;
+	assert(round($ptr[0]:f, 2) == 133.77);
+	assert(round($ptr[1]:f, 2) == 777.42);
+	free($ptr);	
+	my $ptr = Alloc(3, 0x00);
+	$ptr[0]:f = 133.77;
+	$ptr[0]:f += 100;
+	assert(round($ptr[0]:f, 2) == 233.77);
+	free($ptr);
+}
+// Test [ ]::X
+say "Testing [ ]::X operator";
+{
+	my $ptr = Alloc(10, 0x00);
+	$ptr[0]::f = 133.77;
+	$ptr[1]::f = 777.42;
+	assert((string)$ptr[0]:f == '54.71984');
+	assert((string)$ptr[1]:f == '9.52883E-44');
+	free($ptr);	
+	my $ptr = Alloc(10, 0x00);
+	$ptr[0]::f = 133.77;
+	$ptr[4]::i = 101;
+	$ptr[8]::f = 942.77;
+	assert(round($ptr[0]::f, 2) == 133.77);
+	assert($ptr[4]::i == 101);
+	assert(round($ptr[8]::f, 2) == 942.77);
+	free($ptr);
+}
+// Test [ ]:X AND [ ]::X
+Class ByteWriter
+{
+	my $_data;
+	my $_capacity;
+	my $Length = 0;
+	my $Capacity
+	{
+		get
+		{
+			return $this->$_capacity;
+		}
+		set
+		{
+			if($value <= 0)
+			{
+				if(IsVarIntPtr($this->$_data))
+					free($this->$_data);
+				$this->$_data = null;
+				$this->$_capacity = 0;
+			}
+			else
+			{
+				if(IsVarIntPtr($this->$_data))
+				{
+					my $OldPtr = $this->$_data;
+					$this->$_data = Alloc($value, 0x00);
+					for(my $i = 0; $i < $this->$_capacity; $i++)
+						$this->$_data[$i]::B = $OldPtr[$i]::B;
+					$this->$_capacity = $value;
+					free($OldPtr);
+				}
+				else
+				{
+					$this->$_data = Alloc($value, 0x00);
+					$this->$_capacity = $value;
+				}
+			}
+		}
+	};
+	Function __Construct( $size = 0 )
+	{
+		if($size <= 0)
+			$size = 10;
+		$this->$Capacity = $size;
+		$Length = 0;
+	}
+	Function __Destruct()
+	{
+		free($_data);
+		unset($_data);
+	}
+	Function WriteByte( $value )
+	{
+		if ($Length == $Capacity)
+			$this->$Capacity = 2 * $this->$Capacity;
+		$this->$_data[$Length]::B = $value;
+		$Length++;
+	}
+	Function WriteBytes( $value )
+	{
+		foreach((Binary)$value as my $byte)
+			WriteByte($byte);
+	}
+	Function WritePack( $format, $value )
+	{
+		my $bin = Pack($format, $value);
+		foreach($bin as my $byte)
+			WriteByte($byte);
+	}
+	Function DebugPrint( )
+	{
+		say "Capacity: " . $this->$Capacity;
+		say "Length: " . $Length;
+		for(my $i = 0; $i < $Length; $i++)
+		{
+			my $byte = $_data[$i]::B;
+			printf("Index '%02d' Byte '%02d' Hex '%X' Char '%c'\n", $i, $byte, $byte, $byte);
+		}
+	}
+}
+say "Testing [ ]:X AND [ ]::X operator";
+{
+	my $s = new ByteWriter();
+	$s->WriteByte(20);
+	$s->WriteByte(30);
+	$s->WriteByte(40);
+	$s->WriteByte(50);
+	$s->WriteByte(60);
+	$s->WriteBytes(bin(1,2,3,4,5,6,7));
+	$s->WritePack("z0", "Hello");
+	assert($s->$Capacity == 20);
+	assert($s->$Length == 17);
+	my $arr = array();
+	for(my $i = 0; $i < $s->$Length; $i++)
+	{
+		my $byte = $s->$_data[$i]::B;
+		$arr[] = sprintf("%02X", $byte);
+	}
+	my $t = array('14', '1E', '28', '32', '3C', '01', '02', '03', '04', '05', '06', '07', '48', '65', '6C', '6C', '6F');
+	assert($arr == $t);
+	assert($arr === $t);
+	unset($s);
+}
+// Test AND
+say "Testing AND operator";
+{
+	my $a = 100;
+	my $v = 200;
+	assert($a == 100 AND $v == 200);
+}
+// Test &&
+say "Testing && operator";
+{
+	my $a = 100;
+	my $v = 200;
+	assert($a == 100 && $v == 200);
+}
+// Test OR
+say "Testing OR operator";
+{
+	my $a = 100;
+	my $v = 200;
+	assert($a == 100 OR $v == 200);
+	assert($a == 3 OR $v == 200);
+	assert($a == 100 OR $v->$fail OR assert(false));
+}
+// Test ||
+say "Testing || operator";
+{
+	my $a = 100;
+	my $v = 200;
+	assert($a == 100 || $v == 200);
+	assert($a == 3 || $v == 200);
+	assert($a == 100 || $v->$fail || assert(false));
+}
+// Test <expr> @()
+say "Testing \@() operator";
+{
+	my $t = 100;
+	my $v = 100;
+	my $a = @($t++, $v--, $t + $v);
+	assert($t == 101);
+	assert($v == 99);
+	assert($a == 200);
+}
+// Test <expr> if<>
+say "Testing <expr> if<> operator";
+{
+	my $t = "test";
+	my $a = "Hello";
+	assert($a == "Hello");
+	$a = "Cat and Dog" if($t == "test");
+	assert($a == "Cat and Dog");
+	$a = "Hello";
+	assert($a == "Hello");
+	($a = "Cat and Dog") if($t == "test");
+	assert($a == "Cat and Dog");
+}
+// Test <expr> if<>else<>
+say "Testing <expr> if<>else<> operator";
+{
+	my $t = "cat";
+	my $a = "Hello";
+	assert($a == "Hello");
+	$a = "Cat and Dog" if($t == "test") else ($a = "moo");
+	assert($a == "moo");
+	$a = "Hello";
+	assert($a == "Hello");
+	($a = "Cat and Dog") if($t == "test") else ($a = "moo");
+	assert($a == "moo");
+}
+// Test ? :
+say "Testing ? : operator";
+{
+	my $a = "Cat and Dog";
+	my $b = $a == "Cat and Dog" ? true : false;
+	assert($b);
+	assert(133.9 > 133.0 ? true : false);
+	assert(133.9 >= '133.9' ? true : false);
+	assert(133.8 < 133.9 ? true : false);
+	assert("133.8" < 133.9 ? true : false);
+	assert("133" . ".8" == 133.8 ? true : false);
+}
+// Test !? :
+say "Testing ? : operator";
+{
+	my $a = "Cat and Dog";
+	my $b = $a == "Cat and Dog" !? true : false;
+	assert(!$b);
+}
+// Test ==
+say "Testing == operator";
+{
+	my $a = "Cat and Dog";
+	assert($a == "Cat and Dog");
+}
+// Test ===
+say "Testing === operator";
+{
+	my $a = "Cat and Dog";
+	assert($a === "Cat and Dog");
+	assert(!("100" === 100));
+	assert((double)"100" === 100.0);
+	assert((int64)"100" === 100);
+	assert(array("Cat", "Dog", "FoX") === qw(Cat Dog FoX));
+	assert(array("Cat" => "Meow", "Dog" => "Woof") === qww(Cat Meow Dog Woof));
+}
+// Test !-
+say "Testing != operator";
+{
+	my $a = "Cat and Dog";
+	assert(!($a != "Cat and Dog"));
+}
+// Test !==
+say "Testing !== operator";
+{
+	my $a = "Cat and Dog";
+	assert(!($a !== "Cat and Dog"));
+	assert("100" !== 100);
+	assert(!((double)"100" !== 100.0));
+	assert(!((int64)"100" !== 100));
+	assert(!(array("Cat", "Dog", "FoX") !== qw(Cat Dog FoX)));
+	assert(!(array("Cat" => "Meow", "Dog" => "Woof") !== qww(Cat Meow Dog Woof)));
+}
+// Test =
+say "Testing = operator";
+{
+	my $a = "Cat and Dog";
+	my $b = $a;
+	assert($a == "Cat and Dog");
+	assert($b == "Cat and Dog");
+	assert(!($a != "Cat and Dog"));
+	assert(!($b != "Cat and Dog"));
+}
+// Test +=
+say "Testing += operator";
+{
+	my $a = 100;
+	$a += 200;
+	assert($a == 300);
+	my $a = 100.77;
+	$a += 42.99;
+	assert($a == 143.76);
+}
+// Test -=
+say "Testing -= operator";
+{
+	my $a = 100;
+	$a -= 10;
+	assert($a == 90);
+	my $a = 100.77;
+	$a -= 42.99;
+	assert(Round($a, 2) == 57.78);
+}
+// Test *=
+say "Testing -= operator";
+{
+	my $a = 100;
+	$a *= 2;
+	assert($a == 200);
+	my $a = 100.77;
+	$a *= 42.99;
+	assert(Round($a, 4) == 4332.1023);
+}
+// Test **=
+say "Testing -= operator";
+{
+	my $a = 100;
+	$a **= 2;
+	assert($a == 10000);
+	my $a = 100.77;
+	$a **= 2;
+	assert(Round($a, 4) == 10154.5929);
+}
+// Test /=
+say "Testing -= operator";
+{
+	my $a = 100;
+	$a /= 2;
+	assert($a == 50);
+	my $a = 100.77;
+	$a /= 42.99;
+	assert(Round($a, 13) == 2.3440334961619);
+}
+// Test %=
+say "Testing %= operator";
+{
+	my $a = 100;
+	$a %= 1000;
+	assert($a == 100);
+	my $a = 100.0;
+	$a %= 42.0;
+	assert(round($a, 0) == 16);
+}
+// Test .=
+say "Testing .= operator";
+{
+	my $a = 100;
+	$a .= 200;
+	assert($a == '100200');
+	my $a = "cat";
+	$a .= "dog";
+	assert($a == 'catdog');
+}
+// Test ..=
+say "Testing ..= operator";
+{
+	my $a = 100;
+	$a ..= 200;
+	assert($a == '200100');
+	my $a = "cat";
+	$a ..= "dog";
+	assert($a == 'dogcat');
+}
+// Test ^=
+say "Testing ^= operator";
+{
+	my $a = 100;
+	$a ^= 50;
+	assert($a == 86);
+	my $a = 100.77;
+	$a ^= 42.99;
+	assert(Round($a) == 78);
+}
+// Test &=
+say "Testing &= operator";
+{
+	my $a = 100;
+	$a &= 50;
+	assert($a == 32);
+	my $a = 100.77;
+	$a &= 42.99;
+	assert(Round($a) == 32);
+}
+// Test |=
+say "Testing |= operator";
+{
+	my $a = 100;
+	$a |= 50;
+	assert($a == 118);
+	my $a = 100.0;
+	$a |= 42.0;
+	assert(Round($a) == 110);
+}
+// Test >>=
+say "Testing >>= operator";
+{
+	my $a = 100;
+	$a >>= 2;
+	assert($a == 25);
+	my $a = 100.0;
+	$a >>= 2.0;
+	assert($a == 25);
+	my $a = 0xF0;
+	$a >>= -1;
+	assert($a == 480);
+}
+// Test >>>=
+say "Testing >>>= operator";
+{
+	my $a = 100;
+	$a >>>= 2;
+	assert($a == 25);
+	my $a = 100.0;
+	$a >>>= 2.0;
+	assert($a == 25);
+	my $a = 0xF0;
+	$a >>= -1;
+	assert($a == 480);
+}
+// Test <<=
+say "Testing <<= operator";
+{
+	my $a = 100;
+	$a <<= 2;
+	assert($a == 400);
+	my $a = 100.0;
+	$a <<= 2.0;
+	assert($a == 400);
+	my $a = 0xF0;
+	$a <<= -1;
+	assert($a == 120);
+}
+// Test <<<=
+say "Testing <<<= operator";
+{
+	my $a = 100;
+	$a <<<= 2;
+	assert($a == 400);
+	my $a = 100.0;
+	$a <<<= 2.0;
+	assert($a == 400);
+	my $a = 0xF0;
+	$a <<= -1;
+	assert($a == 120);
+}
+// Test ||=
+say "Testing ||= operator";
+{
+	my $a = 100;
+	$a ||= 20;
+	assert($a == 100);
+	my $a = 0;
+	$a ||= 20;
+	assert($a == 20);
+	my $a = 100.0;
+	$a ||= 20.0;
+	assert($a == 100);
+	my $a = 0.0;
+	$a ||= 20.0;
+	assert($a == 20);
+}
+// Test &&=
+say "Testing &&= operator";
+{
+	my $a = 100;
+	$a &&= 20;
+	assert($a == 20);
+	my $a = 0;
+	$a &&= 20;
+	assert($a == 0);
+	my $a = 100.0;
+	$a &&= 20.0;
+	assert($a == 20);
+	my $a = 0.0;
+	$a &&= 20.0;
+	assert($a == 0);
+}
+// Test ++
+say "Testing ++ operator";
+{
+	my $a = 100;
+	$a++;
+	assert($a == 101);
+	$a+++++;
+	assert($a == 105);
+	my $a = 100.0;
+	$a++;
+	assert($a == 101.0);
+	$a+++++;
+	assert($a == 105.0);
+}
+// Test --
+say "Testing -- operator";
+{
+	my $a = 100;
+	$a--;
+	assert($a == 99);
+	$a---------;
+	assert($a == 91);
+	my $a = 100.0;
+	$a--;
+	assert($a == 99.0);
+	$a---------;
+	assert($a == 91.0);
+}
+// Test ->>
+say "Testing ->> operator";
+{
+	my $a = "Cat and Dog";
+	my $result = $a->>substr(1);
+	assert($result == 'at and Dog');
+	assert($a == 'Cat and Dog');
+}
+{
+	my $a = "Cat and Dog";
+	my $result = $a->>substr(1)->>substr(0, 8)->>substr(1);
+	assert($result == 't and D');
+	assert($a == 'Cat and Dog');
+}
+// Test =>>
+say "Testing =>> operator";
+{
+	my $a = "Cat and Dog";
+	assert($a->>substr(1) == 'at and Dog');
+	assert($a == 'Cat and Dog');
+	$a=>>substr(1);
+	assert($a == 'at and Dog');
+}
+// Test x
+say "Testing x operator";
+{
+	my $value = 'Test' x 3;
+	assert($value == 'TestTestTest');
+	my $value = array('Cat', 'Dog') x 3;
+	assert($value == array('Cat', 'Dog', 'Cat', 'Dog', 'Cat', 'Dog'));
+	my $i = 0;
+	($i++) x 3;
+	assert($i == 3);
+}
+// Test xx
+say "Testing xx operator";
+{
+	my $value = 'Test' xx 3;
+	assert($value == array('Test', 'Test', 'Test'));
+	my $value = array('Cat", "Dog') xx 3;
+	assert($value == array(array('Cat", "Dog'), array('Cat", "Dog'), array('Cat", "Dog')));
+}
+// Test []
+say "Testing [] operator";
+{
+	my $myArray = array("One", "Two", "Three");	 
+	$myArray[] = "Four";
+	$myArray[] = "Five";
+	assert($myArray == array("One", "Two", "Three", "Four", "Five"));
+}
+// Test []!
+say "Testing []! operator";
+{
+	my $myArray = array("One", "Two", "Three");	 
+	$myArray[]! = "Zero";
+	$myArray[] = "Four";
+	assert($myArray == array("Zero", "One", "Two", "Three", "Four"));
+}
+// Test [<>] 
+say "Testing [<>] operator";
+{
+	my $array = array(1, 2, 3);
+	my $a = $array[<>];
+	assert($array[<>] == '1 2 3');
+	assert($a == '1 2 3');
+	my $a = array("Three", "Four");
+	my $b = array("One", "Two", $a[<>]);
+	assert($b == array("One", "Two", "Three", "Four"));
+}
+// Test [<=>] 
+say "Testing [<=>] operator";
+{
+	my $array = array("Cat" => 1, "Dog" => 2, "FoX" => 3);
+	my $a = $array[<=>];
+	my $text = gsub($a, '%s+', ' ');
+	assert($text == "Cat 1 Dog 2 FoX 3");
+	my $a = array("Cat" => "Meow");
+	my $b = array("Dog" => "Woof", $a[<=>]);
+	assert($b == array("Dog" => "Woof", "Cat" => "Meow"));
+}
+// Test Is
+say "Testing Is operator";
+{
+	my $a = 1;
+	my $b = &$a;
+	my $c = array();
+	my $d = sbNew();
+	my $e = null;
+	assert(((byte)$a) is Byte);
+	assert(((sbyte)$a) is SByte);
+	assert(((int16)$a) is Int16);
+	assert(((int32)$a) is Int32);
+	assert(((int64)$a) is Int64);
+	assert(((uint16)$a) is UInt16);
+	assert(((uint32)$a) is UInt32);
+	assert(((uint64)$a) is UInt64);
+	assert(((float)$a) is Float);
+	assert(((double)$a) is Double);
+	assert(bin(1, 2, 3) is Binary);
+	assert($b is Reference);
+	assert($c is Array);
+	assert($d is Object);
+}
+// Test IsNot
+say "Testing IsNot operator";
+{
+	my $a = 1;
+	my $b = &$a;
+	my $c = array();
+	my $d = sbNew();
+	my $e = null;
+	assert(!(((byte)$a) isnot Byte));
+	assert(!(((sbyte)$a) isnot SByte));
+	assert(!(((int16)$a) isnot Int16));
+	assert(!(((int32)$a) isnot Int32));
+	assert(!(((int64)$a) isnot Int64));
+	assert(!(((uint16)$a) isnot UInt16));
+	assert(!(((uint32)$a) isnot UInt32));
+	assert(!(((uint64)$a) isnot UInt64));
+	assert(!(((float)$a) isnot Float));
+	assert(!(((double)$a) isnot Double));
+	assert(!(bin(1, 2, 3) isnot Binary));
+	assert(!($b isnot Reference));
+	assert(!($c isnot Array));
+	assert(!($d isnot Object));
+}
+// Test ~~
+say "Testing ~~ operator";
+{
+	my $a = 1;
+	my $b = &$a;
+	my $c = array();
+	my $d = sbNew();
+	my $e = null;
+	assert(((byte)$a) ~~ Byte);
+	assert(((sbyte)$a) ~~ SByte);
+	assert(((int16)$a) ~~ Int16);
+	assert(((int32)$a) ~~ Int32);
+	assert(((int64)$a) ~~ Int64);
+	assert(((uint16)$a) ~~ UInt16);
+	assert(((uint32)$a) ~~ UInt32);
+	assert(((uint64)$a) ~~ UInt64);
+	assert(((float)$a) ~~ Float);
+	assert(((double)$a) ~~ Double);
+	assert(bin(1, 2, 3) ~~ Binary);
+	assert($b ~~ Reference);
+	assert($c ~~ Array);
+	assert($d ~~ Object);
+}
+// Test !~
+say "Testing !~~ operator";
+{
+	my $a = 1;
+	my $b = &$a;
+	my $c = array();
+	my $d = sbNew();
+	my $e = null;
+	assert(!(((byte)$a) !~ Byte));
+	assert(!(((sbyte)$a) !~ SByte));
+	assert(!(((int16)$a) !~ Int16));
+	assert(!(((int32)$a) !~ Int32));
+	assert(!(((int64)$a) !~ Int64));
+	assert(!(((uint16)$a) !~ UInt16));
+	assert(!(((uint32)$a) !~ UInt32));
+	assert(!(((uint64)$a) !~ UInt64));
+	assert(!(((float)$a) !~ Float));
+	assert(!(((double)$a) !~ Double));
+	assert(!(bin(1, 2, 3) !~ Binary));
+	assert(!($b !~ Reference));
+	assert(!($c !~ Array));
+	assert(!($d !~ Object));
+}
+// Test ~~~
+say "Testing ~~~ operator";
+{
+	my $a = 1;
+	assert(((byte)$a) ~~~ Byte);
+	assert(!(($a) ~~~ Byte));
+}
+// Test !~~
+say "Testing !~~ operator";
+{
+	my $a = 1;
+	assert(!(((byte)$a) !~~ Byte));
+	assert($a !~~ Byte);
+}
+say "Testing operators above";

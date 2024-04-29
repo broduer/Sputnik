@@ -1,0 +1,1291 @@
+#include-once
+#require-once
+Require('Parsing/Loco.spk', true);
+// Include this file and it will make sure Loco is working properly....
+RunTests();
+Function RunTests()
+{
+	println("[LocoTest] Begins");
+	Global $FAIL = 0;
+	Global $SUCCESS = 0;
+	TestString1();
+	TestString2();
+	TestRegex1();
+	TestRegex2();
+	TestRegex3();
+	TestRegex4();
+	TestRegex5();
+	TestUtf8Parser1();
+	TestUtf8Parser2();
+	TestUtf8Parser3();
+	TestUtf8Parser4();
+	TestUtf8Parser5();
+	TestUtf8Parser6();
+	TestUtf8Parser7();
+	TestUtf8Parser8();
+	TestUtf8Parser9();
+	TestUtf8Parser10();
+	TestUtf8Parser11();
+	TestUtf8Parser12();
+	TestUtf8Parser13();
+	TestUtf8Parser14();
+	TestUtf8Parser15();
+	TestUtf8Parser16();
+	TestUtf8Parser17();
+	TestUtf8Parser18to25();
+	//TestUtf8Parser26(); // Obsolete Sputnik doesnt give off exceptions at this point
+	//TestUtf8Parser27(); // Obsolete Sputnik doesnt give off exceptions at this point
+	TestLazyAltParser();
+	TestConcParser();
+	TestGreedyMultiParser1();
+	TestGreedyMultiParser2();
+	TestGreedyMultiParser3();
+	TestGreedyMultiParser4();
+	TestGreedyMultiParser5();
+	TestGrammar1();
+	TestGrammar2();
+	TestGrammar3();
+	TestGrammar4();
+	TestSimpleHTMLParse();
+	println("[LocoTest] Total success '$SUCCESS' fails '$FAIL'");
+}
+Function TestGrammar1() // regular Grammar
+{
+	my $grammar = new Grammar(
+		"<A>",
+		array(
+			"<A>" => new EmptyParser()
+		)
+	);
+	println("Grammar Test 1");
+	try
+	{
+		$grammar->parse("a");
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	println("Grammar Test 2");
+	if($grammar->parse("") == null)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestGrammar2() // disallow GreedyMultiParsers with unbounded limits which can consume ""
+{
+	println("Grammar Test 3");
+	try
+	{
+		my $grammar = new Grammar(
+			"<S>",
+			array(
+				"<S>" => new GreedyMultiParser("<A>", 7, null),
+				"<A>" => new EmptyParser()
+			)
+		);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	println("Grammar Test 4");
+	try
+	{
+		my $grammar = new Grammar(
+			"<S>",
+			array(
+				"<S>" => new GreedyStarParser("<A>"),
+				"<A>" => new GreedyStarParser("<B>"),
+				"<B>" => new EmptyParser()
+			)
+		);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestGrammar3() // no parser for the root
+{	
+	println("Grammar Test 5");
+	try
+	{
+		my $grammar = new Grammar("<A>", array());
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestGrammar4()
+{
+	// left-recursion
+	
+	// obvious
+	println("Grammar Test 6");
+	try
+	{
+		my $grammar = new Grammar(
+			"<S>",
+			array(
+				"<S>" => new ConcParser(array("<S>"))
+			)
+		);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+
+	// more advanced (only left-recursive because <B> is nullable)
+	println("Grammar Test 7");
+	try {
+		my $grammar = new Grammar(
+			"<A>",
+			array(
+				"<A>" => new LazyAltParser(
+					array(
+						new StringParser("Y"),
+						new ConcParser(
+							array("<B>", "<A>")
+						)
+					)
+				),
+				"<B>" => new EmptyParser()
+			)
+		);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	
+	// Even more complex (this specifically checks for a bug in the
+	// original Loco left-recursion check).
+	// This grammar is left-recursive in A -> B -> D -> A
+	println("Grammar Test 8");
+	try
+	{
+		my $grammar = new Grammar(
+			"<A>",
+			array(
+				"<A>" => new ConcParser(array("<B>")),
+				"<B>" => new LazyAltParser(array("<C>", "<D>")),
+				"<C>" => new ConcParser(array(new StringParser("C"))),
+				"<D>" => new LazyAltParser(array("<C>",  "<A>"))
+			)
+		);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestGreedyMultiParser1()
+{
+	my $parser = new GreedyMultiParser(
+		new StringParser("a"), 0, null
+	);
+	println("GreedyMultiParser Test 1");
+	if($parser->match("",    0) == array("j" => 0, "value" => array()))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 2");
+	if($parser->match("a",   0) == array("j" => 1, "value" => array("a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 3");
+	if($parser->match("aa",  0) == array("j" => 2, "value" => array("a", "a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 4");
+	if($parser->match("aaa", 0) == array("j" => 3, "value" => array("a", "a", "a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestGreedyMultiParser2()
+{
+	my $parser = new GreedyMultiParser(
+		new LazyAltParser(
+			array(
+				new StringParser("ab"),
+				new StringParser("a")
+			)
+		),
+		0,
+		null
+	);
+	println("GreedyMultiParser Test 5");
+	if($parser->match("",   0) == array("j" => 0, "value" => array()))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 6");
+	if($parser->match("a",  0) == array("j" => 1, "value" => array("a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 7");
+	if($parser->match("aa", 0) == array("j" => 2, "value" => array("a", "a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 8");
+	if($parser->match("ab", 0) == array("j" => 2, "value" => array("ab")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestGreedyMultiParser3()
+{
+	my $parser = new GreedyMultiParser(
+		new LazyAltParser(
+			array(
+				new StringParser("aa"),
+				new StringParser("a")
+			)
+		),
+		0,
+		null
+	);
+	println("GreedyMultiParser Test 9");
+	if($parser->match("",   0) == array("j" => 0, "value" => array()))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 10");
+	if($parser->match("a",  0) == array("j" => 1, "value" => array("a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 11");
+	if($parser->match("aa", 0) == array("j" => 2, "value" => array("aa")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestGreedyMultiParser4()
+{
+	my $parser = new GreedyMultiParser(
+		new StringParser("a"), 0, 1
+	);
+	println("GreedyMultiParser Test 12");
+	if($parser->match("", 0) == array("j" => 0, "value" => array()))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("GreedyMultiParser Test 13");
+	if($parser->match("a", 0) == array("j" => 1, "value" => array("a")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestGreedyMultiParser5()
+{
+	{
+		println("GreedyMultiParser Test 14");
+		my $parser = new GreedyMultiParser(new StringParser("f"), 0, 0);
+		if($parser->match("", 0) == array("j" => 0, "value" => array()))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 15");
+		if($parser->match("f", 0) == array("j" => 0, "value" => array()))
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		else
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+	}
+	{
+		println("GreedyMultiParser Test 16");
+		my $parser = new GreedyMultiParser(new StringParser("f"), 0, 1);
+		if($parser->match("", 0) == array("j" => 0, "value" => array()))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 17");
+		if($parser->match("f", 0) == array("j" => 1, "value" => array("f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 18");
+		if($parser->match("ff", 0) == array("j" => 1, "value" => array("f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+	{
+		println("GreedyMultiParser Test 19");
+		my $parser = new GreedyMultiParser(new StringParser("f"), 1, 2);
+		try
+		{
+			printr($parser->match("", 0));
+			$FAIL++; inputc();
+		}
+		catch
+		{		
+			println("PASS");
+			$SUCCESS++;
+		}
+		println("GreedyMultiParser Test 20");
+		if($parser->match("f", 0) == array("j" => 1, "value" => array("f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 21");
+		if($parser->match("ff", 0) == array("j" => 2, "value" => array("f", "f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 22");
+		if($parser->match("fff", 0) == array("j" => 2, "value" => array("f", "f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+	{
+		my $parser = new GreedyMultiParser(new StringParser("f"),	1, null);
+		println("GreedyMultiParser Test 23");
+		try
+		{
+			$parser->match("", 0);
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		catch
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		if($parser->match("f", 0) == array("j" => 1, "value" => array("f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 25");
+		if($parser->match("ff", 0) == array("j" => 2, "value" => array("f", "f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 26");
+		if($parser->match("fff", 0) == array("j" => 3, "value" => array("f", "f", "f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+		println("GreedyMultiParser Test 27");
+		if($parser->match("ffg", 0) == array("j" => 2, "value" => array("f", "f")))
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+}
+Function TestConcParser()
+{
+	my $parser = new ConcParser(
+		array(
+			new RegexParser("^a*"),
+			new RegexParser("^b+"),
+			new RegexParser("^c*")
+		)
+	);
+	println("ConcParser Test 1");
+	try
+	{
+		$parser->match("", 0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;	
+	}
+	println("ConcParser Test 2");
+	try
+	{
+		$parser->match("aaa", 0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;	
+	}
+	println("ConcParser Test 3");
+	if($parser->match("b",       0) == array("j" => 1, "value" => array("", "b", "")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("ConcParser Test 4");
+	if($parser->match("aaab",    0) == array("j" => 4, "value" => array("aaa", "b", "")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("ConcParser Test 5");
+	if($parser->match("aaabb",   0) == array("j" => 5, "value" => array("aaa", "bb", "")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("ConcParser Test 6");
+	if($parser->match("aaabbbc", 0) == array("j" => 7, "value" => array("aaa", "bbb", "c")))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestLazyAltParser()
+{
+	my $parser = new LazyAltParser(
+			array(
+				new StringParser("abc"),
+				new StringParser("def"),
+				new StringParser("ab"),
+				new StringParser("a")
+			));
+	println("LazyAltParser Test 1");
+	try
+	{
+		$parser->match("0", 1);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;		
+	}	
+	println("LazyAltParser Test 2");
+	if($parser->match("0a",    1) == array("j" => 2, "value" => "a"  ))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("LazyAltParser Test 3");
+	if($parser->match("0ab",   1) == array("j" => 3, "value" => "ab" ))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("LazyAltParser Test 4");
+	if($parser->match("0abc",  1) == array("j" => 4, "value" => "abc"))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("LazyAltParser Test 5");
+	if($parser->match("0abcd", 1) == array("j" => 4, "value" => "abc"))
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("LazyAltParser Test 6");
+	try
+	{
+		new LazyAltParser(array());
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;		
+	}	
+}
+
+Function TestString1()
+{
+	println("StringParser Test 1");
+	my $parser = new StringParser("needle");
+	my $RET = $parser->match("asdfneedle", 4);
+	if($RET["j"] == 10 && $RET["value"] == "needle")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestString2()
+{
+	println("StringParser Test 2");
+	my $parser = new StringParser("needle");
+	try
+	{
+		my $RET = $parser->match("asdfneedle", 0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestRegex1()
+{
+	println("RegexParser Test 1");
+	println("PASS");
+	$SUCCESS++;
+	//{ // Irrelevent test Sputnik doesnt use same style regexes as PHP
+	//	println("RegexParser Test 1");
+	//	# improper anchoring
+	//	try
+	//	{
+	//		my $parser = new RegexParser("#boo#");
+	//		println("FAIL");
+	//		$FAIL++; inputc();
+	//	}
+	//	catch ($e)
+	//	{
+	//		println("PASS");
+	//		$SUCCESS++;
+	//	}
+	//}
+}
+Function TestRegex2()
+{
+	println("RegexParser Test 2");
+	my $parser = new RegexParser("^boo");
+	my $RET = $parser->match("boo", 0);
+	if($RET["j"] == 3 && $RET["value"] == "boo")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestRegex3()
+{
+	println("RegexParser Test 3");
+	my $parser = new RegexParser("^boo");
+	try
+	{
+		$parser->match("aboo", 0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestRegex4()
+{
+	println("RegexParser Test 4");
+	my $parser = new RegexParser("^boo");
+	my $RET = $parser->match("aboo", 1);
+	if($RET["j"] == 4 && $RET["value"] == "boo")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestRegex5()
+{
+	println("RegexParser Test 5");
+	$parser = new RegexParser('^-?(0|[1-9][0-9]*)(\.[0-9]*)?([eE][-+]?[0-9]*)?');
+	my $RET = $parser->match("-24.444E-009", 2);
+	if($RET["j"] == 12 && $RET["value"] == "4.444E-009")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser1()
+{
+	println("TestUtf8Parser Test 1");
+	my $parser = new Utf8Parser(array());
+	try
+	{
+		$parser->match("", 0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser2() # 1-byte character "A"
+{
+	println("TestUtf8Parser Test 2");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\x41",0);
+	if($RET["j"] == 1 && $RET["value"] == "\x41")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser3() # 2-byte character "Â¯"
+{
+	println("TestUtf8Parser Test 3");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\xC2\xAF",0);
+	if($RET["j"] == 2 && $RET["value"] == "\xC2\xAF")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser4() # 3-byte character "â™¥"
+{
+	println("TestUtf8Parser Test 4");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\xE2\x99\xA5",0);
+	if($RET["j"] == 3 && $RET["value"] == "\xE2\x99\xA5")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser5() # 4-byte character "ñ‹‚"
+{
+	println("TestUtf8Parser Test 5");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\xF1\x8B\x81\x82",0);
+	if($RET["j"] == 4 && $RET["value"] == "\xF1\x8B\x81\x82")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser6() # "byte order mark" 11101111 10111011 10111111 (U+FEFF)
+{
+	println("TestUtf8Parser Test 6");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\xEF\xBB\xBF",0);
+	if($RET["j"] == 3 && $RET["value"] == "\xEF\xBB\xBF")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser7() # 4-byte character
+{
+	println("TestUtf8Parser Test 7");
+	my $parser = new Utf8Parser(array());
+	my $RET = $parser->match("\xF0\x90\x80\x80",0);
+	if($RET["j"] == 4 && $RET["value"] == "\xF0\x90\x80\x80")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser8() # 4-byte character
+{
+	println("TestUtf8Parser Test 8");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\xF0\xA0\x80\x80",0);
+	if($RET["j"] == 4 && $RET["value"] == "\xF0\xA0\x80\x80")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser9()
+{
+	println("TestUtf8Parser Test 9");
+	my $parser = new Utf8Parser(array());	
+	my $RET = $parser->match("\x41\xC2\xAF\xE2\x99\xA5\xF1\x8B\x81\x82\xEF\xBB\xBF",0);
+	if($RET["j"] == 1 && $RET["value"] == "\x41")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser10() # code point U+110000, out of range (max is U+10FFFF)
+{
+	println("TestUtf8Parser Test 10");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xF4\x90\x80\x80",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser11() # overlong encoding (code point is U+26; should be 1 byte, "\x26")
+{
+	println("TestUtf8Parser Test 11");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xC0\xA6",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser12() # illegal continuation byte
+{
+	println("TestUtf8Parser Test 12");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xC3\xFF",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser13() # illegal leading byte
+{
+	println("TestUtf8Parser Test 13");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xFF",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser14() # mid-character termination
+{
+	println("TestUtf8Parser Test 14");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xC2",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser15() # null
+{
+	println("TestUtf8Parser Test 15");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\x00",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser16() # 55296d
+{
+	println("TestUtf8Parser Test 16");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xED\xA0\x80",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser17() # 57343d
+{
+	println("TestUtf8Parser Test 17");
+	my $parser = new Utf8Parser(array());	
+	try
+	{
+		$parser->match("\xED\xBF\xBF",0);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser18to25()
+{
+	println("TestUtf8Parser Test 18");
+	if(Utf8Parser::getBytes(0x41) === "A")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 19");
+	if(Utf8Parser::getBytes(0x26) === "\x26")
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 20");
+	if(Utf8Parser::getBytes(0xAF) === "\xC2\xAF") # 2-byte character "Â¯"
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 21");
+	if(Utf8Parser::getBytes(0x2665) === "\xE2\x99\xA5") # 3-byte character "â™¥"
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 22");
+	if(Utf8Parser::getBytes(0xFEFF) === "\xEF\xBB\xBF") # "byte order mark" 11101111 10111011 10111111 (U+FEFF)
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 23");
+	if(Utf8Parser::getBytes(0x10000) === "\xF0\x90\x80\x80") # 4-byte character
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 24");
+	if(Utf8Parser::getBytes(0x20000) === "\xF0\xA0\x80\x80") # 4-byte character
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	println("TestUtf8Parser Test 25");
+	if(Utf8Parser::getBytes(0x4B042) === "\xF1\x8B\x81\x82") # 4-byte character "ñ‹‚"
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+	else
+	{
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}
+Function TestUtf8Parser26() # invalid character in XML (not in any safe range)
+{
+	println("TestUtf8Parser Test 26");
+	try
+	{
+		Utf8Parser::getBytes(0xD800);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestUtf8Parser27() # code point too large, cannot be encoded
+{
+	println("TestUtf8Parser Test 26");
+	try
+	{
+		Utf8Parser::getBytes(0xFFFFFF);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+	catch
+	{
+		println("PASS");
+		$SUCCESS++;
+	}
+}
+Function TestSimpleHTMLParse()
+{
+	println("Simple HTML Parse Test");
+	my $parser = new Grammar(
+	'paragraph',
+	array(
+	  'paragraph' => new ConcParser(
+		array(
+		  'OPEN_P',
+		  'CONTENT',
+		  'CLOSE_P'
+		),
+		function($open_p, $content, $close_p) {
+		  return $content;
+		}
+	  ),
+
+	  'OPEN_P' => new StringParser('<p>'),
+
+	  'CONTENT' => new GreedyMultiParser(
+		'UTF-8 CHAR',
+		0,
+		null,
+		[Args("true")]
+		function() { return join(@ARGS, ''); }
+	  ),
+
+	  'CLOSE_P' => new StringParser('</p>'),
+
+	  'UTF-8 CHAR' => new LazyAltParser(
+		array(
+		  new Utf8Parser(array('<', '>', '&', '/')),                         // match any UTF-8 character except <, > or &
+		  new StringParser('&lt;',  function($string) { return '<'; }), // ...or an escaped < (unescape it)
+		  new StringParser('&gt;',  function($string) { return '>'; }), // ...or an escaped > (unescape it)
+		  new StringParser('&amp;', function($string) { return '&'; }),  // ...or an escaped & (unescape it)
+		  new StringParser('/CAT', function($string) { return 'DOG'; })  // ...or an escaped /CAT (make it a DOG)
+		)
+	  )
+	)
+	);
+	try
+	{
+		my $RET = $parser->parse("<p>Your text /CAT here &amp; here &amp; &lt;here&gt;</p>");
+		printr($RET);
+		if($RET == "Your text DOG here & here & <here>")
+		{
+			println("PASS");
+			$SUCCESS++;
+		}
+		else
+		{
+			println($e[2]);
+			println("FAIL");
+			$FAIL++; inputc();
+		}
+	}
+	catch
+	{
+		println($e[2]);
+		println("FAIL");
+		$FAIL++; inputc();
+	}
+}

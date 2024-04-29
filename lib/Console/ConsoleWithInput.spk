@@ -1,0 +1,175 @@
+#include-once
+#require-once
+Include('Parsing/CommandSystem.spk');
+/*
+This class can be used to handle a console app most notably a server program.
+
+The way it works is it lets you create a console app where stuff can be printed to screen
+but yet at the same time you are allowed to type to the console window.
+
+So the server can be running stuff and printing stuff on screen but yet the user can type
+commands to make it do things.
+
+Also as a bonus this class allows you to "add" commands to it then when the user types
+the command it will call the function you requested.
+
+This is VERY useful since you dont need to worry about parsing input or anything
+all you do is define what functions you want people to be able to type and
+define what their min and max param count is then it will do the rest for you
+
+You can define if the TIME and or DATE should be shown on each message
+
+You can also define a prefix that gets placed before commands (if the user typed a valid command)
+
+Did you know if you supply an array of (class, nameOfFunction) for the commands + user type function
+that it will use that class and its function instead of just finding a global function by that name?
+*/
+Class ConsoleWithInput
+{
+	my $Title; // Use GetTitle() and SetTitle() for this it is the console window text
+	my $ShowTime; // If TRUE will show time on console messages
+	my $ShowDate; // If TRUE will show date on console messages
+	my $UserPrefix; // If given a string it will prefix the users text before appearing on console (not commands)
+	my $CmdPrefix; // If given a string it will prefix before command when it appears on console
+	my $ShowCommands; // If TRUE commands a user types will get printed to console
+	my $ShowType; // If TRUE text a user types will get printed to console (not commands)
+	my $TypedFunc; // The function to send all user *types* to (not typed commands)
+	my $_consoleText;
+	my $_consoleInput;
+	my $_commandParser;
+	my $ConsoleSize;
+	Function __Construct($consoleTitle = 'Your program name here')
+	{
+		$ConsoleSize = 30;
+		$_consoleInput = "";
+		$_consoleText = array();
+		$Title = $consoleTitle;
+		$ShowTime = false;
+		$ShowDate = false;
+		$CmdPrefix = '';
+		$ShowCommands = true;
+		$ShowType = true;
+		$UserPrefix = '';
+		$TypedFunc = '';
+		ConsoleSetSize(1, 1);
+		ConsoleSetBuffer(80, $ConsoleSize + 4);
+		ConsoleSetSize(80, $ConsoleSize + 4);
+		ConsoleRedraw();
+		ConsoleTitle($Title);
+		$_commandParser = new CommandSystem();
+	}
+	Function GetTitle()
+	{
+		return $Title;
+	}
+	Function SetTitle($newTitle)
+	{
+		$Title = $newTitle;
+		ConsoleRedraw();
+	}
+	Function AppendLine($text)
+	{ 
+		if ($ShowDate)
+			$text ..= Date('%F') . ' ';
+		if ($ShowTime)
+			$text ..= Date('%O') . ' ';
+		foreach(lines(wordwrap($text, 80)) as my $wrapped)
+		{
+			$_consoleText[] = $wrapped;
+			if (count($_consoleText) > $ConsoleSize)
+			{
+				Remove($_consoleText, 0);
+				Order($_consoleText);
+			}
+		}
+		ConsoleRedraw();
+	}
+	Function ClearScreen($message = null)
+	{
+		$_consoleText = array();
+		if ($message)
+			AppendLine($message);
+		else
+			ConsoleRedraw();
+	}
+	Function Process()
+	{
+		if (!ConsoleKeyAvailable())
+			return;
+		my List($Key, $KeyChar, $sKey, $sKeyChar, $Modifiers) = InputC(true);
+		switch ($Key)
+		{
+			case @KeyConsoleEnter:
+				ConsoleProcessInput();
+				break;
+			case @KeyConsoleBackspace:
+				my $len = strlen($_consoleInput);
+				if ($len > 0)
+					$_consoleInput = substr($_consoleInput, 0, $len - 1);
+				ConsoleRedraw();
+				break;
+			default:
+				$_consoleInput .= $sKeyChar;
+				ConsoleRedraw();
+				break;
+		}
+	}
+	Function ConsoleProcessInput()
+	{
+		if (strlen($_consoleInput) < 1)
+			return;
+		my List($validCommand, $errorMessage) = $_commandParser->ProcessCommand($_consoleInput);
+		if ($validCommand)
+		{
+			if ($errorMessage)
+				AppendLine("-- $errorMessage");
+			if ($ShowCommands)
+				AppendLine($CmdPrefix . $_consoleInput);
+		}
+		else
+		{
+			if ($ShowType)
+				AppendLine($UserPrefix . $_consoleInput);
+			if (IsVarArray($TypedFunc))
+			{
+				if (FunctionExists($TypedFunc[1], $TypedFunc[0]))
+					Call($TypedFunc, $_consoleInput);
+			}
+			else
+			{
+				if (FunctionExists($TypedFunc))
+					Call($TypedFunc, $_consoleInput);
+			}
+		}
+		$_consoleInput = '';
+		ConsoleRedraw();
+	}
+	Function ConsoleRedraw()
+	{
+		ConsoleClear();
+		ConsoleDrawCentered($Title, 0);
+		ConsoleDraw('================================================================================', 0, 1);
+		for (my $i = 0; $i < count($_consoleText); $i++)
+			ConsoleDraw($_consoleText[$i], 0, $i + 2);
+		ConsoleDraw('================================================================================', 0, $ConsoleSize + 2);
+		ConsoleDraw('> ' . $_consoleInput, 0, $ConsoleSize + 3);
+	}
+	Function ConsoleDraw($text, $x, $y)
+	{
+		ConsoleSetCursorPos($x, $y);
+		echo $text;
+	}
+	Function ConsoleDrawCentered($text, $y)
+	{
+		ConsoleSetCursorPos(40 - strlen($text) / 2, $y);
+		echo $text;
+	}
+	Function AddCommand($name, $command, $minArgs = -1, $maxArgs = -1)
+	{
+		$_commandParser->AddCommand($name, $command, $minArgs, $maxArgs);
+	}
+	Function DelCommand($name)
+	{
+		$_commandParser->DelCommand($name);
+	}
+}

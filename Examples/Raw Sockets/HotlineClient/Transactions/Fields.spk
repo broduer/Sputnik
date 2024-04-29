@@ -1,0 +1,143 @@
+Enum FieldID
+{
+	$ErrorText			= 100,
+	$Data				= 101,
+	$UserName			= 102,
+	$UserID				= 103,
+	$UserIconID			= 104,
+	$UserLogin			= 105,
+	$UserPassword		= 106,
+	$RefNum				= 107,
+	$TransferSize		= 108,
+	$ChatOptions		= 109,
+	$UserAccess			= 110,
+	$UserAlias			= 111,
+	$UserFlags			= 112,
+	$Options			= 113,
+	$ChatID				= 114,
+	$ChatSubject		= 115,
+	$WaitingCount		= 116,
+
+	$ServerAgreement	= 150,
+	$ServerBanner		= 151,
+	$ServerBannerType	= 152,
+	$ServerBannerUrl	= 153,
+	$NoServerAgreement	= 154,
+	$Vers				= 160,
+	$CommunityBannerID	= 161,
+	$ServerName			= 162,
+
+	$FileNameWithInfo	= 200,
+	$FileName			= 201,
+	$FilePath			= 202,
+	$FileResumeData		= 203,
+	$FileXferOptions	= 204,
+	$FileTypeString		= 205,
+	$FileCreatorString	= 206,
+	$FileSize			= 207,
+	$FileCreateDate		= 208,
+	$FileModifyDate		= 209,
+	$FileComment		= 210,
+	$FileNewName		= 211,
+	$FileNewPath		= 212,
+	$FileType			= 213,
+
+	$QuotingMsg			= 214,
+	$AutomaticResponse	= 215,
+	$FldrItemCount		= 220,
+
+	$UserNameWithInfo	= 300,
+
+	$NewsCatGUID		= 319,
+	$NewsCatListData	= 320,
+	$NewsArtListData	= 321,
+	$NewsCatName		= 322,
+	$NewsCatListData15	= 323,
+	$NewsPath			= 325,
+	$NewsArtID			= 326,
+	
+	$NewsArtDataFlav	= 327,
+	$NewsArtTitle		= 328,
+	$NewsArtPoster		= 329,
+	$NewsArtDate		= 330,
+	$NewsArtPrevArt		= 331,
+	$NewsArtNextArt		= 332,
+	$NewsArtData		= 333,
+	$NewsArtFlags		= 334,
+	$NewsArtParentArt	= 335,
+	$NewsArt1stChildArt	= 336,
+	$NewsArtRecurseDel	= 337
+};
+Class Field
+{
+	my $FieldID;
+	my $FieldSize;
+	my $FieldData;
+	Function __Construct( $ID, $Size, $Data )
+	{
+		$FieldID = $ID;
+		$FieldSize = $Size;
+		$FieldData = $Data;
+	}
+	Function GetFieldID()
+	{
+		return Unpack('n', $FieldID)[0];
+	}
+	Function GetFieldSize()
+	{
+		return Unpack('n', $FieldSize)[0];
+	}
+}
+Class FieldString extends Field
+{
+	Function __Construct( $ID, $Data )
+	{
+		$FieldID = Pack('n', $ID);
+		$FieldSize = Pack('n', StrLen($Data));
+		$FieldData = StrLen($Data) <= 0 ? BinaryCreate(0) : Pack('z0', $Data);
+	}
+}
+Class FieldStringEnc extends Field
+{
+	Function __Construct( $ID, $Data )
+	{
+		$FieldID = Pack('n', $ID);
+		$FieldSize = Pack('n', StrLen($Data));
+		$FieldData = StrLen($Data) <= 0 ? BinaryCreate(0) : encodeStr(Pack('z0', $Data));
+	}
+	Function encodeStr( $data )
+	{
+		my $len = Count($data);
+		my $enc = '';
+		for(my $i = 0; $i < $len; $i++)
+			$data[$i] = 255 - $data[$i];
+		return $data;
+	}
+}
+Class FieldInteger extends Field
+{
+	Function __Construct( $ID, $Data )
+	{
+		$FieldID = Pack('n', $ID);
+		$FieldSize = Pack('n', 2);
+		$FieldData = Pack('n', $Data);
+	}
+}
+Class FieldIntegerLong extends Field
+{
+	Function __Construct( $ID, $Data )
+	{
+		$FieldID = Pack('n', $ID);
+		$FieldSize = Pack('N', 4);
+		$FieldData = Pack('N', $Data);
+	}
+}
+Class FieldBinary extends Field
+{
+	Function __Construct( $ID, $Data )
+	{
+		$FieldID = Pack('n', $ID);
+		$FieldSize = BinaryLen($Data);
+		$FieldData = BinaryClone($Data);
+	}
+}
