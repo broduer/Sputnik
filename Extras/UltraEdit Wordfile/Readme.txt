@@ -1,0 +1,1 @@
+This is the latest Sputnik word file for use in Ultra Edit for syntax highlight, auto complete and function browsing etc
